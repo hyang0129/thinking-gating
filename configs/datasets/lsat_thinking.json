@@ -1,0 +1,10 @@
+{
+  "name": "lsat_thinking",
+  "task": "lsat",
+  "split": "test",
+  "description": "LSAT Logic Games with thinking-mode paired inference (binary labels: thinking helped vs not)",
+  "activation_dir": "shared/icr_capture/lsat_thinking_qwen3",
+  "metadata_file": "shared/icr_capture/lsat_thinking_qwen3/meta.jsonl",
+  "label_file": "shared/lsat_thinking_labels.jsonl",
+  "notes": "Secondary task for transfer test. Highest thinking-mode benefit (+20-30%), pure deduction (no knowledge). ~100-200 examples for pilot."
+}

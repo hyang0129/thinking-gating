@@ -1,0 +1,10 @@
+{
+  "name": "gsm8k_thinking",
+  "task": "gsm8k",
+  "split": "test",
+  "description": "GSM8K with thinking-mode paired inference (binary labels: thinking helped vs not)",
+  "activation_dir": "shared/icr_capture/gsm8k_thinking_qwen3",
+  "metadata_file": "shared/icm_capture/gsm8k_thinking_qwen3/meta.jsonl",
+  "label_file": "shared/gsm8k_thinking_labels.jsonl",
+  "notes": "Primary task for probe training. ~500-1k examples for pilot phase."
+}

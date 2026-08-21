@@ -1,0 +1,22 @@
+{
+  "name": "mlp",
+  "type": "probe",
+  "architecture": "simple_mlp",
+  "description": "Simple MLP probe on prefill hidden states (cheapest baseline)",
+  "params": {
+    "input_dim": 4096,
+    "hidden_dims": [256, 64],
+    "output_dim": 1,
+    "dropout": 0.1,
+    "activation": "relu"
+  },
+  "training": {
+    "optimizer": "adam",
+    "learning_rate": 1e-3,
+    "batch_size": 32,
+    "max_epochs": 50,
+    "early_stopping_patience": 10,
+    "validation_split": 0.2
+  },
+  "notes": "Baseline probe. Should achieve ~0.7-0.8 AUROC on GSM8K if thinking signal is strong."
+}
