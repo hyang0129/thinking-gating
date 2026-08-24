@@ -186,6 +186,9 @@ launch on a port that is still PENDING slips through and collides.
 
 ### Empire AI: dispatch hygiene
 - **`sync-jupyter` first, every time.** `configs/nodes.json` goes stale as allocations come and go; `python scripts/gpu_dispatch.py sync-jupyter` rebuilds it from live `squeue`. Dispatch reaches only nodes with a live Jupyter allocation registered there.
+- **Run `gpu_dispatch.py` itself with `.venv/bin/python`.** Its Jupyter transport imports `requests`/`websocket-client`; under the login node's system 3.9 the import fails and every node reports `unreachable`, which reads like a cluster outage but is not.
+- **Quote a dispatched command containing flags** — `run` takes `nargs="+"`, so a bare `--root` after the command is parsed as gpu_dispatch's own argument.
+- **Set `OMP_NUM_THREADS` for CPU work run directly on the login node** (192 cores, torch grabs them all: 315s vs 22s on the same tests). Dispatched cells already get this.
 - **Name `.venv/bin/python` in the dispatched command.** `gpu_dispatch.py run` passes the command through verbatim, so a bare `python` silently picks up the node default and you get `ModuleNotFoundError` — or worse, a different transformers version.
 - **Commit before dispatching.** A run whose code is not in a commit is not reproducible.
 - **A timed-out dispatch may have launched anyway.** Before re-dispatching anything, run `gpu_dispatch.py jobs --all` and wait ≥ 2 minutes. Duplicate captures silently double-append to `meta.jsonl`.

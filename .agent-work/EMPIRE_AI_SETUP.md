@@ -115,6 +115,30 @@ since `shared/` and `output/` are gitignored.
 
 ## Standard Dispatch Pattern
 
+### Three things that will bite you
+
+1. **Run `gpu_dispatch.py` with `.venv/bin/python`, not the login node's
+   `python3`.** Its Jupyter transport needs `requests` and `websocket-client`,
+   which the system 3.9 lacks. The import failure surfaces as every node
+   reporting `unreachable` — a message that looks like a cluster problem and
+   is not.
+
+2. **Quote the dispatched command if it contains flags.** `run` takes the
+   command as `nargs="+"`, so `--root`, `-c`, and friends after the command get
+   parsed as gpu_dispatch's own arguments and it errors with
+   `unrecognized arguments`. The command is `" ".join`ed anyway, so pass it as
+   one string:
+
+   ```bash
+   .venv/bin/python scripts/gpu_dispatch.py run --desc "sweep worker" \
+       ".venv/bin/python scripts/dispatch/worker.py --root shared/dispatch/my_sweep"
+   ```
+
+3. **Bound BLAS threads for CPU work on the login node.** It has 192 cores and
+   torch will try to use all of them, thrashing badly — the same test suite ran
+   315s unbounded and 22s with `OMP_NUM_THREADS=8`. The dispatch worker sets
+   this for every cell already; set it by hand when running anything directly.
+
 ### Before every dispatch
 1. `git status` clean and pushed, then `git pull --ff-only` on the cluster — the run must correspond to a commit.
 2. `python scripts/gpu_dispatch.py sync-jupyter` — `configs/nodes.json` goes stale as SLURM allocations come and go, and dispatch only reaches nodes registered there.
