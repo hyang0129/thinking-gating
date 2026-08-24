@@ -50,7 +50,11 @@ def _default_base_url() -> str:
     return f"http://{node}:{port}"
 
 
-DEFAULT_BASE_URL = _default_base_url()
+# Resolved lazily, not at import time: callers that pass an explicit base_url
+# (gpu_dispatch.py does) must not be forced to set GPUNODE just to import this
+# module. Importing used to raise RuntimeError before any URL was even needed,
+# which surfaced as every node reporting "unreachable".
+DEFAULT_BASE_URL = None
 # Overridable per-site: export JUPYTER_PASSWORD to match your Jupyter launcher.
 DEFAULT_PASSWORD = os.environ.get("JUPYTER_PASSWORD", "123")
 DEFAULT_TIMEOUT = 60  # seconds
@@ -80,10 +84,10 @@ class JupyterExecutor:
 
     def __init__(
         self,
-        base_url: str = DEFAULT_BASE_URL,
+        base_url: Optional[str] = None,
         password: str = DEFAULT_PASSWORD,
     ):
-        self.base_url = base_url.rstrip("/")
+        self.base_url = (base_url or _default_base_url()).rstrip("/")
         self.ws_base = self.base_url.replace("http://", "ws://").replace("https://", "wss://")
         self.password = password
         self.session = requests.Session()
@@ -268,7 +272,8 @@ def _main():
     parser.add_argument("code", nargs="?", help="Python code string to execute")
     parser.add_argument("--file", "-f", help="Python file to execute")
     parser.add_argument("--timeout", "-t", type=float, default=DEFAULT_TIMEOUT)
-    parser.add_argument("--url", default=DEFAULT_BASE_URL)
+    parser.add_argument("--url", default=None,
+                        help="Jupyter base URL (default: from GPUNODE/GPUNODEPORT)")
     parser.add_argument("--password", default=DEFAULT_PASSWORD)
     parser.add_argument("--kernel", help="Specific kernel ID (default: auto-select idle)")
     parser.add_argument("--stream", action="store_true", help="Print stdout/stderr as it arrives (live)")
