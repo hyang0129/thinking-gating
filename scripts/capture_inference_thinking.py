@@ -1,7 +1,7 @@
 """
 capture_inference_thinking.py — Thinking-mode gating experiment data capture.
 
-Ported from HalluLens/scripts/capture_inference.py with these modifications:
+What it does:
 1. Generate paired inference: thinking-off + thinking-on for each query
 2. Extract only the last-prompt-token (prefill) hidden state
 3. Store correctness labels for both runs to enable downstream label generation
@@ -22,10 +22,11 @@ Output format:
   ├── activations_thinking_on.npz    # (N, num_layers, hidden_dim) prefill hidden states
   └── eval_results.json              # correctness metrics (generated post-capture)
 
-Task module contract (reused from HalluLens/tasks/llmsknow/):
-  - Each task has is_correct(generated_text, answer) -> bool
-  - Dataset rows: (key, prompt, question, answer, passthrough_dict)
-  - Supported: gsm8k, mmlu, natural_questions, popqa, sciq, searchqa, lsat (new)
+Task module contract (see tasks/__init__.py):
+  - load_<task>(split) -> list[dict] with keys "question", "answer", "key", "difficulty"
+  - format_prompt(question) -> str
+  - is_correct(generated_text, answer) -> bool
+  - Supported: gsm8k (primary), lsat (transfer)
 """
 
 from __future__ import annotations
@@ -49,25 +50,12 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Task registry (extended from HalluLens)
+# Task registry
 # ---------------------------------------------------------------------------
 
 def _correct_str(task_module: Any, generation: str, sample: dict) -> bool:
     """Adapter for tasks where is_correct(generation, answer: str)."""
     return task_module.is_correct(generation, sample["answer"])
-
-
-def _correct_list(task_module: Any, generation: str, sample: dict) -> bool:
-    """Adapter for popqa where is_correct(generation, possible_answers: list)."""
-    return task_module.is_correct(generation, sample["possible_answers"])
-
-
-def _correct_nq(task_module: Any, generation: str, sample: dict) -> bool:
-    """Adapter for NQ which has no module-level is_correct."""
-    answer = sample["answer"]
-    if not isinstance(answer, str):
-        return False
-    return answer.lower() in generation.lower()
 
 
 def _prompt_default(task_module: Any, sample: dict) -> str:
@@ -77,13 +65,11 @@ def _prompt_default(task_module: Any, sample: dict) -> str:
     return sample["question"]
 
 
+# task name -> (loader function name, correctness adapter, default split).
+# Every entry must have a matching module in tasks/ — this repo ships its own
+# task modules rather than importing them from anywhere else.
 _TASK_REGISTRY: dict[str, tuple[str, Any, str]] = {
     "gsm8k": ("load_gsm8k", _correct_str, "test"),
-    "mmlu": ("load_mmlu_data", _correct_str, "test"),
-    "natural_questions": ("load_nq_data", _correct_nq, "test"),
-    "popqa": ("load_popqa_data", _correct_list, "test"),
-    "sciq": ("load_sciq_data", _correct_str, "test"),
-    "searchqa": ("load_searchqa_data", _correct_str, "train"),
     "lsat": ("load_lsat_logic", _correct_str, "test"),
 }
 
@@ -248,9 +234,9 @@ def run_capture(args: argparse.Namespace):
 
     # Load task module and dataset
     try:
-        task_module = importlib.import_module(f"tasks.llmsknow.{task_name}")
+        task_module = importlib.import_module(f"tasks.{task_name}")
     except ImportError:
-        logger.error(f"Task module not found: tasks.llmsknow.{task_name}")
+        logger.error(f"Task module not found: tasks.{task_name}")
         raise
 
     load_fn = getattr(task_module, load_fn_name)
@@ -378,6 +364,7 @@ def run_capture(args: argparse.Namespace):
             "correct_off": correct_off,
             "correct_on": correct_on,
             "sample_id": sample.get("key", str(idx)),
+            "difficulty": sample.get("difficulty"),
         }
         meta_rows.append(meta_row)
 
@@ -416,7 +403,7 @@ def main():
     parser.add_argument(
         "--task", type=str, required=True,
         choices=list(_TASK_REGISTRY.keys()),
-        help="Task name (gsm8k, mmlu, natural_questions, etc.)"
+        help="Task name (gsm8k, lsat)."
     )
     parser.add_argument(
         "--split", type=str, default=None,

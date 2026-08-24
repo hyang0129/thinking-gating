@@ -1,0 +1,35 @@
+{
+  "_comment": [
+    "Example sweep manifest — copy this shape for new work.",
+    "Expand it into cells:  python scripts/dispatch/queue.py expand configs/dispatch/example_probe_sweep.json --dry-run",
+    "Everything the worker needs is here; the worker itself never changes."
+  ],
+
+  "name": "gsm8k_probe_sweep",
+  "kind": "python_script",
+  "script": "scripts/run_experiment.py",
+
+  "constants": {
+    "capture": "shared/icr_capture/gsm8k_thinking_qwen3",
+    "out": "output/{name}/{method}_seed{seed}"
+  },
+
+  "grid": {
+    "method": ["mlp", "contrastive"],
+    "seed": [42, 1, 2, 3, 4]
+  },
+
+  "args": [
+    "--activations", "{capture}/activations_thinking_off.npz",
+    "--labels", "shared/gsm8k_thinking_labels.jsonl",
+    "--method", "{method}",
+    "--seeds", "{seed}",
+    "--out-dir", "{out}"
+  ],
+
+  "output_check": ["{out}/metrics.json"],
+  "timeout_s": 7200,
+  "max_attempts": 2,
+  "priority": 100,
+  "tags": ["probe", "gsm8k"]
+}

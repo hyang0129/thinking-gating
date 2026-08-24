@@ -1,27 +1,35 @@
-# Core ML
-torch==2.2.0
-transformers==4.40.0
-numpy==1.26.0
-scikit-learn==1.4.0
+# Dependencies for the thinking-gating repo. Self-contained: everything the
+# scripts import is listed here, and nothing is expected from a sibling repo.
+#
+# Install into this repo's own virtualenv (see scripts/setup_env.sh):
+#     python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
 
-# Training & evaluation
-pytorch-lightning==2.2.0
-torchvision==0.17.0
+# --- Core ML -----------------------------------------------------------------
+# transformers >= 4.51 is a hard floor: Qwen3 support and the `enable_thinking`
+# chat-template flag that the whole paired-capture design rests on both landed
+# there. Older pins (4.40) cannot load Qwen/Qwen3-8B at all.
+torch>=2.4
+# Upper bound is deliberate: transformers 5.x renames `torch_dtype` (used in
+# scripts/capture_inference_thinking.py) and reworks generation internals, so
+# stay on the 4.x line until that migration is done on purpose.
+transformers>=4.51,<5
+accelerate>=0.30          # required by device_map="auto" in the capture script
+numpy>=1.26,<2.0
+scikit-learn>=1.4         # AUROC + splits in run_experiment.py
 
-# Data handling
-datasets==2.16.0
-pandas==2.1.0
+# --- Data --------------------------------------------------------------------
+datasets>=2.19,<5         # tasks/gsm8k.py, tasks/lsat.py loaders (both parquet-only)
+pandas>=2.1
 
-# Utilities
-tqdm==4.67.0
-pyyaml==6.0.1
-json5==0.9.14
+# --- Dispatch tooling (scripts/gpu_dispatch.py -> utils/jupyter_exec.py) ------
+requests>=2.31
+websocket-client>=1.7
 
-# Development
-pytest==7.4.0
-black==23.12.0
-ruff==0.1.9
+# --- Utilities ---------------------------------------------------------------
+tqdm>=4.66
+pyyaml>=6.0
 
-# Empire AI / distributed
-# Uncomment if running on Empire AI with their dispatch system
-# gpu-dispatch @ git+https://github.com/your-org/gpu-dispatch.git
+# --- Development -------------------------------------------------------------
+pytest>=7.4
+black>=23.12
+ruff>=0.1.9

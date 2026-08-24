@@ -1,14 +1,16 @@
 # Thinking-Mode Gating Experiment — Agent Handoff
 
-**Date:** 2026-08-20  
-**Status:** Bootstrap complete, ready for Phase 2 (label generation & training)  
+**Date:** 2026-08-21  
+**Status:** Bootstrap complete and self-contained; ready for Phase 2 (label generation & training)  
 **Owner:** Hong Yang
 
 ---
 
 ## Context
 
-Distilled repo for Pathway 1 (thinking-mode gating) from HalluLens. Goal: **train a small probe on prefill hidden states (last-prompt-token activation) to predict whether extended reasoning (thinking mode) will improve query outcome.**
+Repo for Pathway 1 (thinking-mode gating). Goal: **train a small probe on prefill hidden states (last-prompt-token activation) to predict whether extended reasoning (thinking mode) will improve query outcome.**
+
+**The repo is self-contained.** Task modules, dispatch tooling, and the Python environment all live here; nothing is symlinked or imported from a sibling checkout, on the laptop or on Empire AI. Setup is `bash scripts/setup_env.sh` (builds `./.venv`) in both places — see `.agent-work/EMPIRE_AI_SETUP.md`.
 
 ### Experiment Summary
 - **Tasks:** GSM8K (primary, train/val/test split) + LSAT Logic Games (secondary, transfer test)
@@ -18,7 +20,14 @@ Distilled repo for Pathway 1 (thinking-mode gating) from HalluLens. Goal: **trai
 
 ### Phase 1 (Complete)
 - ✅ Discovery: reasoning tasks survey (Agent A), label schema design (Agent B), experiment structure (Agent C)
-- ✅ Bootstrap: repo initialized, `capture_inference_thinking.py` ported + adapted, configs + requirements locked
+- ✅ Bootstrap: repo initialized, `capture_inference_thinking.py` adapted, configs + requirements locked
+- ✅ Self-containment pass (2026-08-21):
+  - `tasks/gsm8k.py` (`openai/gsm8k`) and `tasks/lsat.py` (`hails/agieval-lsat-ar`, 230 test rows) written in-repo, with prompt formatting, answer extraction, graders, and heuristic difficulty buckets
+  - `scripts/gpu_dispatch.py`, `scripts/launch_jupyter.py`, `utils/jupyter_exec.py` vendored in
+  - `scripts/setup_env.sh` builds the repo's own `.venv`; `configs/nodes.example.json` templates the gitignored `configs/nodes.json`
+  - `requirements.txt` re-pinned: the old `transformers==4.40` pin could not load Qwen3 at all, so `>= 4.51` is now a hard floor (`enable_thinking` lives there too); unused `pytorch-lightning`/`torchvision`/`json5` dropped, `accelerate`/`requests`/`websocket-client` added
+  - Capture script's task registry trimmed to the two tasks that actually have modules here; `difficulty` now flows into `meta.jsonl`
+- ✅ Cell + worker dispatch (2026-08-21): `scripts/dispatch/` — a generic worker plus a manifest-driven cell queue, so fan-out work (multi-seed, multi-method, per-dataset) never needs a new worker script. Four cell kinds (`python_script`, `python_code`, `call` any importable function, `shell`), resume via `output_check`, retries, timeouts, stale-claim recovery. 23 tests in `tests/test_dispatch.py`, all passing (stdlib only, no GPU).
 - **Output:** `/Users/hong/Documents/code-projects/thinking-gating/` with capture script ready to run
 
 ---
@@ -35,7 +44,7 @@ Distilled repo for Pathway 1 (thinking-mode gating) from HalluLens. Goal: **trai
   "label": "helped",          // "helped" | "not_helped" | graded: "hurt"
   "correct_off": true,
   "correct_on": false,
-  "difficulty": "hard",       // from original dataset
+  "difficulty": "hard",       // carried through from the task module via meta.jsonl
   "confidence": 0.8
 }
 ```
@@ -44,7 +53,7 @@ Distilled repo for Pathway 1 (thinking-mode gating) from HalluLens. Goal: **trai
 1. Parse meta.jsonl and extract correctness pairs (correct_off, correct_on)
 2. Generate binary labels: "helped" if wrong→correct, else "not_helped"
 3. Optionally log graded labels (hurt) for analysis
-4. Stratify by difficulty (fetch from original dataset or infer from response length)
+4. Stratify by difficulty (read the `difficulty` field the capture script writes into meta.jsonl)
 5. Write to JSONL with per-sample metadata
 6. Report label distribution (base rates: expect ~20-25% "helped" on GSM8K)
 
@@ -130,22 +139,25 @@ Distilled repo for Pathway 1 (thinking-mode gating) from HalluLens. Goal: **trai
 
 ## Implementation Notes
 
-### Reuse from HalluLens
-- Probe training code from `activation_research/training.py` (can port ProgressiveCompressor if needed, but MLP is simpler for now)
-- Multi-seed infrastructure (from `scripts/run_experiment.py`)
-- Dataset loading + task modules from `tasks/llmsknow/`
+### Available in-repo
+- Task modules with loader + grader + difficulty: `tasks/gsm8k.py`, `tasks/lsat.py`
+- Capture with paired thinking-off/on inference and prefill extraction: `scripts/capture_inference_thinking.py`
+- Cluster dispatch: `scripts/gpu_dispatch.py`, `scripts/launch_jupyter.py`, `utils/jupyter_exec.py`
+- Fan-out dispatch: `scripts/dispatch/` (cell queue + generic worker) — write a manifest, not a worker
+- Probe training is written fresh here (plain torch MLP + scikit-learn metrics) — no external skeleton to port
 
 ### New code (Phase 2)
 - `scripts/generate_labels.py` (~150 lines)
-- `scripts/run_experiment.py` (~300 lines, can adapt from HalluLens but simplify)
+- `scripts/run_experiment.py` (~300 lines: torch MLP, 5 seeds, stratified AUROC)
 - `scripts/eval_transfer.py` (~100 lines)
 - `scripts/template_ablation.py` (~150 lines, optional)
 
 ### Dispatch & Execution
+- Environment: `bash scripts/setup_env.sh` once per machine (~5 min, mostly the torch wheel)
 - Label generation: CPU-only, quick (~5 min for 1k examples)
-- Training: Single GPU (A100), ~1 hour for 5 seeds on 500-1k examples
+- Training: Single GPU (A100), ~1 hour for 5 seeds on 500-1k examples — or fan the seeds out as cells across nodes
 - Transfer eval: Single GPU, ~10 min
-- **Total:** ~2-3 hours on Empire AI (1 GPU node via `gpu_dispatch.py`)
+- **Total:** ~2-3 hours on Empire AI (1 GPU node via `gpu_dispatch.py`, dispatching `.venv/bin/python`)
 
 ---
 
@@ -166,7 +178,11 @@ Distilled repo for Pathway 1 (thinking-mode gating) from HalluLens. Goal: **trai
 **Repo root:** `/Users/hong/Documents/code-projects/thinking-gating/`
 
 **Key files:**
-- `scripts/capture_inference_thinking.py` — ported capture (ready)
+- `scripts/setup_env.sh` — builds `./.venv` (run first, on every machine)
+- `scripts/capture_inference_thinking.py` — paired capture (ready)
+- `tasks/gsm8k.py`, `tasks/lsat.py` — in-repo loaders/graders (ready)
+- `scripts/gpu_dispatch.py`, `scripts/launch_jupyter.py` — cluster dispatch (ready)
+- `configs/nodes.example.json` — template for the gitignored `configs/nodes.json`
 - `scripts/generate_labels.py` — needs writing
 - `scripts/run_experiment.py` — needs writing
 - `scripts/eval_transfer.py` — needs writing
@@ -188,13 +204,12 @@ Distilled repo for Pathway 1 (thinking-mode gating) from HalluLens. Goal: **trai
 1. **Capture priority:** Should we run the full GSM8K capture first, or do a smoke test (100 examples) to verify the script works?
 2. **Label distribution:** Once labels are generated, what's the acceptable "thinking_helped" base rate? (Agent B estimated 20–25%, but pilot data might differ.)
 3. **Probe complexity:** Start with simple MLP, or also train contrastive probe in parallel?
-4. **Empire AI setup:** Any cluster-specific environment variables or dispatch patterns to know (e.g., cuda device mapping, node reservation)?
+4. **LSAT sample size:** `hails/agieval-lsat-ar` ships a single 230-row test split. Is 230 enough for the transfer eval, or should a second reasoning task be added alongside it?
 
 ---
 
 ## Contacts & Context
 
 - **User:** Hong Yang (hooong.yang@gmail.com)
-- **Related:** HalluLens repo (`~/Documents/code-projects/HalluLens/`) — source of task modules, activation utilities
-- **Paper:** Paper draft will live in `thinking-gating/paper/` (separate from HalluLens paper)
-- **Dispatch:** Empire AI cluster via `gpu_dispatch.py` (configured in HalluLens; same setup applies here)
+- **Paper:** Paper draft will live in `thinking-gating/paper/`
+- **Dispatch:** Empire AI cluster via this repo's `scripts/gpu_dispatch.py` — full setup in `.agent-work/EMPIRE_AI_SETUP.md`

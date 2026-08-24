@@ -1,0 +1,17 @@
+{
+  "_comment": [
+    "Template for configs/nodes.json, which scripts/gpu_dispatch.py reads.",
+    "configs/nodes.json itself is gitignored: `gpu_dispatch.py sync-jupyter`",
+    "rewrites the `nodes` list from live SLURM state on every sync.",
+    "Copy this file to configs/nodes.json on Empire AI and edit `defaults`:",
+    "  python       -> this repo's OWN venv interpreter (not a system python)",
+    "  project_root -> this repo's checkout on the cluster"
+  ],
+  "defaults": {
+    "python": "/home/YOUR_USER/LLM_research/thinking-gating/.venv/bin/python",
+    "project_root": "/home/YOUR_USER/LLM_research/thinking-gating",
+    "job_manifest": "shared/gpu_jobs.json",
+    "jupyter_password": "123"
+  },
+  "nodes": []
+}
