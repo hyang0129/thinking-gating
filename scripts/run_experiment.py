@@ -175,6 +175,29 @@ def routing_metrics(correct_off, correct_on, scores, threshold: float) -> dict:
     }
 
 
+def cost_accuracy_curve(correct_off, correct_on, scores, n_points: int = 21) -> list[dict]:
+    """Accuracy as a function of how much of the workload gets to think.
+
+    On these tasks "always think" is already close to oracle accuracy, so the
+    question worth asking is not how much accuracy routing gains but how much
+    thinking it can skip while holding accuracy. Sweeping the routing budget
+    answers that directly: route the top-k highest-scoring queries to thinking
+    and read accuracy off the curve.
+    """
+    scores = np.asarray(scores)
+    order = np.argsort(-scores)  # most likely to need thinking first
+    n = len(scores)
+    curve = []
+    for i in range(n_points):
+        k = round(i * n / (n_points - 1))
+        think = np.zeros(n, dtype=bool)
+        think[order[:k]] = True
+        routed = np.where(think, np.asarray(correct_on), np.asarray(correct_off))
+        curve.append({"fraction_routed": k / n if n else 0.0,
+                      "accuracy": float(routed.mean())})
+    return curve
+
+
 def best_threshold(correct_off, correct_on, scores) -> float:
     """Threshold maximizing routed accuracy — chosen on validation only."""
     candidates = np.unique(np.concatenate([[0.0, 1.0], np.asarray(scores)]))
@@ -297,6 +320,14 @@ def evaluate_split(scores, y, correct_off, correct_on, difficulties, threshold) 
             "auroc": auroc(y[mask], np.asarray(scores)[mask]),
         }
     out["by_difficulty"] = by_difficulty
+    out["cost_curve"] = cost_accuracy_curve(correct_off, correct_on, scores)
+
+    # The headline cost number: the smallest routed fraction whose accuracy
+    # still matches always-think, i.e. how much thinking is simply wasted.
+    always = float(np.mean(correct_on))
+    reachable = [pt for pt in out["cost_curve"] if pt["accuracy"] >= always - 1e-9]
+    out["min_routed_for_always_think_accuracy"] = (
+        min(pt["fraction_routed"] for pt in reachable) if reachable else 1.0)
     return out
 
 
@@ -359,6 +390,8 @@ def aggregate(per_seed: list[dict]) -> dict:
         "baseline_never_think": mean_ci(collect(["test", "baselines", "never_think"])),
         "baseline_always_think": mean_ci(collect(["test", "baselines", "always_think"])),
         "oracle": mean_ci(collect(["test", "baselines", "oracle"])),
+        "min_routed_for_always_think_accuracy": mean_ci(
+            collect(["test", "min_routed_for_always_think_accuracy"])),
     }
     levels = {lvl for m in per_seed for lvl in m["test"]["by_difficulty"]}
     agg["test_auroc_by_difficulty"] = {
@@ -376,6 +409,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--labels", required=True)
     p.add_argument("--out-dir", required=True)
     p.add_argument("--method", default="mlp", choices=["mlp", "logreg"])
+    p.add_argument("--target", default="helped", choices=["helped", "needs_thinking"],
+                   help="'helped' = thinking flipped wrong->right (the original "
+                        "framing). 'needs_thinking' = the model is wrong WITHOUT "
+                        "thinking, which is what a router actually has to decide "
+                        "and is independent of the thinking token budget.")
     p.add_argument("--layer", type=int, default=None,
                    help="Layer to probe (default: the middle layer)")
     p.add_argument("--layer-sweep", action="store_true",
@@ -393,16 +431,20 @@ def main(argv: list[str] | None = None) -> int:
     rows = align_labels(meta, labels)
     activations = activations[rows]
 
-    y = np.array([1 if lab["label"] == "helped" else 0 for lab in labels], dtype=np.int64)
     correct_off = np.array([bool(lab["correct_off"]) for lab in labels])
+    if args.target == "helped":
+        y = np.array([1 if lab["label"] == "helped" else 0 for lab in labels],
+                     dtype=np.int64)
+    else:
+        y = (~correct_off).astype(np.int64)
     correct_on = np.array([bool(lab["correct_on"]) for lab in labels])
     difficulties = np.array([str(lab.get("difficulty")) for lab in labels])
 
     n_layers = activations.shape[1]
     if args.layer is None:
         args.layer = n_layers // 2
-    logger.info("%d samples, %d layers, %d positives (%.1f%% base rate)",
-                len(y), n_layers, int(y.sum()), 100 * y.mean())
+    logger.info("target=%s — %d samples, %d layers, %d positives (%.1f%% base rate)",
+                args.target, len(y), n_layers, int(y.sum()), 100 * y.mean())
     if y.sum() < 10:
         logger.error("only %d positive example(s) — not enough to train a probe",
                      int(y.sum()))
@@ -461,7 +503,8 @@ def main(argv: list[str] | None = None) -> int:
     summary = {
         "task": load_config(Path(args.capture_dir)).get("task"),
         "model": load_config(Path(args.capture_dir)).get("model_name"),
-        "method": args.method, "layer": args.layer, "seeds": args.seeds,
+        "method": args.method, "target": args.target,
+        "layer": args.layer, "seeds": args.seeds,
         "n_samples": int(len(y)), "base_rate_helped": float(y.mean()),
         "aggregate": agg, "per_seed": per_seed,
     }
@@ -476,6 +519,10 @@ def main(argv: list[str] | None = None) -> int:
     logger.info("  never think     %.3f", agg["baseline_never_think"]["mean"])
     logger.info("  always think    %.3f", agg["baseline_always_think"]["mean"])
     logger.info("  oracle          %.3f", agg["oracle"]["mean"])
+    saved = agg["min_routed_for_always_think_accuracy"]
+    logger.info("thinking needed for always-think accuracy: %.0f%% of queries "
+                "(so %.0f%% of thinking is wasted)",
+                100 * saved["mean"], 100 * (1 - saved["mean"]))
     for level, stats in agg["test_auroc_by_difficulty"].items():
         logger.info("  AUROC %-6s    %.3f  [%.3f, %.3f]",
                     level, stats["mean"], *stats["ci"])
