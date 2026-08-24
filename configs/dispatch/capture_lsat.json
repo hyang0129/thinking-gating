@@ -1,0 +1,63 @@
+{
+  "_comment": [
+    "LSAT Analytical Reasoning paired thinking-off/on capture, fanned across 2 shards (230 items in the only split).",
+    "Each shard is an independent cell: one can fail and be retried alone.",
+    "Queue it:  python scripts/dispatch/queue.py expand configs/dispatch/capture_lsat.json"
+  ],
+  "name": "capture_lsat",
+  "kind": "python_script",
+  "script": "scripts/capture_inference_thinking.py",
+  "constants": {
+    "out": "shared/icr_capture/lsat_thinking_qwen3",
+    "model": "Qwen/Qwen3-8B",
+    "shard_count": "2"
+  },
+  "grid": {
+    "shard": [
+      "00",
+      "01"
+    ]
+  },
+  "cell_id_template": "capture-lsat-shard{shard}",
+  "args": [
+    "--task",
+    "lsat",
+    "--model",
+    "{model}",
+    "--out-dir",
+    "{out}",
+    "--max-samples",
+    "0",
+    "--batch-size",
+    "8",
+    "--max-prompt-len",
+    "1024",
+    "--max-response-len",
+    "320",
+    "--max-response-len-thinking",
+    "1536",
+    "--chat-template",
+    "--shard-index",
+    "{shard}",
+    "--shard-count",
+    "{shard_count}"
+  ],
+  "output_check": [
+    "{out}/meta.shard{shard}.jsonl",
+    "{out}/activations_thinking_off.shard{shard}.npz",
+    "{out}/activations_thinking_on.shard{shard}.npz"
+  ],
+  "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "HF_DATASETS_OFFLINE": "1",
+    "CUDA_MPS_PIPE_DIRECTORY": "/no/such/path"
+  },
+  "timeout_s": 28800,
+  "max_attempts": 2,
+  "priority": 10,
+  "tags": [
+    "capture",
+    "lsat"
+  ]
+}
