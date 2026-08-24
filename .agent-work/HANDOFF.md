@@ -146,11 +146,13 @@ Repo for Pathway 1 (thinking-mode gating). Goal: **train a small probe on prefil
 - Fan-out dispatch: `scripts/dispatch/` (cell queue + generic worker) — write a manifest, not a worker
 - Probe training is written fresh here (plain torch MLP + scikit-learn metrics) — no external skeleton to port
 
-### New code (Phase 2)
-- `scripts/generate_labels.py` (~150 lines)
-- `scripts/run_experiment.py` (~300 lines: torch MLP, 5 seeds, stratified AUROC)
-- `scripts/eval_transfer.py` (~100 lines)
-- `scripts/template_ablation.py` (~150 lines, optional)
+### New code (Phase 2) — written 2026-08-24
+- `scripts/generate_labels.py` ✅
+- `scripts/run_experiment.py` ✅ (torch MLP + logreg baseline, 5 seeds, stratified AUROC, routed accuracy)
+- `scripts/eval_transfer.py` ✅
+- `utils/capture_io.py` ✅ (shard-aware capture loading)
+- `tests/test_pipeline.py` ✅ (synthetic end-to-end, incl. signal-free negative control)
+- `scripts/template_ablation.py` — still optional, not written
 
 ### Dispatch & Execution
 - Environment: `bash scripts/setup_env.sh` once per machine (~5 min, mostly the torch wheel)

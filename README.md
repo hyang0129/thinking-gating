@@ -46,24 +46,26 @@ python scripts/capture_inference_thinking.py \
 ```bash
 python scripts/generate_labels.py \
     --capture-dir shared/icr_capture/gsm8k_thinking_qwen3 \
-    --out-labels shared/gsm8k_thinking_labels.jsonl
+    --out-file shared/gsm8k_thinking_labels.jsonl
 ```
 
 ### 3. Train probe
 ```bash
 python scripts/run_experiment.py \
+    --capture-dir shared/icr_capture/gsm8k_thinking_qwen3 \
     --labels shared/gsm8k_thinking_labels.jsonl \
-    --method mlp \
-    --seeds 42 1 2 3 4 \
+    --method mlp --seeds 42 1 2 3 4 \
     --out-dir output/gsm8k_probe
 ```
 
 ### 4. Evaluate transfer
 ```bash
 python scripts/eval_transfer.py \
-    --train-probe output/gsm8k_probe/seed_42 \
-    --test-capture shared/icr_capture/lsat_thinking_qwen3 \
-    --test-labels shared/lsat_thinking_labels.jsonl
+    --probe output/gsm8k_probe/seed_*/checkpoint.json \
+    --capture-dir shared/icr_capture/lsat_thinking_qwen3 \
+    --labels shared/lsat_thinking_labels.jsonl \
+    --source-metrics output/gsm8k_probe/aggregate_metrics.json \
+    --out-file output/gsm8k_to_lsat_transfer.json
 ```
 
 ## File Structure

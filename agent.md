@@ -27,11 +27,17 @@ This document guides agents (Claude Code, subagents) working on the thinking-gat
 - `scripts/setup_env.sh` builds the repo's own `.venv`; `configs/nodes.example.json` templates the dispatch config
 - `requirements.txt` re-pinned — `transformers >= 4.51` is a hard floor for Qwen3 + `enable_thinking`
 
-⏳ **Phase 2 in progress:**
-- Label generation (`generate_labels.py`) — needs writing
-- Probe training (`run_experiment.py`) — needs writing
-- Transfer evaluation (`eval_transfer.py`) — needs writing
+✅ **Phase 2 written (2026-08-24):**
+- `scripts/generate_labels.py` — binary + graded labels, base rates by difficulty
+- `scripts/run_experiment.py` — MLP/logreg probes, 5 seeds, AUROC ± CI, AUROC by difficulty, routed accuracy vs never/always/oracle
+- `scripts/eval_transfer.py` — zero-shot transfer with the source scaler and threshold
+- `utils/capture_io.py` — shard-aware loading, alignment verified, labels matched by `sample_id`
+- `tests/test_pipeline.py` — end-to-end on a synthetic capture with a planted signal, plus a negative control
+- Capture script rewritten: the old prefill extraction was fed `generate(...).hidden_states` (indexed by generation step) and could never have run. Prefill now comes from a dedicated forward pass; batching, sharding, and a real thinking-mode token budget added.
+
+⏳ **Remaining:**
 - Template ablation (`template_ablation.py`) — optional, lower priority
+- Capture runs on Empire AI, then labels → probes → transfer
 
 ## Architecture & Key Decisions
 
