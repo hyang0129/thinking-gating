@@ -212,7 +212,12 @@ def test_mlp_method_and_layer_sweep():
              "--seeds", "42", "--max-epochs", "40", "--patience", "8")
 
         sweep = json.loads((out / "layer_sweep.json").read_text())
-        assert len(sweep["auroc_by_layer"]) == N_LAYERS
+        assert len(sweep["val_auroc_by_layer"]) == N_LAYERS
+        assert sweep["selected_on"] == "validation"
+        # The chosen layer must be the validation argmax, not the test argmax.
+        best_val = max(sweep["val_auroc_by_layer"],
+                       key=lambda k: sweep["val_auroc_by_layer"][k])
+        assert str(sweep["best_layer"]) == str(best_val), sweep
         assert (out / "seed_42" / "checkpoint.json").exists()
         ckpt = json.loads((out / "seed_42" / "checkpoint.json").read_text())
         assert ckpt["method"] == "mlp" and "state_dict" in ckpt and "scaler" in ckpt

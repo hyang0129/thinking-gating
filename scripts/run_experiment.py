@@ -413,18 +413,28 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.layer_sweep:
         seed = args.seeds[0]
-        sweep = {}
+        # The layer is chosen on VALIDATION AUROC. Picking it by test AUROC and
+        # then reporting that same test AUROC would be selection leakage: with
+        # ~37 layers to choose from, the best test score is partly luck, and
+        # the reported number would be biased upward by exactly that luck.
+        sweep_val, sweep_test = {}, {}
         for layer in range(n_layers):
             args.layer = layer
             X = select_layer(activations, layer)
             metrics, _ = run_seed(args, X, y, correct_off, correct_on, difficulties, seed)
-            sweep[layer] = metrics["test"]["auroc"]
-            logger.info("layer %2d: test AUROC %.3f", layer, sweep[layer])
-        best_layer = max(sweep, key=lambda k: (sweep[k] if not math.isnan(sweep[k]) else -1))
+            sweep_val[layer] = metrics["val"]["auroc"]
+            sweep_test[layer] = metrics["test"]["auroc"]
+            logger.info("layer %2d: val AUROC %.3f  (test %.3f)",
+                        layer, sweep_val[layer], sweep_test[layer])
+        best_layer = max(sweep_val,
+                         key=lambda k: (sweep_val[k] if not math.isnan(sweep_val[k]) else -1))
         (out_dir / "layer_sweep.json").write_text(
-            json.dumps({"auroc_by_layer": sweep, "best_layer": best_layer,
-                        "seed": seed}, indent=2) + "\n")
-        logger.info("best layer: %d (AUROC %.3f)", best_layer, sweep[best_layer])
+            json.dumps({"val_auroc_by_layer": sweep_val,
+                        "test_auroc_by_layer": sweep_test,
+                        "best_layer": best_layer,
+                        "selected_on": "validation", "seed": seed}, indent=2) + "\n")
+        logger.info("best layer: %d (val AUROC %.3f, test %.3f)",
+                    best_layer, sweep_val[best_layer], sweep_test[best_layer])
         args.layer = best_layer
 
     X = select_layer(activations, args.layer)
