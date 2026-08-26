@@ -132,14 +132,20 @@ def main(argv: list[str] | None = None) -> int:
         result = evaluate_split(scores, y, correct_off, correct_on,
                                 difficulties, ckpt["threshold"])
         result["seed"] = ckpt.get("seed")
+        result["target_objective"] = ckpt.get("target", "helped")
         result["probe"] = str(probe_path)
         per_probe.append(result)
         logger.info("probe seed %-4s transfer AUROC %.3f  routed acc %.3f",
                     ckpt.get("seed"), result["auroc"], result["routed_accuracy"])
 
     transfer_auroc = mean_ci([r["auroc"] for r in per_probe])
+    objectives = sorted({r.get("target_objective", "helped") for r in per_probe})
+    if len(objectives) > 1:
+        logger.warning("probes were trained on different objectives %s — "
+                       "averaging them together is not meaningful", objectives)
     summary = {
         "target_task": target_config.get("task"),
+        "target_objective": objectives[0] if len(objectives) == 1 else objectives,
         "target_model": target_config.get("model_name"),
         "n_target": int(len(y)),
         "base_rate_helped": float(y.mean()),

@@ -359,7 +359,8 @@ def run_seed(args, X, y, correct_off, correct_on, difficulties, seed: int) -> tu
                                correct_on[test_idx], difficulties[test_idx], threshold),
     }
     checkpoint = {
-        "method": args.method, "layer": args.layer, "seed": seed,
+        "method": args.method, "target": args.target,
+        "layer": args.layer, "seed": seed,
         "threshold": threshold, "scaler": scaler.state_dict(),
         "input_dim": int(X.shape[1]),
     }
