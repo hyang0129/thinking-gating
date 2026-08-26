@@ -223,6 +223,45 @@ def test_mlp_method_and_layer_sweep():
         assert ckpt["method"] == "mlp" and "state_dict" in ckpt and "scaler" in ckpt
 
 
+def test_pooling_multiple_captures():
+    """Two captures pooled into one training set, reported per task."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        cap_a, lab_a = tmp_path / "a", tmp_path / "a.jsonl"
+        cap_b, lab_b = tmp_path / "b", tmp_path / "b.jsonl"
+        out = tmp_path / "pooled"
+        make_capture(cap_a, n=300, seed=20, task="gsm8k")
+        make_capture(cap_b, n=300, seed=21, task="lsat")
+        for cap, lab in ((cap_a, lab_a), (cap_b, lab_b)):
+            _run("generate_labels.py", "--capture-dir", str(cap), "--out-file", str(lab))
+
+        _run("run_experiment.py", "--capture-dir", str(cap_a), str(cap_b),
+             "--labels", str(lab_a), str(lab_b), "--out-dir", str(out),
+             "--method", "logreg", "--layer", str(SIGNAL_LAYER), "--seeds", "42")
+
+        summary = json.loads((out / "aggregate_metrics.json").read_text())
+        assert summary["n_samples"] == 600, summary["n_samples"]
+        assert sorted(summary["task"]) == ["gsm8k", "lsat"], summary["task"]
+        assert len(summary["capture_dirs"]) == 2
+        # The planted direction is shared, so pooling must still find it.
+        assert summary["aggregate"]["test_auroc"]["mean"] > 0.6
+
+
+def test_pooling_rejects_mismatched_counts():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        cap, lab, out = tmp_path / "a", tmp_path / "a.jsonl", tmp_path / "o"
+        make_capture(cap, n=100, seed=22)
+        _run("generate_labels.py", "--capture-dir", str(cap), "--out-file", str(lab))
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPTS / "run_experiment.py"),
+             "--capture-dir", str(cap), str(cap), "--labels", str(lab),
+             "--out-dir", str(out), "--method", "logreg", "--seeds", "42"],
+            capture_output=True, text=True, timeout=300)
+        assert proc.returncode == 1, "accepted mismatched capture/label counts"
+        assert "pair" in (proc.stdout + proc.stderr)
+
+
 def test_transfer_applies_source_probe_without_refitting():
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)

@@ -405,8 +405,10 @@ def aggregate(per_seed: list[dict]) -> dict:
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--capture-dir", required=True)
-    p.add_argument("--labels", required=True)
+    p.add_argument("--capture-dir", required=True, nargs="+",
+                   help="One or more capture dirs. Several are pooled into a "
+                        "single training set, paired positionally with --labels.")
+    p.add_argument("--labels", required=True, nargs="+")
     p.add_argument("--out-dir", required=True)
     p.add_argument("--method", default="mlp", choices=["mlp", "logreg"])
     p.add_argument("--target", default="helped", choices=["helped", "needs_thinking"],
@@ -426,10 +428,34 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=getattr(logging, args.log_level),
                         format="%(asctime)s %(levelname)s %(message)s")
 
-    meta, activations = load_capture(Path(args.capture_dir), mode="off")
-    labels = load_labels(Path(args.labels))
-    rows = align_labels(meta, labels)
-    activations = activations[rows]
+    if len(args.capture_dir) != len(args.labels):
+        logger.error("got %d capture dir(s) but %d label file(s) — they pair "
+                     "positionally", len(args.capture_dir), len(args.labels))
+        return 1
+
+    # Pool one or more tasks. Pooling happens before the split, so a pooled run
+    # measures whether one probe works across tasks; holding a task out
+    # entirely and scoring it with eval_transfer.py measures generalization to
+    # an unseen task. They answer different questions — don't conflate them.
+    act_parts, label_parts, task_parts = [], [], []
+    for capture_dir, labels_file in zip(args.capture_dir, args.labels):
+        meta_i, acts_i = load_capture(Path(capture_dir), mode="off")
+        labels_i = load_labels(Path(labels_file))
+        acts_i = acts_i[align_labels(meta_i, labels_i)]
+        task_name = load_config(Path(capture_dir)).get("task") or Path(capture_dir).name
+        act_parts.append(acts_i)
+        label_parts.extend(labels_i)
+        task_parts.extend([task_name] * len(labels_i))
+        logger.info("  %-28s %5d rows from %s", task_name, len(labels_i), capture_dir)
+
+    shapes = {a.shape[1:] for a in act_parts}
+    if len(shapes) > 1:
+        logger.error("capture activation shapes differ %s — pooling would be "
+                     "meaningless across different models", shapes)
+        return 1
+    activations = np.concatenate(act_parts, axis=0)
+    labels = label_parts
+    tasks = np.array(task_parts)
 
     correct_off = np.array([bool(lab["correct_off"]) for lab in labels])
     if args.target == "helped":
@@ -445,6 +471,11 @@ def main(argv: list[str] | None = None) -> int:
         args.layer = n_layers // 2
     logger.info("target=%s — %d samples, %d layers, %d positives (%.1f%% base rate)",
                 args.target, len(y), n_layers, int(y.sum()), 100 * y.mean())
+    if len(args.capture_dir) > 1:
+        for name in sorted(set(tasks)):
+            mask = tasks == name
+            logger.info("    %-14s n=%-5d base rate %.1f%%",
+                        name, int(mask.sum()), 100 * y[mask].mean())
     if y.sum() < 10:
         logger.error("only %d positive example(s) — not enough to train a probe",
                      int(y.sum()))
@@ -500,9 +531,12 @@ def main(argv: list[str] | None = None) -> int:
                     metrics["test"]["baselines"]["oracle"])
 
     agg = aggregate(per_seed)
+    first_config = load_config(Path(args.capture_dir[0]))
     summary = {
-        "task": load_config(Path(args.capture_dir)).get("task"),
-        "model": load_config(Path(args.capture_dir)).get("model_name"),
+        "task": (first_config.get("task") if len(args.capture_dir) == 1
+                 else sorted(set(tasks))),
+        "model": first_config.get("model_name"),
+        "capture_dirs": list(args.capture_dir),
         "method": args.method, "target": args.target,
         "layer": args.layer, "seeds": args.seeds,
         "n_samples": int(len(y)), "base_rate_helped": float(y.mean()),
