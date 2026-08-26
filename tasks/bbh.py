@@ -1,6 +1,6 @@
 """BIG-Bench Hard — the tasks BIG-Bench models failed at without reasoning.
 
-Self-contained loader for `maveriq/bigbenchhard`. BBH was assembled precisely
+Self-contained loader for `lukaemon/bbh`. BBH was assembled precisely
 because chain-of-thought turns these tasks around, which makes it the sharpest
 available test of a "will thinking help" probe: the helped population should be
 large and it should not be explainable by surface difficulty alone.
@@ -11,16 +11,20 @@ normalizes then exact-matches, with a letter path for the multiple-choice ones.
 By default a balanced sample is drawn across all subtasks rather than reading
 them in order, so a capture shard is never one subtask's quirks.
 
-Upstream schema (one config per subtask, "train" split, 250 rows each):
+Upstream schema (one config per subtask, "test" split, 6511 rows total):
     input   str
     target  str
+
+Note the source: `maveriq/bigbenchhard` carries a loading script, and datasets
+4.x refuses those outright ("Dataset scripts are no longer supported"), so this
+uses the parquet-native `lukaemon/bbh` mirror instead.
 """
 
 from __future__ import annotations
 
 import re
 
-DATASET_ID = "maveriq/bigbenchhard"
+DATASET_ID = "lukaemon/bbh"
 
 # The 27 BBH subtasks, in the order the paper lists them.
 SUBTASKS = (
@@ -103,7 +107,7 @@ def difficulty(row: dict, thresholds: tuple[int, int] = (250, 700)) -> str:
     return "hard"
 
 
-def load_bbh(split: str = "train", per_subtask: int = 20,
+def load_bbh(split: str = "test", per_subtask: int = 20,
              subtasks: tuple[str, ...] = SUBTASKS) -> list[dict]:
     """Load a balanced sample: `per_subtask` items from each of the 27 configs.
 
