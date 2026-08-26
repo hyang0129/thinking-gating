@@ -109,16 +109,60 @@ def strip_thinking(text: str) -> str:
     return text[matches[-1].end():].strip() if matches else text.strip()
 
 
+# Families spell the thinking toggle differently. Detect it from the template
+# source rather than whitelisting model names: an unrecognised name used to
+# fall through silently, rendering identical prompts for thinking-off and
+# thinking-on, which produces two identical captures and labels that mean
+# nothing. Ordered most- to least-specific.
+_TOGGLE_KWARGS = ("enable_thinking", "thinking")
+
+
+def detect_thinking_kwarg(tokenizer: Any, model_name: str) -> str:
+    """Which apply_chat_template kwarg toggles reasoning for this model."""
+    template = getattr(tokenizer, "chat_template", None) or ""
+    if isinstance(template, list):       # multi-template tokenizers
+        template = " ".join(t.get("template", "") for t in template)
+    for kwarg in _TOGGLE_KWARGS:
+        if kwarg in template:
+            return kwarg
+    raise ValueError(
+        f"no thinking toggle found in the chat template for {model_name!r}. "
+        f"Looked for {_TOGGLE_KWARGS}. This model may gate reasoning through a "
+        "system prompt instead (e.g. Nemotron), which needs its own code path — "
+        "do not fall back to an untoggled template, it silently makes the "
+        "thinking-off and thinking-on captures identical.")
+
+
 def apply_chat_template_to_prompt(
-    raw_prompt: str, tokenizer: Any, model_name: str, enable_thinking: bool = False
+    raw_prompt: str, tokenizer: Any, model_name: str, enable_thinking: bool = False,
+    thinking_kwarg: str | None = None,
 ) -> str:
     """Render the prompt as a single user turn through the model's template."""
     messages = [{"role": "user", "content": raw_prompt}]
     kwargs: dict[str, Any] = dict(add_generation_prompt=True, tokenize=False)
-    lowered = model_name.lower()
-    if "qwen3" in lowered or "smollm3" in lowered:
-        kwargs["enable_thinking"] = enable_thinking
+    if thinking_kwarg is None:
+        thinking_kwarg = detect_thinking_kwarg(tokenizer, model_name)
+    kwargs[thinking_kwarg] = enable_thinking
     return tokenizer.apply_chat_template(messages, **kwargs)
+
+
+def verify_toggle_changes_prompt(tokenizer: Any, model_name: str,
+                                 thinking_kwarg: str) -> None:
+    """Hard-fail if the toggle is inert. The failure is otherwise invisible."""
+    probe = "What is 2 + 2?"
+    off = apply_chat_template_to_prompt(probe, tokenizer, model_name,
+                                        enable_thinking=False,
+                                        thinking_kwarg=thinking_kwarg)
+    on = apply_chat_template_to_prompt(probe, tokenizer, model_name,
+                                       enable_thinking=True,
+                                       thinking_kwarg=thinking_kwarg)
+    if off == on:
+        raise ValueError(
+            f"{model_name!r}: apply_chat_template({thinking_kwarg}=True/False) "
+            "renders byte-identical prompts, so the capture would compare a "
+            "model against itself. Refusing to run.")
+    logger.info("thinking toggle %r verified: off/on prompts differ by %d chars",
+                thinking_kwarg, abs(len(on) - len(off)))
 
 
 def build_prompt(
@@ -128,13 +172,15 @@ def build_prompt(
     model_name: str | None = None,
     chat_template: bool = False,
     enable_thinking: bool = False,
+    thinking_kwarg: str | None = None,
 ) -> str:
     raw_prompt = _prompt_default(task_module, sample)
     if not chat_template:
         return raw_prompt
     assert tokenizer is not None and model_name is not None
     return apply_chat_template_to_prompt(
-        raw_prompt, tokenizer, model_name, enable_thinking=enable_thinking
+        raw_prompt, tokenizer, model_name, enable_thinking=enable_thinking,
+        thinking_kwarg=thinking_kwarg,
     )
 
 
@@ -267,6 +313,13 @@ def run_capture(args: argparse.Namespace) -> int:
     import torch
 
     tokenizer, model = load_model(args.model, args.attn_implementation)
+
+    # Establish the toggle before spending a GPU-hour on it, and record which
+    # kwarg was used so a capture is self-describing across model families.
+    thinking_kwarg = None
+    if args.chat_template:
+        thinking_kwarg = detect_thinking_kwarg(tokenizer, args.model)
+        verify_toggle_changes_prompt(tokenizer, args.model, thinking_kwarg)
     load_fn_name, is_correct_adapter, _ = _TASK_REGISTRY[args.task]
 
     try:
@@ -298,7 +351,9 @@ def run_capture(args: argparse.Namespace) -> int:
     config_path = out_dir / "config.json"
 
     if not config_path.exists():
-        config_path.write_text(json.dumps(build_writer_config(model, args), indent=2))
+        capture_config = build_writer_config(model, args)
+        capture_config["thinking_kwarg"] = thinking_kwarg
+        config_path.write_text(json.dumps(capture_config, indent=2))
 
     acts_off, acts_on, meta_rows = [], [], []
     started = time.monotonic()
@@ -308,12 +363,14 @@ def run_capture(args: argparse.Namespace) -> int:
 
         prompts_off = [
             build_prompt(s, task_module, tokenizer, args.model,
-                         chat_template=args.chat_template, enable_thinking=False)
+                         chat_template=args.chat_template, enable_thinking=False,
+                         thinking_kwarg=thinking_kwarg)
             for s in batch
         ]
         prompts_on = [
             build_prompt(s, task_module, tokenizer, args.model,
-                         chat_template=args.chat_template, enable_thinking=True)
+                         chat_template=args.chat_template, enable_thinking=True,
+                         thinking_kwarg=thinking_kwarg)
             for s in batch
         ]
 
