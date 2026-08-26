@@ -83,6 +83,9 @@ def _prompt_default(task_module: Any, sample: dict) -> str:
 _TASK_REGISTRY: dict[str, tuple[str, Any, str]] = {
     "gsm8k": ("load_gsm8k", _correct_str, "test"),
     "lsat": ("load_lsat_logic", _correct_str, "test"),
+    "math500": ("load_math500", _correct_str, "test"),
+    "mmlu_pro": ("load_mmlu_pro", _correct_str, "test"),
+    "bbh": ("load_bbh", _correct_str, "train"),
 }
 
 _THINK_CLOSE = re.compile(r"</think>", re.IGNORECASE)
