@@ -1,0 +1,95 @@
+{
+  "_comment": [
+    "Granite 3.3 8B (GraniteForCausalLM, 40 layers). Uses the 'thinking' kwarg, not enable_thinking -- detect_thinking_kwarg handles it.",
+    "Replication of the Qwen3-8B captures on a second model family, to answer whether the prefill signal is a property of reasoning models generally or of Qwen3's thinking-mode tuning specifically.",
+    "Thinking budgets are held identical to the Qwen3 runs on purpose.",
+    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/capture_granite33.json"
+  ],
+  "name": "capture_granite33",
+  "kind": "python_script",
+  "script": "scripts/capture_inference_thinking.py",
+  "constants": {
+    "model": "ibm-granite/granite-3.3-8b-instruct",
+    "slug": "granite33",
+    "out": "shared/icr_capture/{tslug}_thinking_{slug}",
+    "shard_count": "4"
+  },
+  "grid": {
+    "shard": [
+      "00",
+      "01",
+      "02",
+      "03"
+    ]
+  },
+  "zip": {
+    "task": [
+      "gsm8k",
+      "math500",
+      "mmlu_pro"
+    ],
+    "tslug": [
+      "gsm8kfull",
+      "math500",
+      "mmlupro"
+    ],
+    "think": [
+      "3072",
+      "8192",
+      "6144"
+    ],
+    "batch": [
+      "16",
+      "8",
+      "16"
+    ],
+    "maxs": [
+      "0",
+      "0",
+      "1000"
+    ]
+  },
+  "cell_id_template": "capture-{slug}-{tslug}-shard{shard}",
+  "args": [
+    "--task",
+    "{task}",
+    "--model",
+    "{model}",
+    "--out-dir",
+    "{out}",
+    "--max-samples",
+    "{maxs}",
+    "--batch-size",
+    "{batch}",
+    "--max-prompt-len",
+    "1024",
+    "--max-response-len",
+    "320",
+    "--max-response-len-thinking",
+    "{think}",
+    "--chat-template",
+    "--shard-index",
+    "{shard}",
+    "--shard-count",
+    "{shard_count}"
+  ],
+  "output_check": [
+    "{out}/meta.shard{shard}.jsonl",
+    "{out}/activations_thinking_off.shard{shard}.npz",
+    "{out}/activations_thinking_on.shard{shard}.npz"
+  ],
+  "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "HF_DATASETS_OFFLINE": "1",
+    "CUDA_MPS_PIPE_DIRECTORY": "/no/such/path"
+  },
+  "timeout_s": 43200,
+  "max_attempts": 2,
+  "priority": 10,
+  "tags": [
+    "capture",
+    "crossmodel",
+    "granite33"
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "_comment": [
+    "THE decisive experiment plus its ablation, both on captures we already have.",
+    "",
+    "target=rescued restricts to rows the model already gets wrong without",
+    "thinking, then asks whether thinking rescues them. needs_thinking is",
+    "constant on that subset by construction, so an above-chance AUROC here",
+    "is signal about the marginal value of reasoning rather than about",
+    "difficulty -- which is the only thing separating this work from",
+    "hidden-state correctness prediction (Kadavath 2022, Azaria 2023).",
+    "",
+    "prefill_mode=on probes the thinking-ENABLED prompt's prefill state.",
+    "Still captured before any token is generated, so no reasoning trace",
+    "leaks in and it is not circular; it differs only by the template's",
+    "think tags.",
+    "",
+    "LSAT is excluded: thinking-off accuracy 15.7% is below the 20% floor",
+    "for 5-option multiple choice, so its labels are guessing noise.",
+    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/probe_decomposition.json"
+  ],
+  "name": "probe_decomposition",
+  "kind": "python_script",
+  "script": "scripts/run_experiment.py",
+  "constants": {
+    "out": "output/decomp/{task}__{target}__prefill_{pmode}",
+    "cap": "shared/icr_capture/{capdir}",
+    "lab": "shared/{task}_labels.jsonl"
+  },
+  "grid": {
+    "target": [
+      "rescued",
+      "needs_thinking",
+      "helped"
+    ],
+    "pmode": [
+      "off",
+      "on"
+    ]
+  },
+  "zip": {
+    "task": [
+      "gsm8k",
+      "math500",
+      "mmlu_pro",
+      "bbh"
+    ],
+    "capdir": [
+      "gsm8k_full_thinking_qwen3",
+      "math500_thinking_qwen3",
+      "mmlupro_thinking_qwen3",
+      "bbh_thinking_qwen3"
+    ]
+  },
+  "exclude": [
+    {
+      "target": "helped",
+      "pmode": "on"
+    }
+  ],
+  "cell_id_template": "probe-{task}-{target}-{pmode}",
+  "args": [
+    "--capture-dir",
+    "{cap}",
+    "--labels",
+    "{lab}",
+    "--out-dir",
+    "{out}",
+    "--method",
+    "logreg",
+    "--target",
+    "{target}",
+    "--prefill-mode",
+    "{pmode}",
+    "--seeds",
+    "42",
+    "1",
+    "2",
+    "3",
+    "4"
+  ],
+  "output_check": [
+    "{out}/aggregate_metrics.json"
+  ],
+  "env": {
+    "OMP_NUM_THREADS": "8",
+    "MKL_NUM_THREADS": "8"
+  },
+  "timeout_s": 5400,
+  "max_attempts": 2,
+  "priority": 20,
+  "tags": [
+    "probe",
+    "decomposition"
+  ]
+}
