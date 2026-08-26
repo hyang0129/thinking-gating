@@ -159,9 +159,23 @@ def main(argv: list[str] | None = None) -> int:
         source = json.loads(Path(args.source_metrics).read_text(encoding="utf-8"))
         source_auroc = source["aggregate"]["test_auroc"]["mean"]
         drop_pp = 100 * (source_auroc - transfer_auroc["mean"])
-        verdict = ("strong transfer" if drop_pp < 5
-                   else "moderate — likely label distribution shift" if drop_pp <= 15
-                   else "transfer failure (format overfitting)")
+        # Judging transfer by the drop alone is wrong in both directions: a
+        # probe that was at chance on its own task "transfers" perfectly by
+        # staying at chance, and a strong probe landing at 0.70 gets called a
+        # failure for dropping 17pp even though 0.70 is real signal. Ask three
+        # questions in order — was the source probe any good, does the target
+        # end above chance, and only then how much was lost.
+        target_lo = transfer_auroc["ci"][0]
+        if source_auroc < 0.55:
+            verdict = "undefined — source probe was at chance"
+        elif target_lo <= 0.5:
+            verdict = "no transfer — target at chance"
+        elif drop_pp < 5:
+            verdict = "strong transfer"
+        elif drop_pp <= 15:
+            verdict = "partial transfer"
+        else:
+            verdict = "weak transfer — above chance but large drop"
         summary["source_task"] = source.get("task")
         summary["source_test_auroc"] = source_auroc
         summary["auroc_drop_pp"] = drop_pp
