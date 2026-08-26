@@ -164,6 +164,45 @@ def mean_ci(values: list[float], confidence: float = 0.95) -> dict:
             "sd": sd, "n": len(vals)}
 
 
+def bootstrap_auroc_ci(y, scores, n_boot: int = 2000, seed: int = 0,
+                       confidence: float = 0.95) -> dict:
+    """Percentile-bootstrap CI for AUROC over *test examples*.
+
+    This is the interval that answers "how well does this probe do on the
+    population", and it is the one to quote. mean_ci over seeds answers a
+    different and much narrower question -- how much the number moves when you
+    reshuffle the split of a *fixed* sample -- so on a few hundred test points
+    it understates uncertainty severalfold. Report both, labelled.
+    """
+    y = np.asarray(y)
+    scores = np.asarray(scores)
+    n = len(y)
+    if n < 2 or len(np.unique(y)) < 2:
+        return {"ci": [float("nan")] * 2, "n_boot": 0}
+    rng = np.random.default_rng(seed)
+    stats = []
+    for _ in range(n_boot):
+        idx = rng.integers(0, n, n)
+        if len(np.unique(y[idx])) < 2:
+            continue          # a resample with one class has no AUROC
+        stats.append(auroc(y[idx], scores[idx]))
+    if not stats:
+        return {"ci": [float("nan")] * 2, "n_boot": 0}
+    lo, hi = np.percentile(stats, [(1 - confidence) / 2 * 100,
+                                   (1 + confidence) / 2 * 100])
+    return {"ci": [float(lo), float(hi)], "n_boot": len(stats)}
+
+
+def mean_bootstrap_ci(per_seed_cis: list[dict]) -> dict:
+    """Average the per-seed bootstrap intervals into one reported interval."""
+    los = [c["ci"][0] for c in per_seed_cis if not math.isnan(c["ci"][0])]
+    his = [c["ci"][1] for c in per_seed_cis if not math.isnan(c["ci"][1])]
+    if not los:
+        return {"ci": [float("nan")] * 2, "n_seeds": 0}
+    return {"ci": [sum(los) / len(los), sum(his) / len(his)],
+            "n_seeds": len(los)}
+
+
 def routing_metrics(correct_off, correct_on, scores, threshold: float) -> dict:
     """Task accuracy if thinking is used only where the probe says to."""
     think = np.asarray(scores) >= threshold
@@ -301,6 +340,7 @@ def evaluate_split(scores, y, correct_off, correct_on, difficulties, threshold) 
         "n_positive": int(y.sum()),
         "base_rate": float(y.mean()) if len(y) else float("nan"),
         "auroc": auroc(y, scores),
+        "auroc_bootstrap": bootstrap_auroc_ci(y, scores),
         "auprc": auprc(y, scores),
     }
     out.update(routing_metrics(correct_off, correct_on, scores, threshold))
@@ -318,6 +358,8 @@ def evaluate_split(scores, y, correct_off, correct_on, difficulties, threshold) 
             "n": int(mask.sum()),
             "base_rate": float(y[mask].mean()),
             "auroc": auroc(y[mask], np.asarray(scores)[mask]),
+            # Strata are small -- this is where the seed-spread CI misleads most.
+            "auroc_bootstrap": bootstrap_auroc_ci(y[mask], np.asarray(scores)[mask]),
         }
     out["by_difficulty"] = by_difficulty
     out["cost_curve"] = cost_accuracy_curve(correct_off, correct_on, scores)
@@ -360,6 +402,7 @@ def run_seed(args, X, y, correct_off, correct_on, difficulties, seed: int) -> tu
     }
     checkpoint = {
         "method": args.method, "target": args.target,
+        "prefill_mode": args.prefill_mode,
         "layer": args.layer, "seed": seed,
         "threshold": threshold, "scaler": scaler.state_dict(),
         "input_dim": int(X.shape[1]),
@@ -394,10 +437,20 @@ def aggregate(per_seed: list[dict]) -> dict:
         "min_routed_for_always_think_accuracy": mean_ci(
             collect(["test", "min_routed_for_always_think_accuracy"])),
     }
+    # The honest interval. "test_auroc" above is seed-to-seed spread on a fixed
+    # sample and is systematically too narrow; quote this one in the paper.
+    agg["test_auroc_bootstrap"] = mean_bootstrap_ci(
+        [m["test"]["auroc_bootstrap"] for m in per_seed])
     levels = {lvl for m in per_seed for lvl in m["test"]["by_difficulty"]}
     agg["test_auroc_by_difficulty"] = {
         lvl: mean_ci([m["test"]["by_difficulty"][lvl]["auroc"]
                       for m in per_seed if lvl in m["test"]["by_difficulty"]])
+        for lvl in sorted(levels)
+    }
+    agg["test_auroc_by_difficulty_bootstrap"] = {
+        lvl: mean_bootstrap_ci([m["test"]["by_difficulty"][lvl]["auroc_bootstrap"]
+                                for m in per_seed
+                                if lvl in m["test"]["by_difficulty"]])
         for lvl in sorted(levels)
     }
     return agg
@@ -412,11 +465,26 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--labels", required=True, nargs="+")
     p.add_argument("--out-dir", required=True)
     p.add_argument("--method", default="mlp", choices=["mlp", "logreg"])
-    p.add_argument("--target", default="helped", choices=["helped", "needs_thinking"],
+    p.add_argument("--target", default="helped",
+                   choices=["helped", "needs_thinking", "rescued"],
                    help="'helped' = thinking flipped wrong->right (the original "
                         "framing). 'needs_thinking' = the model is wrong WITHOUT "
                         "thinking, which is what a router actually has to decide "
-                        "and is independent of the thinking token budget.")
+                        "and is independent of the thinking token budget. "
+                        "'rescued' = THE DECOMPOSITION: restrict to rows the "
+                        "model already gets wrong without thinking, then predict "
+                        "whether thinking rescues them. On that subset "
+                        "'needs_thinking' is constant by construction, so any "
+                        "signal here is about the marginal value of reasoning "
+                        "rather than about difficulty.")
+    p.add_argument("--prefill-mode", default="off", choices=["off", "on"],
+                   help="Which prompt's prefill state to probe. 'off' is the "
+                        "default and the safe one. 'on' probes the prefill of "
+                        "the thinking-ENABLED prompt -- still captured before "
+                        "any token is generated, so it sees no reasoning trace "
+                        "and is not circular, but it differs by the template's "
+                        "think tags and is only usable by a router that has "
+                        "already committed to rendering that prompt.")
     p.add_argument("--layer", type=int, default=None,
                    help="Layer to probe (default: the middle layer)")
     p.add_argument("--layer-sweep", action="store_true",
@@ -440,7 +508,7 @@ def main(argv: list[str] | None = None) -> int:
     # an unseen task. They answer different questions — don't conflate them.
     act_parts, label_parts, task_parts = [], [], []
     for capture_dir, labels_file in zip(args.capture_dir, args.labels):
-        meta_i, acts_i = load_capture(Path(capture_dir), mode="off")
+        meta_i, acts_i = load_capture(Path(capture_dir), mode=args.prefill_mode)
         labels_i = load_labels(Path(labels_file))
         acts_i = acts_i[align_labels(meta_i, labels_i)]
         task_name = load_config(Path(capture_dir)).get("task") or Path(capture_dir).name
@@ -459,13 +527,36 @@ def main(argv: list[str] | None = None) -> int:
     tasks = np.array(task_parts)
 
     correct_off = np.array([bool(lab["correct_off"]) for lab in labels])
+    correct_on = np.array([bool(lab["correct_on"]) for lab in labels])
+    difficulties = np.array([str(lab.get("difficulty")) for lab in labels])
+
     if args.target == "helped":
         y = np.array([1 if lab["label"] == "helped" else 0 for lab in labels],
                      dtype=np.int64)
-    else:
+    elif args.target == "needs_thinking":
         y = (~correct_off).astype(np.int64)
-    correct_on = np.array([bool(lab["correct_on"]) for lab in labels])
-    difficulties = np.array([str(lab.get("difficulty")) for lab in labels])
+    else:
+        # 'rescued'. Keep only the rows the model already fails without
+        # thinking; among those, predict whether thinking saves it. Subsetting
+        # happens BEFORE the split, so train/val/test all live on the
+        # conditional distribution and no held-out row leaks in from the easy
+        # half. Note the routing baselines below go degenerate on this subset
+        # (never_think is 0 by construction) -- AUROC is the number that means
+        # anything here, not routed accuracy.
+        keep = np.flatnonzero(~correct_off)
+        logger.info("target=rescued — restricting to %d/%d rows the model gets "
+                    "wrong without thinking", len(keep), len(correct_off))
+        if len(keep) < 40:
+            logger.error("only %d rows with correct_off=False — too few to "
+                         "condition on", len(keep))
+            return 1
+        activations = activations[keep]
+        labels = [labels[i] for i in keep]
+        tasks = tasks[keep]
+        correct_off = correct_off[keep]
+        correct_on = correct_on[keep]
+        difficulties = difficulties[keep]
+        y = correct_on.astype(np.int64)
 
     n_layers = activations.shape[1]
     if args.layer is None:
@@ -541,6 +632,7 @@ def main(argv: list[str] | None = None) -> int:
         "method": args.method, "target": args.target,
         "layer": args.layer, "seeds": args.seeds,
         "n_samples": int(len(y)), "base_rate_helped": float(y.mean()),
+        "base_rate": float(y.mean()), "prefill_mode": args.prefill_mode,
         "aggregate": agg, "per_seed": per_seed,
     }
     (out_dir / "aggregate_metrics.json").write_text(json.dumps(summary, indent=2) + "\n")

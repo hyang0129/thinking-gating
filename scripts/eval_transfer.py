@@ -102,25 +102,58 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=getattr(logging, args.log_level),
                         format="%(asctime)s %(levelname)s %(message)s")
 
-    meta, activations = load_capture(Path(args.capture_dir), mode="off")
+    # The probe's own objective decides the evaluation label. Scoring a
+    # needs_thinking probe against 'helped' ground truth silently measures the
+    # wrong thing and reads as a transfer failure, so read it off the
+    # checkpoint and require every probe in the set to agree.
+    ckpts = [load_probe(Path(pp)) for pp in args.probe]
+    objectives = {ck.get("target", "helped") for _, ck in ckpts}
+    if len(objectives) > 1:
+        logger.error("probes disagree on objective %s — evaluate one objective "
+                     "at a time", sorted(objectives))
+        return 1
+    objective = objectives.pop()
+    prefill_modes = {ck.get("prefill_mode", "off") for _, ck in ckpts}
+    if len(prefill_modes) > 1:
+        logger.error("probes disagree on prefill mode %s", sorted(prefill_modes))
+        return 1
+    prefill_mode = prefill_modes.pop()
+
+    meta, activations = load_capture(Path(args.capture_dir), mode=prefill_mode)
     labels = load_labels(Path(args.labels))
     activations = activations[align_labels(meta, labels)]
 
-    y = np.array([1 if lab["label"] == "helped" else 0 for lab in labels], dtype=np.int64)
     correct_off = np.array([bool(lab["correct_off"]) for lab in labels])
     correct_on = np.array([bool(lab["correct_on"]) for lab in labels])
     difficulties = np.array([str(lab.get("difficulty")) for lab in labels])
 
+    if objective == "helped":
+        y = np.array([1 if lab["label"] == "helped" else 0 for lab in labels],
+                     dtype=np.int64)
+    elif objective == "needs_thinking":
+        y = (~correct_off).astype(np.int64)
+    elif objective == "rescued":
+        keep = np.flatnonzero(~correct_off)
+        logger.info("objective=rescued — restricting target to %d/%d rows",
+                    len(keep), len(correct_off))
+        activations = activations[keep]
+        correct_off, correct_on = correct_off[keep], correct_on[keep]
+        difficulties = difficulties[keep]
+        y = correct_on.astype(np.int64)
+    else:
+        logger.error("unknown probe objective %r", objective)
+        return 1
+
     target_config = load_config(Path(args.capture_dir))
-    logger.info("target task %s: %d samples, %.1f%% helped",
-                target_config.get("task"), len(y), 100 * y.mean())
-    if y.sum() == 0:
-        logger.error("target set has no positives — AUROC is undefined")
+    logger.info("target task %s: %d samples, objective=%s, %.1f%% positive",
+                target_config.get("task"), len(y), objective, 100 * y.mean())
+    if y.sum() == 0 or y.sum() == len(y):
+        logger.error("target set has no %s — AUROC is undefined",
+                     "positives" if y.sum() == 0 else "negatives")
         return 1
 
     per_probe = []
-    for probe_path in args.probe:
-        score_fn, ckpt = load_probe(Path(probe_path))
+    for probe_path, (score_fn, ckpt) in zip(args.probe, ckpts):
         X = select_layer(activations, ckpt["layer"])
         if X.shape[1] != ckpt["input_dim"]:
             logger.error("probe expects %d features but target has %d — "
@@ -132,7 +165,7 @@ def main(argv: list[str] | None = None) -> int:
         result = evaluate_split(scores, y, correct_off, correct_on,
                                 difficulties, ckpt["threshold"])
         result["seed"] = ckpt.get("seed")
-        result["target_objective"] = ckpt.get("target", "helped")
+        result["target_objective"] = objective
         result["probe"] = str(probe_path)
         per_probe.append(result)
         logger.info("probe seed %-4s transfer AUROC %.3f  routed acc %.3f",
@@ -148,7 +181,9 @@ def main(argv: list[str] | None = None) -> int:
         "target_objective": objectives[0] if len(objectives) == 1 else objectives,
         "target_model": target_config.get("model_name"),
         "n_target": int(len(y)),
-        "base_rate_helped": float(y.mean()),
+        "base_rate": float(y.mean()),
+        "objective": objective,
+        "prefill_mode": prefill_mode,
         "transfer_auroc": transfer_auroc,
         "transfer_routed_accuracy": mean_ci([r["routed_accuracy"] for r in per_probe]),
         "target_baselines": per_probe[0]["baselines"],
