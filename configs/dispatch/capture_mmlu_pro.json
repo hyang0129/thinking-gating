@@ -1,7 +1,8 @@
 {
   "_comment": [
     "MMLU-Pro: 10-option MC, knowledge-heavy end of the spectrum; deterministic 1000-item sample.",
-    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/capture_mmlu_pro.json"
+    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/capture_mmlu_pro.json",
+    "Thinking budget 3072 -> 6144: 29% truncated at 3072."
   ],
   "name": "capture_mmlu_pro",
   "kind": "python_script",
@@ -36,7 +37,7 @@
     "--max-response-len",
     "320",
     "--max-response-len-thinking",
-    "3072",
+    "6144",
     "--chat-template",
     "--shard-index",
     "{shard}",

@@ -1,7 +1,8 @@
 {
   "_comment": [
     "BBH: 20 items from each of 27 subtasks, the suite built because CoT flips it.",
-    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/capture_bbh.json"
+    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/capture_bbh.json",
+    "Thinking budget 3072 -> 4096: 0% truncated at 3072; headroom for harder subtasks."
   ],
   "name": "capture_bbh",
   "kind": "python_script",
@@ -36,7 +37,7 @@
     "--max-response-len",
     "320",
     "--max-response-len-thinking",
-    "3072",
+    "4096",
     "--chat-template",
     "--shard-index",
     "{shard}",
