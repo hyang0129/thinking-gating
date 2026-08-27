@@ -1,0 +1,3157 @@
+{
+  "task": "mmlu_pro",
+  "model": "Qwen/Qwen3-8B",
+  "capture_dirs": [
+    "shared/icr_capture/mmlupro_thinking_qwen3"
+  ],
+  "method": "logreg",
+  "target": "needs_thinking",
+  "layer": 18,
+  "seeds": [
+    42,
+    1,
+    2,
+    3,
+    4
+  ],
+  "n_samples": 1000,
+  "base_rate_helped": 0.615,
+  "base_rate": 0.615,
+  "prefill_mode": "off",
+  "aggregate": {
+    "test_auroc": {
+      "mean": 0.7815542181395839,
+      "ci": [
+        0.7744444035048641,
+        0.7886640327743037
+      ],
+      "sd": 0.008111239199314422,
+      "n": 5
+    },
+    "test_auprc": {
+      "mean": 0.8595172224561963,
+      "ci": [
+        0.8468999680115795,
+        0.8721344769008131
+      ],
+      "sd": 0.014394407463048226,
+      "n": 5
+    },
+    "test_routed_accuracy": {
+      "mean": 0.701,
+      "ci": [
+        0.69316,
+        0.7088399999999999
+      ],
+      "sd": 0.008944271909999166,
+      "n": 5
+    },
+    "fraction_routed": {
+      "mean": 0.945,
+      "ci": [
+        0.89286621057318,
+        0.9971337894268198
+      ],
+      "sd": 0.059476886266851596,
+      "n": 5
+    },
+    "baseline_never_think": {
+      "mean": 0.385,
+      "ci": [
+        0.385,
+        0.385
+      ],
+      "sd": 0.0,
+      "n": 5
+    },
+    "baseline_always_think": {
+      "mean": 0.704,
+      "ci": [
+        0.6907066332330745,
+        0.7172933667669255
+      ],
+      "sd": 0.015165750888103114,
+      "n": 5
+    },
+    "oracle": {
+      "mean": 0.743,
+      "ci": [
+        0.7213955004686523,
+        0.7646044995313477
+      ],
+      "sd": 0.024647515087732497,
+      "n": 5
+    },
+    "min_routed_for_always_think_accuracy": {
+      "mean": 0.9099999999999999,
+      "ci": [
+        0.8619900010414496,
+        0.9580099989585502
+      ],
+      "sd": 0.05477225575051661,
+      "n": 5
+    },
+    "test_auroc_bootstrap": {
+      "ci": [
+        0.7169431328794968,
+        0.8424887056782782
+      ],
+      "n_seeds": 5
+    },
+    "test_auroc_by_difficulty": {
+      "biology": {
+        "mean": 0.7416666666666667,
+        "ci": [
+          0.5147567481723199,
+          0.9685765851610135
+        ],
+        "sd": 0.23154073315749674,
+        "n": 4
+      },
+      "business": {
+        "mean": 0.7707546897546897,
+        "ci": [
+          0.6225003922704734,
+          0.9190089872389061
+        ],
+        "sd": 0.16913606486284888,
+        "n": 5
+      },
+      "chemistry": {
+        "mean": 0.8681557428925851,
+        "ci": [
+          0.7820074849858363,
+          0.954304000799334
+        ],
+        "sd": 0.09828232695034395,
+        "n": 5
+      },
+      "computer_science": {
+        "mean": 0.8761904761904761,
+        "ci": [
+          0.7268571428571428,
+          1.0255238095238095
+        ],
+        "sd": 0.170367083999984,
+        "n": 5
+      },
+      "economics": {
+        "mean": 0.6226190476190476,
+        "ci": [
+          0.5496533974053265,
+          0.6955846978327688
+        ],
+        "sd": 0.08324293566344523,
+        "n": 5
+      },
+      "engineering": {
+        "mean": 0.8601709401709401,
+        "ci": [
+          0.7067908790292827,
+          1.0135510013125975
+        ],
+        "sd": 0.17498379750296927,
+        "n": 5
+      },
+      "health": {
+        "mean": 0.6693506493506494,
+        "ci": [
+          0.5793646808495043,
+          0.7593366178517944
+        ],
+        "sd": 0.10266058295393637,
+        "n": 5
+      },
+      "history": {
+        "mean": 0.26666666666666666,
+        "ci": [
+          0.001281412115225311,
+          0.5320519212181081
+        ],
+        "sd": 0.3027650354097492,
+        "n": 5
+      },
+      "law": {
+        "mean": 0.7521622432148748,
+        "ci": [
+          0.6100639920432196,
+          0.89426049438653
+        ],
+        "sd": 0.1621129332161532,
+        "n": 5
+      },
+      "math": {
+        "mean": 0.8579526029526029,
+        "ci": [
+          0.8231791868639851,
+          0.8927260190412207
+        ],
+        "sd": 0.03967128682858894,
+        "n": 5
+      },
+      "other": {
+        "mean": 0.6038636363636364,
+        "ci": [
+          0.38979189171966716,
+          0.8179353810076055
+        ],
+        "sd": 0.24422396586014883,
+        "n": 5
+      },
+      "philosophy": {
+        "mean": 0.6309523809523809,
+        "ci": [
+          0.4991655159855802,
+          0.7627392459191817
+        ],
+        "sd": 0.1503491778608939,
+        "n": 5
+      },
+      "physics": {
+        "mean": 0.8117144293614882,
+        "ci": [
+          0.697952055987622,
+          0.9254768027353544
+        ],
+        "sd": 0.12978591844167187,
+        "n": 5
+      },
+      "psychology": {
+        "mean": 0.765,
+        "ci": [
+          0.5385372878374897,
+          0.9914627121625104
+        ],
+        "sd": 0.2583602136552763,
+        "n": 5
+      }
+    },
+    "test_auroc_by_difficulty_bootstrap": {
+      "biology": {
+        "ci": [
+          0.3620833333333334,
+          0.9583333333333334
+        ],
+        "n_seeds": 4
+      },
+      "business": {
+        "ci": [
+          0.48903373015873014,
+          0.9733333333333334
+        ],
+        "n_seeds": 5
+      },
+      "chemistry": {
+        "ci": [
+          0.6756390977443609,
+          0.9818181818181818
+        ],
+        "n_seeds": 5
+      },
+      "computer_science": {
+        "ci": [
+          0.65,
+          1.0
+        ],
+        "n_seeds": 5
+      },
+      "economics": {
+        "ci": [
+          0.3323304473304473,
+          0.8806200531494646
+        ],
+        "n_seeds": 5
+      },
+      "engineering": {
+        "ci": [
+          0.6855934343434346,
+          0.9777777777777779
+        ],
+        "n_seeds": 5
+      },
+      "health": {
+        "ci": [
+          0.3621712662337663,
+          0.9270589981006647
+        ],
+        "n_seeds": 5
+      },
+      "history": {
+        "ci": [
+          0.0,
+          0.55
+        ],
+        "n_seeds": 5
+      },
+      "law": {
+        "ci": [
+          0.4789102564102564,
+          0.9604953560371516
+        ],
+        "n_seeds": 5
+      },
+      "math": {
+        "ci": [
+          0.650235805860806,
+          0.9922077922077921
+        ],
+        "n_seeds": 5
+      },
+      "other": {
+        "ci": [
+          0.30316281337709916,
+          0.8894973544973546
+        ],
+        "n_seeds": 5
+      },
+      "philosophy": {
+        "ci": [
+          0.16079553779553785,
+          0.9532467532467532
+        ],
+        "n_seeds": 5
+      },
+      "physics": {
+        "ci": [
+          0.5263758637196138,
+          0.9948809523809523
+        ],
+        "n_seeds": 5
+      },
+      "psychology": {
+        "ci": [
+          0.49625,
+          0.96
+        ],
+        "n_seeds": 5
+      }
+    }
+  },
+  "per_seed": [
+    {
+      "seed": 42,
+      "train_info": {
+        "best_val_auroc": 0.7914159011719988,
+        "epochs_run": 0
+      },
+      "val": {
+        "n": 200,
+        "n_positive": 123,
+        "base_rate": 0.615,
+        "auroc": 0.7914159011719988,
+        "auroc_bootstrap": {
+          "ci": [
+            0.7242129814563546,
+            0.8550387777184453
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.8604799503906949,
+        "threshold": 0.001191991614177823,
+        "routed_accuracy": 0.685,
+        "fraction_routed_to_thinking": 0.92,
+        "baselines": {
+          "never_think": 0.385,
+          "always_think": 0.68,
+          "oracle": 0.71
+        },
+        "by_difficulty": {
+          "biology": {
+            "n": 11,
+            "base_rate": 0.2727272727272727,
+            "auroc": 0.6666666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1943
+            }
+          },
+          "business": {
+            "n": 13,
+            "base_rate": 0.6153846153846154,
+            "auroc": 0.45,
+            "auroc_bootstrap": {
+              "ci": [
+                0.11904761904761904,
+                0.8062499999999998
+              ],
+              "n_boot": 1994
+            }
+          },
+          "chemistry": {
+            "n": 20,
+            "base_rate": 0.8,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1976
+            }
+          },
+          "computer_science": {
+            "n": 6,
+            "base_rate": 0.6666666666666666,
+            "auroc": 0.75,
+            "auroc_bootstrap": {
+              "ci": [
+                0.25,
+                1.0
+              ],
+              "n_boot": 1832
+            }
+          },
+          "economics": {
+            "n": 13,
+            "base_rate": 0.3076923076923077,
+            "auroc": 0.6111111111111112,
+            "auroc_bootstrap": {
+              "ci": [
+                0.225,
+                1.0
+              ],
+              "n_boot": 1989
+            }
+          },
+          "engineering": {
+            "n": 15,
+            "base_rate": 0.7333333333333333,
+            "auroc": 0.9318181818181818,
+            "auroc_bootstrap": {
+              "ci": [
+                0.7222222222222222,
+                1.0
+              ],
+              "n_boot": 1986
+            }
+          },
+          "health": {
+            "n": 16,
+            "base_rate": 0.5,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.174466765873016,
+                0.8
+              ],
+              "n_boot": 1999
+            }
+          },
+          "history": {
+            "n": 9,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.6111111111111112,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1950
+            }
+          },
+          "law": {
+            "n": 17,
+            "base_rate": 0.9411764705882353,
+            "auroc": 0.375,
+            "auroc_bootstrap": {
+              "ci": [
+                0.13333333333333333,
+                0.625
+              ],
+              "n_boot": 1259
+            }
+          },
+          "math": {
+            "n": 21,
+            "base_rate": 0.7619047619047619,
+            "auroc": 0.7375,
+            "auroc_bootstrap": {
+              "ci": [
+                0.37037037037037035,
+                1.0
+              ],
+              "n_boot": 1994
+            }
+          },
+          "other": {
+            "n": 15,
+            "base_rate": 0.6666666666666666,
+            "auroc": 0.84,
+            "auroc_bootstrap": {
+              "ci": [
+                0.5740740740740741,
+                1.0
+              ],
+              "n_boot": 1995
+            }
+          },
+          "philosophy": {
+            "n": 14,
+            "base_rate": 0.5,
+            "auroc": 0.5714285714285714,
+            "auroc_bootstrap": {
+              "ci": [
+                0.24242424242424243,
+                0.8750637755102038
+              ],
+              "n_boot": 2000
+            }
+          },
+          "physics": {
+            "n": 19,
+            "base_rate": 0.7368421052631579,
+            "auroc": 0.8285714285714286,
+            "auroc_bootstrap": {
+              "ci": [
+                0.5416666666666666,
+                1.0
+              ],
+              "n_boot": 1995
+            }
+          },
+          "psychology": {
+            "n": 11,
+            "base_rate": 0.2727272727272727,
+            "auroc": 0.9583333333333334,
+            "auroc_bootstrap": {
+              "ci": [
+                0.7777777777777778,
+                1.0
+              ],
+              "n_boot": 1930
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.385
+          },
+          {
+            "fraction_routed": 0.05,
+            "accuracy": 0.43
+          },
+          {
+            "fraction_routed": 0.1,
+            "accuracy": 0.455
+          },
+          {
+            "fraction_routed": 0.15,
+            "accuracy": 0.48
+          },
+          {
+            "fraction_routed": 0.2,
+            "accuracy": 0.5
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.52
+          },
+          {
+            "fraction_routed": 0.3,
+            "accuracy": 0.545
+          },
+          {
+            "fraction_routed": 0.35,
+            "accuracy": 0.565
+          },
+          {
+            "fraction_routed": 0.4,
+            "accuracy": 0.57
+          },
+          {
+            "fraction_routed": 0.45,
+            "accuracy": 0.59
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.615
+          },
+          {
+            "fraction_routed": 0.55,
+            "accuracy": 0.63
+          },
+          {
+            "fraction_routed": 0.6,
+            "accuracy": 0.645
+          },
+          {
+            "fraction_routed": 0.65,
+            "accuracy": 0.655
+          },
+          {
+            "fraction_routed": 0.7,
+            "accuracy": 0.665
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.675
+          },
+          {
+            "fraction_routed": 0.8,
+            "accuracy": 0.68
+          },
+          {
+            "fraction_routed": 0.85,
+            "accuracy": 0.685
+          },
+          {
+            "fraction_routed": 0.9,
+            "accuracy": 0.685
+          },
+          {
+            "fraction_routed": 0.95,
+            "accuracy": 0.68
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.68
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 0.8
+      },
+      "test": {
+        "n": 200,
+        "n_positive": 123,
+        "base_rate": 0.615,
+        "auroc": 0.7898849118361313,
+        "auroc_bootstrap": {
+          "ci": [
+            0.7241604776081628,
+            0.8503325892857143
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.8692120791661008,
+        "threshold": 0.001191991614177823,
+        "routed_accuracy": 0.695,
+        "fraction_routed_to_thinking": 0.905,
+        "baselines": {
+          "never_think": 0.385,
+          "always_think": 0.69,
+          "oracle": 0.725
+        },
+        "by_difficulty": {
+          "biology": {
+            "n": 5,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "business": {
+            "n": 13,
+            "base_rate": 0.6923076923076923,
+            "auroc": 0.9444444444444444,
+            "auroc_bootstrap": {
+              "ci": [
+                0.75,
+                1.0
+              ],
+              "n_boot": 1984
+            }
+          },
+          "chemistry": {
+            "n": 20,
+            "base_rate": 0.95,
+            "auroc": 0.9473684210526315,
+            "auroc_bootstrap": {
+              "ci": [
+                0.8333333333333334,
+                1.0
+              ],
+              "n_boot": 1299
+            }
+          },
+          "computer_science": {
+            "n": 8,
+            "base_rate": 0.75,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1804
+            }
+          },
+          "economics": {
+            "n": 22,
+            "base_rate": 0.45454545454545453,
+            "auroc": 0.7166666666666667,
+            "auroc_bootstrap": {
+              "ci": [
+                0.4666666666666667,
+                0.9177828054298635
+              ],
+              "n_boot": 2000
+            }
+          },
+          "engineering": {
+            "n": 10,
+            "base_rate": 0.9,
+            "auroc": 0.5555555555555556,
+            "auroc_bootstrap": {
+              "ci": [
+                0.2222222222222222,
+                0.8888888888888888
+              ],
+              "n_boot": 1333
+            }
+          },
+          "health": {
+            "n": 21,
+            "base_rate": 0.5238095238095238,
+            "auroc": 0.5636363636363636,
+            "auroc_bootstrap": {
+              "ci": [
+                0.3,
+                0.8365384615384616
+              ],
+              "n_boot": 2000
+            }
+          },
+          "history": {
+            "n": 3,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1333
+            }
+          },
+          "law": {
+            "n": 24,
+            "base_rate": 0.7916666666666666,
+            "auroc": 0.8105263157894737,
+            "auroc_bootstrap": {
+              "ci": [
+                0.575,
+                0.9789473684210527
+              ],
+              "n_boot": 1989
+            }
+          },
+          "math": {
+            "n": 25,
+            "base_rate": 0.52,
+            "auroc": 0.8974358974358975,
+            "auroc_bootstrap": {
+              "ci": [
+                0.7459706959706961,
+                1.0
+              ],
+              "n_boot": 2000
+            }
+          },
+          "other": {
+            "n": 11,
+            "base_rate": 0.5454545454545454,
+            "auroc": 0.3333333333333333,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.75
+              ],
+              "n_boot": 1997
+            }
+          },
+          "philosophy": {
+            "n": 9,
+            "base_rate": 0.4444444444444444,
+            "auroc": 0.75,
+            "auroc_bootstrap": {
+              "ci": [
+                0.3333333333333333,
+                1.0
+              ],
+              "n_boot": 1991
+            }
+          },
+          "physics": {
+            "n": 17,
+            "base_rate": 0.7058823529411765,
+            "auroc": 0.8166666666666667,
+            "auroc_bootstrap": {
+              "ci": [
+                0.5163636363636365,
+                1.0
+              ],
+              "n_boot": 1993
+            }
+          },
+          "psychology": {
+            "n": 12,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.375,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.8
+              ],
+              "n_boot": 1990
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.385
+          },
+          {
+            "fraction_routed": 0.05,
+            "accuracy": 0.41
+          },
+          {
+            "fraction_routed": 0.1,
+            "accuracy": 0.44
+          },
+          {
+            "fraction_routed": 0.15,
+            "accuracy": 0.47
+          },
+          {
+            "fraction_routed": 0.2,
+            "accuracy": 0.5
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.52
+          },
+          {
+            "fraction_routed": 0.3,
+            "accuracy": 0.545
+          },
+          {
+            "fraction_routed": 0.35,
+            "accuracy": 0.57
+          },
+          {
+            "fraction_routed": 0.4,
+            "accuracy": 0.595
+          },
+          {
+            "fraction_routed": 0.45,
+            "accuracy": 0.62
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.625
+          },
+          {
+            "fraction_routed": 0.55,
+            "accuracy": 0.65
+          },
+          {
+            "fraction_routed": 0.6,
+            "accuracy": 0.66
+          },
+          {
+            "fraction_routed": 0.65,
+            "accuracy": 0.67
+          },
+          {
+            "fraction_routed": 0.7,
+            "accuracy": 0.675
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.67
+          },
+          {
+            "fraction_routed": 0.8,
+            "accuracy": 0.68
+          },
+          {
+            "fraction_routed": 0.85,
+            "accuracy": 0.685
+          },
+          {
+            "fraction_routed": 0.9,
+            "accuracy": 0.695
+          },
+          {
+            "fraction_routed": 0.95,
+            "accuracy": 0.69
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.69
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 0.9
+      }
+    },
+    {
+      "seed": 1,
+      "train_info": {
+        "best_val_auroc": 0.7865061767500792,
+        "epochs_run": 0
+      },
+      "val": {
+        "n": 200,
+        "n_positive": 123,
+        "base_rate": 0.615,
+        "auroc": 0.7865061767500792,
+        "auroc_bootstrap": {
+          "ci": [
+            0.7192439867088839,
+            0.8490477122163869
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.8508387829420736,
+        "threshold": 0.0,
+        "routed_accuracy": 0.74,
+        "fraction_routed_to_thinking": 1.0,
+        "baselines": {
+          "never_think": 0.385,
+          "always_think": 0.74,
+          "oracle": 0.745
+        },
+        "by_difficulty": {
+          "biology": {
+            "n": 10,
+            "base_rate": 0.2,
+            "auroc": 0.5625,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1789
+            }
+          },
+          "business": {
+            "n": 11,
+            "base_rate": 0.6363636363636364,
+            "auroc": 0.8571428571428571,
+            "auroc_bootstrap": {
+              "ci": [
+                0.5416666666666666,
+                1.0
+              ],
+              "n_boot": 1981
+            }
+          },
+          "chemistry": {
+            "n": 22,
+            "base_rate": 0.8181818181818182,
+            "auroc": 0.9305555555555556,
+            "auroc_bootstrap": {
+              "ci": [
+                0.75,
+                1.0
+              ],
+              "n_boot": 1975
+            }
+          },
+          "computer_science": {
+            "n": 8,
+            "base_rate": 0.5,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1988
+            }
+          },
+          "economics": {
+            "n": 16,
+            "base_rate": 0.375,
+            "auroc": 0.7666666666666667,
+            "auroc_bootstrap": {
+              "ci": [
+                0.4166666666666667,
+                1.0
+              ],
+              "n_boot": 2000
+            }
+          },
+          "engineering": {
+            "n": 15,
+            "base_rate": 0.8666666666666667,
+            "auroc": 0.9615384615384616,
+            "auroc_bootstrap": {
+              "ci": [
+                0.8333333333333334,
+                1.0
+              ],
+              "n_boot": 1778
+            }
+          },
+          "health": {
+            "n": 12,
+            "base_rate": 0.5,
+            "auroc": 0.6666666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.3125,
+                1.0
+              ],
+              "n_boot": 2000
+            }
+          },
+          "history": {
+            "n": 6,
+            "base_rate": 0.16666666666666666,
+            "auroc": 0.4,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.8
+              ],
+              "n_boot": 1360
+            }
+          },
+          "law": {
+            "n": 15,
+            "base_rate": 0.9333333333333333,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1291
+            }
+          },
+          "math": {
+            "n": 25,
+            "base_rate": 0.64,
+            "auroc": 0.7847222222222222,
+            "auroc_bootstrap": {
+              "ci": [
+                0.5416666666666666,
+                0.9610938693659279
+              ],
+              "n_boot": 2000
+            }
+          },
+          "other": {
+            "n": 14,
+            "base_rate": 0.5,
+            "auroc": 0.7142857142857143,
+            "auroc_bootstrap": {
+              "ci": [
+                0.375,
+                0.9583333333333334
+              ],
+              "n_boot": 1999
+            }
+          },
+          "philosophy": {
+            "n": 7,
+            "base_rate": 0.42857142857142855,
+            "auroc": 0.3333333333333333,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.9249999999999924
+              ],
+              "n_boot": 1957
+            }
+          },
+          "physics": {
+            "n": 25,
+            "base_rate": 0.84,
+            "auroc": 0.75,
+            "auroc_bootstrap": {
+              "ci": [
+                0.4530303030303031,
+                1.0
+              ],
+              "n_boot": 1973
+            }
+          },
+          "psychology": {
+            "n": 14,
+            "base_rate": 0.35714285714285715,
+            "auroc": 0.8,
+            "auroc_bootstrap": {
+              "ci": [
+                0.4,
+                1.0
+              ],
+              "n_boot": 1999
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.385
+          },
+          {
+            "fraction_routed": 0.05,
+            "accuracy": 0.415
+          },
+          {
+            "fraction_routed": 0.1,
+            "accuracy": 0.445
+          },
+          {
+            "fraction_routed": 0.15,
+            "accuracy": 0.48
+          },
+          {
+            "fraction_routed": 0.2,
+            "accuracy": 0.495
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.53
+          },
+          {
+            "fraction_routed": 0.3,
+            "accuracy": 0.55
+          },
+          {
+            "fraction_routed": 0.35,
+            "accuracy": 0.565
+          },
+          {
+            "fraction_routed": 0.4,
+            "accuracy": 0.575
+          },
+          {
+            "fraction_routed": 0.45,
+            "accuracy": 0.6
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.625
+          },
+          {
+            "fraction_routed": 0.55,
+            "accuracy": 0.65
+          },
+          {
+            "fraction_routed": 0.6,
+            "accuracy": 0.67
+          },
+          {
+            "fraction_routed": 0.65,
+            "accuracy": 0.685
+          },
+          {
+            "fraction_routed": 0.7,
+            "accuracy": 0.7
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.705
+          },
+          {
+            "fraction_routed": 0.8,
+            "accuracy": 0.72
+          },
+          {
+            "fraction_routed": 0.85,
+            "accuracy": 0.725
+          },
+          {
+            "fraction_routed": 0.9,
+            "accuracy": 0.73
+          },
+          {
+            "fraction_routed": 0.95,
+            "accuracy": 0.735
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.74
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 1.0
+      },
+      "test": {
+        "n": 200,
+        "n_positive": 123,
+        "base_rate": 0.615,
+        "auroc": 0.7754197022489705,
+        "auroc_bootstrap": {
+          "ci": [
+            0.7128594369476233,
+            0.8331361123448814
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.8639332918548502,
+        "threshold": 0.0,
+        "routed_accuracy": 0.695,
+        "fraction_routed_to_thinking": 1.0,
+        "baselines": {
+          "never_think": 0.385,
+          "always_think": 0.695,
+          "oracle": 0.76
+        },
+        "by_difficulty": {
+          "biology": {
+            "n": 12,
+            "base_rate": 0.16666666666666666,
+            "auroc": 0.8,
+            "auroc_bootstrap": {
+              "ci": [
+                0.4,
+                1.0
+              ],
+              "n_boot": 1782
+            }
+          },
+          "business": {
+            "n": 17,
+            "base_rate": 0.6470588235294118,
+            "auroc": 0.5757575757575758,
+            "auroc_bootstrap": {
+              "ci": [
+                0.2665972222222223,
+                0.8666666666666667
+              ],
+              "n_boot": 2000
+            }
+          },
+          "chemistry": {
+            "n": 23,
+            "base_rate": 0.9565217391304348,
+            "auroc": 0.7272727272727273,
+            "auroc_bootstrap": {
+              "ci": [
+                0.5238095238095238,
+                0.9090909090909091
+              ],
+              "n_boot": 1268
+            }
+          },
+          "computer_science": {
+            "n": 6,
+            "base_rate": 0.5,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1930
+            }
+          },
+          "economics": {
+            "n": 18,
+            "base_rate": 0.5555555555555556,
+            "auroc": 0.5625,
+            "auroc_bootstrap": {
+              "ci": [
+                0.25,
+                0.8519841269841263
+              ],
+              "n_boot": 2000
+            }
+          },
+          "engineering": {
+            "n": 13,
+            "base_rate": 0.7692307692307693,
+            "auroc": 0.9333333333333333,
+            "auroc_bootstrap": {
+              "ci": [
+                0.7335227272727283,
+                1.0
+              ],
+              "n_boot": 1932
+            }
+          },
+          "health": {
+            "n": 16,
+            "base_rate": 0.5625,
+            "auroc": 0.6666666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.3650432900432901,
+                0.9487179487179487
+              ],
+              "n_boot": 2000
+            }
+          },
+          "history": {
+            "n": 4,
+            "base_rate": 0.25,
+            "auroc": 0.6666666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1383
+            }
+          },
+          "law": {
+            "n": 19,
+            "base_rate": 0.7894736842105263,
+            "auroc": 0.55,
+            "auroc_bootstrap": {
+              "ci": [
+                0.16666666666666666,
+                0.9411764705882353
+              ],
+              "n_boot": 1979
+            }
+          },
+          "math": {
+            "n": 21,
+            "base_rate": 0.7142857142857143,
+            "auroc": 0.8444444444444444,
+            "auroc_bootstrap": {
+              "ci": [
+                0.6111111111111112,
+                1.0
+              ],
+              "n_boot": 1998
+            }
+          },
+          "other": {
+            "n": 15,
+            "base_rate": 0.6666666666666666,
+            "auroc": 0.6,
+            "auroc_bootstrap": {
+              "ci": [
+                0.23076923076923078,
+                0.9629629629629629
+              ],
+              "n_boot": 1992
+            }
+          },
+          "philosophy": {
+            "n": 11,
+            "base_rate": 0.36363636363636365,
+            "auroc": 0.5357142857142857,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1989
+            }
+          },
+          "physics": {
+            "n": 16,
+            "base_rate": 0.625,
+            "auroc": 0.9333333333333333,
+            "auroc_bootstrap": {
+              "ci": [
+                0.7666145833333334,
+                1.0
+              ],
+              "n_boot": 1999
+            }
+          },
+          "psychology": {
+            "n": 9,
+            "base_rate": 0.1111111111111111,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1315
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.385
+          },
+          {
+            "fraction_routed": 0.05,
+            "accuracy": 0.42
+          },
+          {
+            "fraction_routed": 0.1,
+            "accuracy": 0.455
+          },
+          {
+            "fraction_routed": 0.15,
+            "accuracy": 0.49
+          },
+          {
+            "fraction_routed": 0.2,
+            "accuracy": 0.505
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.525
+          },
+          {
+            "fraction_routed": 0.3,
+            "accuracy": 0.54
+          },
+          {
+            "fraction_routed": 0.35,
+            "accuracy": 0.57
+          },
+          {
+            "fraction_routed": 0.4,
+            "accuracy": 0.59
+          },
+          {
+            "fraction_routed": 0.45,
+            "accuracy": 0.62
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.63
+          },
+          {
+            "fraction_routed": 0.55,
+            "accuracy": 0.65
+          },
+          {
+            "fraction_routed": 0.6,
+            "accuracy": 0.655
+          },
+          {
+            "fraction_routed": 0.65,
+            "accuracy": 0.655
+          },
+          {
+            "fraction_routed": 0.7,
+            "accuracy": 0.655
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.665
+          },
+          {
+            "fraction_routed": 0.8,
+            "accuracy": 0.685
+          },
+          {
+            "fraction_routed": 0.85,
+            "accuracy": 0.685
+          },
+          {
+            "fraction_routed": 0.9,
+            "accuracy": 0.695
+          },
+          {
+            "fraction_routed": 0.95,
+            "accuracy": 0.695
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.695
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 0.9
+      }
+    },
+    {
+      "seed": 2,
+      "train_info": {
+        "best_val_auroc": 0.6881005173688101,
+        "epochs_run": 0
+      },
+      "val": {
+        "n": 200,
+        "n_positive": 123,
+        "base_rate": 0.615,
+        "auroc": 0.6881005173688101,
+        "auroc_bootstrap": {
+          "ci": [
+            0.6109170145755511,
+            0.7579639062983052
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.8120971408581941,
+        "threshold": 4.348708171164617e-05,
+        "routed_accuracy": 0.72,
+        "fraction_routed_to_thinking": 0.965,
+        "baselines": {
+          "never_think": 0.385,
+          "always_think": 0.71,
+          "oracle": 0.755
+        },
+        "by_difficulty": {
+          "biology": {
+            "n": 13,
+            "base_rate": 0.3076923076923077,
+            "auroc": 0.5555555555555556,
+            "auroc_bootstrap": {
+              "ci": [
+                0.17806818181818213,
+                0.9513095238095236
+              ],
+              "n_boot": 1979
+            }
+          },
+          "business": {
+            "n": 12,
+            "base_rate": 0.4166666666666667,
+            "auroc": 0.2571428571428571,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.6666666666666666
+              ],
+              "n_boot": 1997
+            }
+          },
+          "chemistry": {
+            "n": 18,
+            "base_rate": 0.9444444444444444,
+            "auroc": 0.9411764705882353,
+            "auroc_bootstrap": {
+              "ci": [
+                0.8125,
+                1.0
+              ],
+              "n_boot": 1303
+            }
+          },
+          "computer_science": {
+            "n": 6,
+            "base_rate": 0.5,
+            "auroc": 0.5555555555555556,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1942
+            }
+          },
+          "economics": {
+            "n": 13,
+            "base_rate": 0.5384615384615384,
+            "auroc": 0.23809523809523808,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.5714285714285714
+              ],
+              "n_boot": 2000
+            }
+          },
+          "engineering": {
+            "n": 17,
+            "base_rate": 0.9411764705882353,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1264
+            }
+          },
+          "health": {
+            "n": 15,
+            "base_rate": 0.4666666666666667,
+            "auroc": 0.32142857142857145,
+            "auroc_bootstrap": {
+              "ci": [
+                0.045454545454545456,
+                0.6428571428571429
+              ],
+              "n_boot": 2000
+            }
+          },
+          "history": {
+            "n": 8,
+            "base_rate": 0.625,
+            "auroc": 0.13333333333333333,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.5333333333333333
+              ],
+              "n_boot": 1947
+            }
+          },
+          "law": {
+            "n": 14,
+            "base_rate": 0.7857142857142857,
+            "auroc": 0.5757575757575758,
+            "auroc_bootstrap": {
+              "ci": [
+                0.16666666666666666,
+                1.0
+              ],
+              "n_boot": 1943
+            }
+          },
+          "math": {
+            "n": 25,
+            "base_rate": 0.64,
+            "auroc": 0.875,
+            "auroc_bootstrap": {
+              "ci": [
+                0.6933245614035088,
+                1.0
+              ],
+              "n_boot": 2000
+            }
+          },
+          "other": {
+            "n": 15,
+            "base_rate": 0.4666666666666667,
+            "auroc": 0.8214285714285714,
+            "auroc_bootstrap": {
+              "ci": [
+                0.5535714285714286,
+                1.0
+              ],
+              "n_boot": 2000
+            }
+          },
+          "philosophy": {
+            "n": 10,
+            "base_rate": 0.6,
+            "auroc": 0.4166666666666667,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.8333333333333334
+              ],
+              "n_boot": 1991
+            }
+          },
+          "physics": {
+            "n": 23,
+            "base_rate": 0.6521739130434783,
+            "auroc": 0.8,
+            "auroc_bootstrap": {
+              "ci": [
+                0.578921568627451,
+                0.9538811188811189
+              ],
+              "n_boot": 1999
+            }
+          },
+          "psychology": {
+            "n": 11,
+            "base_rate": 0.36363636363636365,
+            "auroc": 0.7857142857142857,
+            "auroc_bootstrap": {
+              "ci": [
+                0.3913690476190478,
+                1.0
+              ],
+              "n_boot": 1986
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.385
+          },
+          {
+            "fraction_routed": 0.05,
+            "accuracy": 0.435
+          },
+          {
+            "fraction_routed": 0.1,
+            "accuracy": 0.465
+          },
+          {
+            "fraction_routed": 0.15,
+            "accuracy": 0.5
+          },
+          {
+            "fraction_routed": 0.2,
+            "accuracy": 0.53
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.555
+          },
+          {
+            "fraction_routed": 0.3,
+            "accuracy": 0.585
+          },
+          {
+            "fraction_routed": 0.35,
+            "accuracy": 0.595
+          },
+          {
+            "fraction_routed": 0.4,
+            "accuracy": 0.595
+          },
+          {
+            "fraction_routed": 0.45,
+            "accuracy": 0.62
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.625
+          },
+          {
+            "fraction_routed": 0.55,
+            "accuracy": 0.645
+          },
+          {
+            "fraction_routed": 0.6,
+            "accuracy": 0.65
+          },
+          {
+            "fraction_routed": 0.65,
+            "accuracy": 0.67
+          },
+          {
+            "fraction_routed": 0.7,
+            "accuracy": 0.68
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.685
+          },
+          {
+            "fraction_routed": 0.8,
+            "accuracy": 0.685
+          },
+          {
+            "fraction_routed": 0.85,
+            "accuracy": 0.705
+          },
+          {
+            "fraction_routed": 0.9,
+            "accuracy": 0.71
+          },
+          {
+            "fraction_routed": 0.95,
+            "accuracy": 0.72
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.71
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 0.9
+      },
+      "test": {
+        "n": 200,
+        "n_positive": 123,
+        "base_rate": 0.615,
+        "auroc": 0.7904128391933269,
+        "auroc_bootstrap": {
+          "ci": [
+            0.7240932266215063,
+            0.8514556432291667
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.8599368995318347,
+        "threshold": 4.348708171164617e-05,
+        "routed_accuracy": 0.695,
+        "fraction_routed_to_thinking": 0.955,
+        "baselines": {
+          "never_think": 0.385,
+          "always_think": 0.695,
+          "oracle": 0.715
+        },
+        "by_difficulty": {
+          "biology": {
+            "n": 14,
+            "base_rate": 0.35714285714285715,
+            "auroc": 0.8666666666666667,
+            "auroc_bootstrap": {
+              "ci": [
+                0.5483333333333338,
+                1.0
+              ],
+              "n_boot": 1993
+            }
+          },
+          "business": {
+            "n": 15,
+            "base_rate": 0.6666666666666666,
+            "auroc": 0.78,
+            "auroc_bootstrap": {
+              "ci": [
+                0.5,
+                1.0
+              ],
+              "n_boot": 1996
+            }
+          },
+          "chemistry": {
+            "n": 18,
+            "base_rate": 0.7777777777777778,
+            "auroc": 0.8392857142857143,
+            "auroc_bootstrap": {
+              "ci": [
+                0.6,
+                1.0
+              ],
+              "n_boot": 1987
+            }
+          },
+          "computer_science": {
+            "n": 5,
+            "base_rate": 0.6,
+            "auroc": 0.6666666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1836
+            }
+          },
+          "economics": {
+            "n": 19,
+            "base_rate": 0.2631578947368421,
+            "auroc": 0.6714285714285714,
+            "auroc_bootstrap": {
+              "ci": [
+                0.375,
+                0.9166666666666666
+              ],
+              "n_boot": 1990
+            }
+          },
+          "engineering": {
+            "n": 19,
+            "base_rate": 0.9473684210526315,
+            "auroc": 0.8888888888888888,
+            "auroc_bootstrap": {
+              "ci": [
+                0.7222222222222222,
+                1.0
+              ],
+              "n_boot": 1301
+            }
+          },
+          "health": {
+            "n": 18,
+            "base_rate": 0.6111111111111112,
+            "auroc": 0.5974025974025974,
+            "auroc_bootstrap": {
+              "ci": [
+                0.31247970779220785,
+                0.8750385802469134
+              ],
+              "n_boot": 2000
+            }
+          },
+          "history": {
+            "n": 5,
+            "base_rate": 0.2,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1372
+            }
+          },
+          "law": {
+            "n": 18,
+            "base_rate": 0.8333333333333334,
+            "auroc": 0.7777777777777778,
+            "auroc_bootstrap": {
+              "ci": [
+                0.3862179487179489,
+                1.0
+              ],
+              "n_boot": 1936
+            }
+          },
+          "math": {
+            "n": 21,
+            "base_rate": 0.6190476190476191,
+            "auroc": 0.8269230769230769,
+            "auroc_bootstrap": {
+              "ci": [
+                0.5462752525252526,
+                1.0
+              ],
+              "n_boot": 2000
+            }
+          },
+          "other": {
+            "n": 17,
+            "base_rate": 0.6470588235294118,
+            "auroc": 0.6818181818181818,
+            "auroc_bootstrap": {
+              "ci": [
+                0.38310606060606084,
+                0.9428571428571428
+              ],
+              "n_boot": 1999
+            }
+          },
+          "philosophy": {
+            "n": 5,
+            "base_rate": 0.4,
+            "auroc": 0.8333333333333334,
+            "auroc_bootstrap": {
+              "ci": [
+                0.25,
+                1.0
+              ],
+              "n_boot": 1829
+            }
+          },
+          "physics": {
+            "n": 15,
+            "base_rate": 0.8,
+            "auroc": 0.8888888888888888,
+            "auroc_bootstrap": {
+              "ci": [
+                0.6428571428571429,
+                1.0
+              ],
+              "n_boot": 1930
+            }
+          },
+          "psychology": {
+            "n": 11,
+            "base_rate": 0.2727272727272727,
+            "auroc": 0.75,
+            "auroc_bootstrap": {
+              "ci": [
+                0.2,
+                1.0
+              ],
+              "n_boot": 1943
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.385
+          },
+          {
+            "fraction_routed": 0.05,
+            "accuracy": 0.425
+          },
+          {
+            "fraction_routed": 0.1,
+            "accuracy": 0.455
+          },
+          {
+            "fraction_routed": 0.15,
+            "accuracy": 0.48
+          },
+          {
+            "fraction_routed": 0.2,
+            "accuracy": 0.505
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.525
+          },
+          {
+            "fraction_routed": 0.3,
+            "accuracy": 0.55
+          },
+          {
+            "fraction_routed": 0.35,
+            "accuracy": 0.56
+          },
+          {
+            "fraction_routed": 0.4,
+            "accuracy": 0.59
+          },
+          {
+            "fraction_routed": 0.45,
+            "accuracy": 0.605
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.615
+          },
+          {
+            "fraction_routed": 0.55,
+            "accuracy": 0.64
+          },
+          {
+            "fraction_routed": 0.6,
+            "accuracy": 0.65
+          },
+          {
+            "fraction_routed": 0.65,
+            "accuracy": 0.655
+          },
+          {
+            "fraction_routed": 0.7,
+            "accuracy": 0.67
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.68
+          },
+          {
+            "fraction_routed": 0.8,
+            "accuracy": 0.69
+          },
+          {
+            "fraction_routed": 0.85,
+            "accuracy": 0.69
+          },
+          {
+            "fraction_routed": 0.9,
+            "accuracy": 0.695
+          },
+          {
+            "fraction_routed": 0.95,
+            "accuracy": 0.695
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.695
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 0.9
+      }
+    },
+    {
+      "seed": 3,
+      "train_info": {
+        "best_val_auroc": 0.7733079928201879,
+        "epochs_run": 0
+      },
+      "val": {
+        "n": 200,
+        "n_positive": 123,
+        "base_rate": 0.615,
+        "auroc": 0.7733079928201879,
+        "auroc_bootstrap": {
+          "ci": [
+            0.7042310760520252,
+            0.8365797469209413
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.8439306525267948,
+        "threshold": 0.0,
+        "routed_accuracy": 0.76,
+        "fraction_routed_to_thinking": 1.0,
+        "baselines": {
+          "never_think": 0.385,
+          "always_think": 0.76,
+          "oracle": 0.795
+        },
+        "by_difficulty": {
+          "biology": {
+            "n": 10,
+            "base_rate": 0.2,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1798
+            }
+          },
+          "business": {
+            "n": 17,
+            "base_rate": 0.6470588235294118,
+            "auroc": 0.7575757575757576,
+            "auroc_bootstrap": {
+              "ci": [
+                0.514265873015873,
+                0.9666666666666667
+              ],
+              "n_boot": 1999
+            }
+          },
+          "chemistry": {
+            "n": 27,
+            "base_rate": 0.8888888888888888,
+            "auroc": 0.8333333333333334,
+            "auroc_bootstrap": {
+              "ci": [
+                0.64,
+                0.9615384615384616
+              ],
+              "n_boot": 1922
+            }
+          },
+          "computer_science": {
+            "n": 7,
+            "base_rate": 0.8571428571428571,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1338
+            }
+          },
+          "economics": {
+            "n": 10,
+            "base_rate": 0.6,
+            "auroc": 0.5833333333333334,
+            "auroc_bootstrap": {
+              "ci": [
+                0.1648333333333336,
+                1.0
+              ],
+              "n_boot": 1990
+            }
+          },
+          "engineering": {
+            "n": 8,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "health": {
+            "n": 12,
+            "base_rate": 0.6666666666666666,
+            "auroc": 0.875,
+            "auroc_bootstrap": {
+              "ci": [
+                0.5714285714285714,
+                1.0
+              ],
+              "n_boot": 1978
+            }
+          },
+          "history": {
+            "n": 5,
+            "base_rate": 0.2,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1327
+            }
+          },
+          "law": {
+            "n": 19,
+            "base_rate": 0.8421052631578947,
+            "auroc": 0.4375,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0625,
+                0.9375
+              ],
+              "n_boot": 1935
+            }
+          },
+          "math": {
+            "n": 22,
+            "base_rate": 0.5909090909090909,
+            "auroc": 0.9401709401709402,
+            "auroc_bootstrap": {
+              "ci": [
+                0.819047619047619,
+                1.0
+              ],
+              "n_boot": 2000
+            }
+          },
+          "other": {
+            "n": 17,
+            "base_rate": 0.35294117647058826,
+            "auroc": 0.5454545454545454,
+            "auroc_bootstrap": {
+              "ci": [
+                0.2121066433566434,
+                0.8571428571428571
+              ],
+              "n_boot": 2000
+            }
+          },
+          "philosophy": {
+            "n": 10,
+            "base_rate": 0.6,
+            "auroc": 0.5416666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1991
+            }
+          },
+          "physics": {
+            "n": 20,
+            "base_rate": 0.65,
+            "auroc": 0.8241758241758241,
+            "auroc_bootstrap": {
+              "ci": [
+                0.5466666666666666,
+                1.0
+              ],
+              "n_boot": 2000
+            }
+          },
+          "psychology": {
+            "n": 16,
+            "base_rate": 0.1875,
+            "auroc": 0.717948717948718,
+            "auroc_bootstrap": {
+              "ci": [
+                0.21428571428571427,
+                1.0
+              ],
+              "n_boot": 1939
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.385
+          },
+          {
+            "fraction_routed": 0.05,
+            "accuracy": 0.425
+          },
+          {
+            "fraction_routed": 0.1,
+            "accuracy": 0.45
+          },
+          {
+            "fraction_routed": 0.15,
+            "accuracy": 0.48
+          },
+          {
+            "fraction_routed": 0.2,
+            "accuracy": 0.515
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.545
+          },
+          {
+            "fraction_routed": 0.3,
+            "accuracy": 0.565
+          },
+          {
+            "fraction_routed": 0.35,
+            "accuracy": 0.59
+          },
+          {
+            "fraction_routed": 0.4,
+            "accuracy": 0.61
+          },
+          {
+            "fraction_routed": 0.45,
+            "accuracy": 0.625
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.655
+          },
+          {
+            "fraction_routed": 0.55,
+            "accuracy": 0.655
+          },
+          {
+            "fraction_routed": 0.6,
+            "accuracy": 0.67
+          },
+          {
+            "fraction_routed": 0.65,
+            "accuracy": 0.695
+          },
+          {
+            "fraction_routed": 0.7,
+            "accuracy": 0.7
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.725
+          },
+          {
+            "fraction_routed": 0.8,
+            "accuracy": 0.74
+          },
+          {
+            "fraction_routed": 0.85,
+            "accuracy": 0.74
+          },
+          {
+            "fraction_routed": 0.9,
+            "accuracy": 0.75
+          },
+          {
+            "fraction_routed": 0.95,
+            "accuracy": 0.755
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.76
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 1.0
+      },
+      "test": {
+        "n": 200,
+        "n_positive": 123,
+        "base_rate": 0.615,
+        "auroc": 0.7789040228064619,
+        "auroc_bootstrap": {
+          "ci": [
+            0.7152161515746381,
+            0.8405668721390186
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.8697098503804186,
+        "threshold": 0.0,
+        "routed_accuracy": 0.715,
+        "fraction_routed_to_thinking": 1.0,
+        "baselines": {
+          "never_think": 0.385,
+          "always_think": 0.715,
+          "oracle": 0.74
+        },
+        "by_difficulty": {
+          "biology": {
+            "n": 7,
+            "base_rate": 0.2857142857142857,
+            "auroc": 0.9,
+            "auroc_bootstrap": {
+              "ci": [
+                0.5,
+                1.0
+              ],
+              "n_boot": 1796
+            }
+          },
+          "business": {
+            "n": 11,
+            "base_rate": 0.6363636363636364,
+            "auroc": 0.9285714285714286,
+            "auroc_bootstrap": {
+              "ci": [
+                0.6785714285714286,
+                1.0
+              ],
+              "n_boot": 1985
+            }
+          },
+          "chemistry": {
+            "n": 22,
+            "base_rate": 0.9090909090909091,
+            "auroc": 0.975,
+            "auroc_bootstrap": {
+              "ci": [
+                0.8947368421052632,
+                1.0
+              ],
+              "n_boot": 1757
+            }
+          },
+          "computer_science": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1033
+            }
+          },
+          "economics": {
+            "n": 16,
+            "base_rate": 0.625,
+            "auroc": 0.65,
+            "auroc_bootstrap": {
+              "ci": [
+                0.3492063492063492,
+                0.9166666666666666
+              ],
+              "n_boot": 2000
+            }
+          },
+          "engineering": {
+            "n": 14,
+            "base_rate": 0.9285714285714286,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1282
+            }
+          },
+          "health": {
+            "n": 13,
+            "base_rate": 0.5384615384615384,
+            "auroc": 0.6904761904761905,
+            "auroc_bootstrap": {
+              "ci": [
+                0.3333333333333333,
+                0.975
+              ],
+              "n_boot": 1999
+            }
+          },
+          "history": {
+            "n": 5,
+            "base_rate": 0.6,
+            "auroc": 0.16666666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.75
+              ],
+              "n_boot": 1818
+            }
+          },
+          "law": {
+            "n": 16,
+            "base_rate": 0.8125,
+            "auroc": 0.9743589743589743,
+            "auroc_bootstrap": {
+              "ci": [
+                0.8666666666666667,
+                1.0
+              ],
+              "n_boot": 1918
+            }
+          },
+          "math": {
+            "n": 25,
+            "base_rate": 0.56,
+            "auroc": 0.8181818181818182,
+            "auroc_bootstrap": {
+              "ci": [
+                0.6363636363636364,
+                0.961038961038961
+              ],
+              "n_boot": 2000
+            }
+          },
+          "other": {
+            "n": 14,
+            "base_rate": 0.42857142857142855,
+            "auroc": 0.4375,
+            "auroc_bootstrap": {
+              "ci": [
+                0.10193877551020418,
+                0.7916666666666666
+              ],
+              "n_boot": 1999
+            }
+          },
+          "philosophy": {
+            "n": 18,
+            "base_rate": 0.4444444444444444,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.22064435564435586,
+                0.7662337662337663
+              ],
+              "n_boot": 2000
+            }
+          },
+          "physics": {
+            "n": 25,
+            "base_rate": 0.68,
+            "auroc": 0.8235294117647058,
+            "auroc_bootstrap": {
+              "ci": [
+                0.6346153846153846,
+                0.9744047619047617
+              ],
+              "n_boot": 2000
+            }
+          },
+          "psychology": {
+            "n": 12,
+            "base_rate": 0.16666666666666666,
+            "auroc": 0.7,
+            "auroc_bootstrap": {
+              "ci": [
+                0.28125,
+                1.0
+              ],
+              "n_boot": 1785
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.385
+          },
+          {
+            "fraction_routed": 0.05,
+            "accuracy": 0.415
+          },
+          {
+            "fraction_routed": 0.1,
+            "accuracy": 0.44
+          },
+          {
+            "fraction_routed": 0.15,
+            "accuracy": 0.475
+          },
+          {
+            "fraction_routed": 0.2,
+            "accuracy": 0.51
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.53
+          },
+          {
+            "fraction_routed": 0.3,
+            "accuracy": 0.56
+          },
+          {
+            "fraction_routed": 0.35,
+            "accuracy": 0.575
+          },
+          {
+            "fraction_routed": 0.4,
+            "accuracy": 0.595
+          },
+          {
+            "fraction_routed": 0.45,
+            "accuracy": 0.605
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.63
+          },
+          {
+            "fraction_routed": 0.55,
+            "accuracy": 0.65
+          },
+          {
+            "fraction_routed": 0.6,
+            "accuracy": 0.665
+          },
+          {
+            "fraction_routed": 0.65,
+            "accuracy": 0.69
+          },
+          {
+            "fraction_routed": 0.7,
+            "accuracy": 0.685
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.695
+          },
+          {
+            "fraction_routed": 0.8,
+            "accuracy": 0.705
+          },
+          {
+            "fraction_routed": 0.85,
+            "accuracy": 0.715
+          },
+          {
+            "fraction_routed": 0.9,
+            "accuracy": 0.715
+          },
+          {
+            "fraction_routed": 0.95,
+            "accuracy": 0.705
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.715
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 0.85
+      }
+    },
+    {
+      "seed": 4,
+      "train_info": {
+        "best_val_auroc": 0.8079400274522226,
+        "epochs_run": 0
+      },
+      "val": {
+        "n": 200,
+        "n_positive": 123,
+        "base_rate": 0.615,
+        "auroc": 0.8079400274522226,
+        "auroc_bootstrap": {
+          "ci": [
+            0.7474905707382489,
+            0.8653783639348016
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.8738573813145813,
+        "threshold": 0.011867578141391277,
+        "routed_accuracy": 0.705,
+        "fraction_routed_to_thinking": 0.855,
+        "baselines": {
+          "never_think": 0.385,
+          "always_think": 0.69,
+          "oracle": 0.735
+        },
+        "by_difficulty": {
+          "biology": {
+            "n": 14,
+            "base_rate": 0.42857142857142855,
+            "auroc": 0.9166666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.7111111111111111,
+                1.0
+              ],
+              "n_boot": 1999
+            }
+          },
+          "business": {
+            "n": 11,
+            "base_rate": 0.8181818181818182,
+            "auroc": 0.7777777777777778,
+            "auroc_bootstrap": {
+              "ci": [
+                0.4444444444444444,
+                1.0
+              ],
+              "n_boot": 1760
+            }
+          },
+          "chemistry": {
+            "n": 18,
+            "base_rate": 0.8888888888888888,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1742
+            }
+          },
+          "computer_science": {
+            "n": 8,
+            "base_rate": 0.625,
+            "auroc": 0.8,
+            "auroc_bootstrap": {
+              "ci": [
+                0.3333333333333333,
+                1.0
+              ],
+              "n_boot": 1958
+            }
+          },
+          "economics": {
+            "n": 14,
+            "base_rate": 0.35714285714285715,
+            "auroc": 0.7555555555555555,
+            "auroc_bootstrap": {
+              "ci": [
+                0.43638392857142894,
+                1.0
+              ],
+              "n_boot": 1996
+            }
+          },
+          "engineering": {
+            "n": 21,
+            "base_rate": 0.8571428571428571,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1932
+            }
+          },
+          "health": {
+            "n": 17,
+            "base_rate": 0.5294117647058824,
+            "auroc": 0.5694444444444444,
+            "auroc_bootstrap": {
+              "ci": [
+                0.23333333333333334,
+                0.8655357142857135
+              ],
+              "n_boot": 2000
+            }
+          },
+          "history": {
+            "n": 7,
+            "base_rate": 0.2857142857142857,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1824
+            }
+          },
+          "law": {
+            "n": 19,
+            "base_rate": 0.6842105263157895,
+            "auroc": 0.41025641025641024,
+            "auroc_bootstrap": {
+              "ci": [
+                0.13333333333333333,
+                0.7142857142857143
+              ],
+              "n_boot": 1997
+            }
+          },
+          "math": {
+            "n": 22,
+            "base_rate": 0.5909090909090909,
+            "auroc": 0.9487179487179487,
+            "auroc_bootstrap": {
+              "ci": [
+                0.8332589285714287,
+                1.0
+              ],
+              "n_boot": 2000
+            }
+          },
+          "other": {
+            "n": 9,
+            "base_rate": 0.4444444444444444,
+            "auroc": 0.6,
+            "auroc_bootstrap": {
+              "ci": [
+                0.16666666666666666,
+                1.0
+              ],
+              "n_boot": 1988
+            }
+          },
+          "philosophy": {
+            "n": 7,
+            "base_rate": 0.8571428571428571,
+            "auroc": 0.16666666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.5
+              ],
+              "n_boot": 1315
+            }
+          },
+          "physics": {
+            "n": 21,
+            "base_rate": 0.6190476190476191,
+            "auroc": 0.9134615384615384,
+            "auroc_bootstrap": {
+              "ci": [
+                0.7555442176870748,
+                1.0
+              ],
+              "n_boot": 2000
+            }
+          },
+          "psychology": {
+            "n": 12,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.6875,
+            "auroc_bootstrap": {
+              "ci": [
+                0.3333333333333333,
+                1.0
+              ],
+              "n_boot": 1981
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.385
+          },
+          {
+            "fraction_routed": 0.05,
+            "accuracy": 0.42
+          },
+          {
+            "fraction_routed": 0.1,
+            "accuracy": 0.455
+          },
+          {
+            "fraction_routed": 0.15,
+            "accuracy": 0.48
+          },
+          {
+            "fraction_routed": 0.2,
+            "accuracy": 0.525
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.55
+          },
+          {
+            "fraction_routed": 0.3,
+            "accuracy": 0.575
+          },
+          {
+            "fraction_routed": 0.35,
+            "accuracy": 0.585
+          },
+          {
+            "fraction_routed": 0.4,
+            "accuracy": 0.595
+          },
+          {
+            "fraction_routed": 0.45,
+            "accuracy": 0.61
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.63
+          },
+          {
+            "fraction_routed": 0.55,
+            "accuracy": 0.645
+          },
+          {
+            "fraction_routed": 0.6,
+            "accuracy": 0.655
+          },
+          {
+            "fraction_routed": 0.65,
+            "accuracy": 0.66
+          },
+          {
+            "fraction_routed": 0.7,
+            "accuracy": 0.685
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.69
+          },
+          {
+            "fraction_routed": 0.8,
+            "accuracy": 0.7
+          },
+          {
+            "fraction_routed": 0.85,
+            "accuracy": 0.705
+          },
+          {
+            "fraction_routed": 0.9,
+            "accuracy": 0.7
+          },
+          {
+            "fraction_routed": 0.95,
+            "accuracy": 0.695
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.69
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 0.75
+      },
+      "test": {
+        "n": 200,
+        "n_positive": 123,
+        "base_rate": 0.615,
+        "auroc": 0.7731496146130292,
+        "auroc_bootstrap": {
+          "ci": [
+            0.7083863716455536,
+            0.83695231139261
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.8347939913477778,
+        "threshold": 0.011867578141391277,
+        "routed_accuracy": 0.705,
+        "fraction_routed_to_thinking": 0.865,
+        "baselines": {
+          "never_think": 0.385,
+          "always_think": 0.725,
+          "oracle": 0.775
+        },
+        "by_difficulty": {
+          "biology": {
+            "n": 14,
+            "base_rate": 0.2857142857142857,
+            "auroc": 0.4,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.8333333333333334
+              ],
+              "n_boot": 1984
+            }
+          },
+          "business": {
+            "n": 11,
+            "base_rate": 0.7272727272727273,
+            "auroc": 0.625,
+            "auroc_bootstrap": {
+              "ci": [
+                0.25,
+                1.0
+              ],
+              "n_boot": 1932
+            }
+          },
+          "chemistry": {
+            "n": 21,
+            "base_rate": 0.8571428571428571,
+            "auroc": 0.8518518518518519,
+            "auroc_bootstrap": {
+              "ci": [
+                0.5263157894736842,
+                1.0
+              ],
+              "n_boot": 1932
+            }
+          },
+          "computer_science": {
+            "n": 11,
+            "base_rate": 0.6363636363636364,
+            "auroc": 0.7142857142857143,
+            "auroc_bootstrap": {
+              "ci": [
+                0.25,
+                1.0
+              ],
+              "n_boot": 1979
+            }
+          },
+          "economics": {
+            "n": 18,
+            "base_rate": 0.4444444444444444,
+            "auroc": 0.5125,
+            "auroc_bootstrap": {
+              "ci": [
+                0.22077922077922077,
+                0.8
+              ],
+              "n_boot": 2000
+            }
+          },
+          "engineering": {
+            "n": 14,
+            "base_rate": 0.9285714285714286,
+            "auroc": 0.9230769230769231,
+            "auroc_bootstrap": {
+              "ci": [
+                0.75,
+                1.0
+              ],
+              "n_boot": 1266
+            }
+          },
+          "health": {
+            "n": 12,
+            "base_rate": 0.5833333333333334,
+            "auroc": 0.8285714285714286,
+            "auroc_bootstrap": {
+              "ci": [
+                0.5,
+                1.0
+              ],
+              "n_boot": 1992
+            }
+          },
+          "history": {
+            "n": 6,
+            "base_rate": 0.16666666666666666,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1341
+            }
+          },
+          "law": {
+            "n": 21,
+            "base_rate": 0.8571428571428571,
+            "auroc": 0.6481481481481481,
+            "auroc_bootstrap": {
+              "ci": [
+                0.4,
+                0.8823529411764706
+              ],
+              "n_boot": 1920
+            }
+          },
+          "math": {
+            "n": 25,
+            "base_rate": 0.64,
+            "auroc": 0.9027777777777778,
+            "auroc_bootstrap": {
+              "ci": [
+                0.7114583333333335,
+                1.0
+              ],
+              "n_boot": 2000
+            }
+          },
+          "other": {
+            "n": 11,
+            "base_rate": 0.45454545454545453,
+            "auroc": 0.9666666666666667,
+            "auroc_bootstrap": {
+              "ci": [
+                0.8,
+                1.0
+              ],
+              "n_boot": 1998
+            }
+          },
+          "philosophy": {
+            "n": 11,
+            "base_rate": 0.36363636363636365,
+            "auroc": 0.5357142857142857,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1986
+            }
+          },
+          "physics": {
+            "n": 17,
+            "base_rate": 0.7647058823529411,
+            "auroc": 0.5961538461538461,
+            "auroc_bootstrap": {
+              "ci": [
+                0.07142857142857142,
+                1.0
+              ],
+              "n_boot": 1980
+            }
+          },
+          "psychology": {
+            "n": 8,
+            "base_rate": 0.125,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1351
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.385
+          },
+          {
+            "fraction_routed": 0.05,
+            "accuracy": 0.415
+          },
+          {
+            "fraction_routed": 0.1,
+            "accuracy": 0.43
+          },
+          {
+            "fraction_routed": 0.15,
+            "accuracy": 0.46
+          },
+          {
+            "fraction_routed": 0.2,
+            "accuracy": 0.49
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.525
+          },
+          {
+            "fraction_routed": 0.3,
+            "accuracy": 0.55
+          },
+          {
+            "fraction_routed": 0.35,
+            "accuracy": 0.575
+          },
+          {
+            "fraction_routed": 0.4,
+            "accuracy": 0.585
+          },
+          {
+            "fraction_routed": 0.45,
+            "accuracy": 0.63
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.645
+          },
+          {
+            "fraction_routed": 0.55,
+            "accuracy": 0.65
+          },
+          {
+            "fraction_routed": 0.6,
+            "accuracy": 0.655
+          },
+          {
+            "fraction_routed": 0.65,
+            "accuracy": 0.67
+          },
+          {
+            "fraction_routed": 0.7,
+            "accuracy": 0.675
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.695
+          },
+          {
+            "fraction_routed": 0.8,
+            "accuracy": 0.715
+          },
+          {
+            "fraction_routed": 0.85,
+            "accuracy": 0.715
+          },
+          {
+            "fraction_routed": 0.9,
+            "accuracy": 0.715
+          },
+          {
+            "fraction_routed": 0.95,
+            "accuracy": 0.72
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.725
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 1.0
+      }
+    }
+  ]
+}

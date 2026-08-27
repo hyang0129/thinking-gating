@@ -1,0 +1,4709 @@
+{
+  "task": "bbh",
+  "model": "Qwen/Qwen3-8B",
+  "capture_dirs": [
+    "shared/icr_capture/bbh_thinking_qwen3"
+  ],
+  "method": "logreg",
+  "target": "needs_thinking",
+  "layer": 18,
+  "seeds": [
+    42,
+    1,
+    2,
+    3,
+    4
+  ],
+  "n_samples": 540,
+  "base_rate_helped": 0.48148148148148145,
+  "base_rate": 0.48148148148148145,
+  "prefill_mode": "off",
+  "aggregate": {
+    "test_auroc": {
+      "mean": 0.8381524725274726,
+      "ci": [
+        0.7928119106699458,
+        0.8834930343849994
+      ],
+      "sd": 0.051726825740542846,
+      "n": 5
+    },
+    "test_auprc": {
+      "mean": 0.8342169480136065,
+      "ci": [
+        0.7838973003993179,
+        0.884536595627895
+      ],
+      "sd": 0.05740722074968582,
+      "n": 5
+    },
+    "test_routed_accuracy": {
+      "mean": 0.8148148148148149,
+      "ci": [
+        0.7904665190598171,
+        0.8391631105698126
+      ],
+      "sd": 0.02777777777777778,
+      "n": 5
+    },
+    "fraction_routed": {
+      "mean": 1.0,
+      "ci": [
+        1.0,
+        1.0
+      ],
+      "sd": 0.0,
+      "n": 5
+    },
+    "baseline_never_think": {
+      "mean": 0.5185185185185185,
+      "ci": [
+        0.5185185185185185,
+        0.5185185185185185
+      ],
+      "sd": 0.0,
+      "n": 5
+    },
+    "baseline_always_think": {
+      "mean": 0.8148148148148149,
+      "ci": [
+        0.7904665190598171,
+        0.8391631105698126
+      ],
+      "sd": 0.02777777777777778,
+      "n": 5
+    },
+    "oracle": {
+      "mean": 0.8388888888888889,
+      "ci": [
+        0.816960398047921,
+        0.8608173797298568
+      ],
+      "sd": 0.02501714090019686,
+      "n": 5
+    },
+    "min_routed_for_always_think_accuracy": {
+      "mean": 0.8796296296296295,
+      "ci": [
+        0.798063848321632,
+        0.9611954109376271
+      ],
+      "sd": 0.0930544038992675,
+      "n": 5
+    },
+    "test_auroc_bootstrap": {
+      "ci": [
+        0.7592447435464311,
+        0.9072819743848285
+      ],
+      "n_seeds": 5
+    },
+    "test_auroc_by_difficulty": {
+      "boolean_expressions": {
+        "mean": 1.0,
+        "ci": [
+          1.0,
+          1.0
+        ],
+        "n": 1
+      },
+      "causal_judgement": {
+        "mean": 0.5,
+        "ci": [
+          0.5,
+          0.5
+        ],
+        "n": 1
+      },
+      "date_understanding": {
+        "mean": 0.53125,
+        "ci": [
+          0.15496985478212488,
+          0.9075301452178751
+        ],
+        "sd": 0.3839593318549746,
+        "n": 4
+      },
+      "disambiguation_qa": {
+        "mean": 0.6354166666666666,
+        "ci": [
+          0.37,
+          0.9008333333333333
+        ],
+        "sd": 0.2708333333333333,
+        "n": 4
+      },
+      "dyck_languages": {
+        "mean": NaN,
+        "ci": [
+          NaN,
+          NaN
+        ],
+        "n": 0
+      },
+      "formal_fallacies": {
+        "mean": 0.3333333333333333,
+        "ci": [
+          0.3333333333333333,
+          0.3333333333333333
+        ],
+        "n": 1
+      },
+      "geometric_shapes": {
+        "mean": 0.75,
+        "ci": [
+          0.4670983680970834,
+          1.0329016319029165
+        ],
+        "sd": 0.28867513459481287,
+        "n": 4
+      },
+      "hyperbaton": {
+        "mean": NaN,
+        "ci": [
+          NaN,
+          NaN
+        ],
+        "n": 0
+      },
+      "logical_deduction_five_objects": {
+        "mean": NaN,
+        "ci": [
+          NaN,
+          NaN
+        ],
+        "n": 0
+      },
+      "logical_deduction_seven_objects": {
+        "mean": NaN,
+        "ci": [
+          NaN,
+          NaN
+        ],
+        "n": 0
+      },
+      "logical_deduction_three_objects": {
+        "mean": 0.5111111111111111,
+        "ci": [
+          0.02609697106014025,
+          0.996125251162082
+        ],
+        "sd": 0.4286067004885758,
+        "n": 3
+      },
+      "movie_recommendation": {
+        "mean": 0.3055555555555555,
+        "ci": [
+          -0.0755555555555556,
+          0.6866666666666666
+        ],
+        "sd": 0.3367876570272817,
+        "n": 3
+      },
+      "multistep_arithmetic_two": {
+        "mean": NaN,
+        "ci": [
+          NaN,
+          NaN
+        ],
+        "n": 0
+      },
+      "navigate": {
+        "mean": 0.525,
+        "ci": [
+          0.15831757609615377,
+          0.8916824239038463
+        ],
+        "sd": 0.4183300132670378,
+        "n": 5
+      },
+      "object_counting": {
+        "mean": 0.5,
+        "ci": [
+          -0.47999999999999987,
+          1.48
+        ],
+        "sd": 0.7071067811865476,
+        "n": 2
+      },
+      "penguins_in_a_table": {
+        "mean": NaN,
+        "ci": [
+          NaN,
+          NaN
+        ],
+        "n": 0
+      },
+      "reasoning_about_colored_objects": {
+        "mean": 0.6666666666666666,
+        "ci": [
+          0.01333333333333342,
+          1.3199999999999998
+        ],
+        "sd": 0.4714045207910317,
+        "n": 2
+      },
+      "ruin_names": {
+        "mean": 0.5416666666666666,
+        "ci": [
+          0.1333333333333333,
+          0.95
+        ],
+        "sd": 0.2946278254943948,
+        "n": 2
+      },
+      "salient_translation_error_detection": {
+        "mean": 0.6416666666666666,
+        "ci": [
+          0.38393101397836144,
+          0.8994023193549718
+        ],
+        "sd": 0.26299556396765833,
+        "n": 4
+      },
+      "snarks": {
+        "mean": 0.75,
+        "ci": [
+          0.75,
+          0.75
+        ],
+        "n": 1
+      },
+      "sports_understanding": {
+        "mean": 0.3,
+        "ci": [
+          0.0599500052072485,
+          0.5400499947927515
+        ],
+        "sd": 0.2738612787525831,
+        "n": 5
+      },
+      "temporal_sequences": {
+        "mean": 0.16666666666666666,
+        "ci": [
+          -0.021934421268611087,
+          0.3552677546019444
+        ],
+        "sd": 0.19245008972987526,
+        "n": 4
+      },
+      "tracking_shuffled_objects_five_objects": {
+        "mean": 0.875,
+        "ci": [
+          0.7335491840485417,
+          1.0164508159514583
+        ],
+        "sd": 0.14433756729740643,
+        "n": 4
+      },
+      "tracking_shuffled_objects_seven_objects": {
+        "mean": 0.611111111111111,
+        "ci": [
+          0.21850663889392108,
+          1.003715583328301
+        ],
+        "sd": 0.3469443332443555,
+        "n": 3
+      },
+      "tracking_shuffled_objects_three_objects": {
+        "mean": NaN,
+        "ci": [
+          NaN,
+          NaN
+        ],
+        "n": 0
+      },
+      "web_of_lies": {
+        "mean": 0.8,
+        "ci": [
+          0.8,
+          0.8
+        ],
+        "n": 1
+      },
+      "word_sorting": {
+        "mean": 0.6666666666666666,
+        "ci": [
+          0.2534623857379984,
+          1.0798709475953348
+        ],
+        "sd": 0.47140452079103173,
+        "n": 5
+      }
+    },
+    "test_auroc_by_difficulty_bootstrap": {
+      "boolean_expressions": {
+        "ci": [
+          1.0,
+          1.0
+        ],
+        "n_seeds": 1
+      },
+      "causal_judgement": {
+        "ci": [
+          0.5,
+          0.5
+        ],
+        "n_seeds": 1
+      },
+      "date_understanding": {
+        "ci": [
+          0.2777777777777778,
+          0.9
+        ],
+        "n_seeds": 4
+      },
+      "disambiguation_qa": {
+        "ci": [
+          0.25,
+          1.0
+        ],
+        "n_seeds": 4
+      },
+      "dyck_languages": {
+        "ci": [
+          NaN,
+          NaN
+        ],
+        "n_seeds": 0
+      },
+      "formal_fallacies": {
+        "ci": [
+          0.0,
+          1.0
+        ],
+        "n_seeds": 1
+      },
+      "geometric_shapes": {
+        "ci": [
+          0.5,
+          1.0
+        ],
+        "n_seeds": 4
+      },
+      "hyperbaton": {
+        "ci": [
+          NaN,
+          NaN
+        ],
+        "n_seeds": 0
+      },
+      "logical_deduction_five_objects": {
+        "ci": [
+          NaN,
+          NaN
+        ],
+        "n_seeds": 0
+      },
+      "logical_deduction_seven_objects": {
+        "ci": [
+          NaN,
+          NaN
+        ],
+        "n_seeds": 0
+      },
+      "logical_deduction_three_objects": {
+        "ci": [
+          0.3333333333333333,
+          0.7833333333333333
+        ],
+        "n_seeds": 3
+      },
+      "movie_recommendation": {
+        "ci": [
+          0.05555555555555555,
+          0.5833333333333334
+        ],
+        "n_seeds": 3
+      },
+      "multistep_arithmetic_two": {
+        "ci": [
+          NaN,
+          NaN
+        ],
+        "n_seeds": 0
+      },
+      "navigate": {
+        "ci": [
+          0.27999999999999997,
+          0.75
+        ],
+        "n_seeds": 5
+      },
+      "object_counting": {
+        "ci": [
+          0.5,
+          0.5
+        ],
+        "n_seeds": 2
+      },
+      "penguins_in_a_table": {
+        "ci": [
+          NaN,
+          NaN
+        ],
+        "n_seeds": 0
+      },
+      "reasoning_about_colored_objects": {
+        "ci": [
+          0.5,
+          1.0
+        ],
+        "n_seeds": 2
+      },
+      "ruin_names": {
+        "ci": [
+          0.125,
+          0.9
+        ],
+        "n_seeds": 2
+      },
+      "salient_translation_error_detection": {
+        "ci": [
+          0.25,
+          0.984375
+        ],
+        "n_seeds": 4
+      },
+      "snarks": {
+        "ci": [
+          0.25,
+          1.0
+        ],
+        "n_seeds": 1
+      },
+      "sports_understanding": {
+        "ci": [
+          0.0,
+          0.6
+        ],
+        "n_seeds": 5
+      },
+      "temporal_sequences": {
+        "ci": [
+          0.0,
+          0.5
+        ],
+        "n_seeds": 4
+      },
+      "tracking_shuffled_objects_five_objects": {
+        "ci": [
+          0.5625,
+          1.0
+        ],
+        "n_seeds": 4
+      },
+      "tracking_shuffled_objects_seven_objects": {
+        "ci": [
+          0.3333333333333333,
+          1.0
+        ],
+        "n_seeds": 3
+      },
+      "tracking_shuffled_objects_three_objects": {
+        "ci": [
+          NaN,
+          NaN
+        ],
+        "n_seeds": 0
+      },
+      "web_of_lies": {
+        "ci": [
+          0.4,
+          1.0
+        ],
+        "n_seeds": 1
+      },
+      "word_sorting": {
+        "ci": [
+          0.6,
+          0.7462500000000001
+        ],
+        "n_seeds": 5
+      }
+    }
+  },
+  "per_seed": [
+    {
+      "seed": 42,
+      "train_info": {
+        "best_val_auroc": 0.8339629120879121,
+        "epochs_run": 0
+      },
+      "val": {
+        "n": 108,
+        "n_positive": 52,
+        "base_rate": 0.48148148148148145,
+        "auroc": 0.8339629120879121,
+        "auroc_bootstrap": {
+          "ci": [
+            0.7534093647371854,
+            0.903519680418886
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.8184090930472139,
+        "threshold": 0.0,
+        "routed_accuracy": 0.7962962962962963,
+        "fraction_routed_to_thinking": 1.0,
+        "baselines": {
+          "never_think": 0.5185185185185185,
+          "always_think": 0.7962962962962963,
+          "oracle": 0.8240740740740741
+        },
+        "by_difficulty": {
+          "boolean_expressions": {
+            "n": 3,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "date_understanding": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1033
+            }
+          },
+          "disambiguation_qa": {
+            "n": 5,
+            "base_rate": 0.6,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1819
+            }
+          },
+          "dyck_languages": {
+            "n": 6,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "formal_fallacies": {
+            "n": 3,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "geometric_shapes": {
+            "n": 4,
+            "base_rate": 0.75,
+            "auroc": 0.6666666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1364
+            }
+          },
+          "hyperbaton": {
+            "n": 8,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_five_objects": {
+            "n": 8,
+            "base_rate": 0.875,
+            "auroc": 0.2857142857142857,
+            "auroc_bootstrap": {
+              "ci": [
+                0.07142857142857142,
+                0.5833333333333334
+              ],
+              "n_boot": 1329
+            }
+          },
+          "logical_deduction_seven_objects": {
+            "n": 4,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_three_objects": {
+            "n": 3,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "movie_recommendation": {
+            "n": 3,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1333
+            }
+          },
+          "multistep_arithmetic_two": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1033
+            }
+          },
+          "navigate": {
+            "n": 4,
+            "base_rate": 0.5,
+            "auroc": 0.25,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1761
+            }
+          },
+          "object_counting": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "penguins_in_a_table": {
+            "n": 7,
+            "base_rate": 0.2857142857142857,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1819
+            }
+          },
+          "reasoning_about_colored_objects": {
+            "n": 7,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "ruin_names": {
+            "n": 3,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "salient_translation_error_detection": {
+            "n": 4,
+            "base_rate": 0.5,
+            "auroc": 0.25,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1760
+            }
+          },
+          "snarks": {
+            "n": 4,
+            "base_rate": 0.5,
+            "auroc": 0.75,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1760
+            }
+          },
+          "sports_understanding": {
+            "n": 3,
+            "base_rate": 0.6666666666666666,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1333
+            }
+          },
+          "temporal_sequences": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "tracking_shuffled_objects_five_objects": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1033
+            }
+          },
+          "tracking_shuffled_objects_seven_objects": {
+            "n": 6,
+            "base_rate": 0.8333333333333334,
+            "auroc": 0.6,
+            "auroc_bootstrap": {
+              "ci": [
+                0.2,
+                1.0
+              ],
+              "n_boot": 1352
+            }
+          },
+          "tracking_shuffled_objects_three_objects": {
+            "n": 4,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "word_sorting": {
+            "n": 7,
+            "base_rate": 0.7142857142857143,
+            "auroc": 0.4,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1817
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.5185185185185185
+          },
+          {
+            "fraction_routed": 0.046296296296296294,
+            "accuracy": 0.5370370370370371
+          },
+          {
+            "fraction_routed": 0.10185185185185185,
+            "accuracy": 0.5925925925925926
+          },
+          {
+            "fraction_routed": 0.14814814814814814,
+            "accuracy": 0.6203703703703703
+          },
+          {
+            "fraction_routed": 0.2037037037037037,
+            "accuracy": 0.6388888888888888
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.6666666666666666
+          },
+          {
+            "fraction_routed": 0.2962962962962963,
+            "accuracy": 0.6851851851851852
+          },
+          {
+            "fraction_routed": 0.35185185185185186,
+            "accuracy": 0.6944444444444444
+          },
+          {
+            "fraction_routed": 0.39814814814814814,
+            "accuracy": 0.6944444444444444
+          },
+          {
+            "fraction_routed": 0.4537037037037037,
+            "accuracy": 0.7222222222222222
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.75
+          },
+          {
+            "fraction_routed": 0.5462962962962963,
+            "accuracy": 0.75
+          },
+          {
+            "fraction_routed": 0.6018518518518519,
+            "accuracy": 0.7592592592592593
+          },
+          {
+            "fraction_routed": 0.6481481481481481,
+            "accuracy": 0.7777777777777778
+          },
+          {
+            "fraction_routed": 0.7037037037037037,
+            "accuracy": 0.7685185185185185
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.7777777777777778
+          },
+          {
+            "fraction_routed": 0.7962962962962963,
+            "accuracy": 0.7962962962962963
+          },
+          {
+            "fraction_routed": 0.8518518518518519,
+            "accuracy": 0.7870370370370371
+          },
+          {
+            "fraction_routed": 0.8981481481481481,
+            "accuracy": 0.7870370370370371
+          },
+          {
+            "fraction_routed": 0.9537037037037037,
+            "accuracy": 0.7962962962962963
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.7962962962962963
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 0.7962962962962963
+      },
+      "test": {
+        "n": 108,
+        "n_positive": 52,
+        "base_rate": 0.48148148148148145,
+        "auroc": 0.882554945054945,
+        "auroc_bootstrap": {
+          "ci": [
+            0.8164030305631869,
+            0.938937259714911
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.8813474768810856,
+        "threshold": 0.0,
+        "routed_accuracy": 0.8240740740740741,
+        "fraction_routed_to_thinking": 1.0,
+        "baselines": {
+          "never_think": 0.5185185185185185,
+          "always_think": 0.8240740740740741,
+          "oracle": 0.8425925925925926
+        },
+        "by_difficulty": {
+          "boolean_expressions": {
+            "n": 4,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "causal_judgement": {
+            "n": 4,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "date_understanding": {
+            "n": 6,
+            "base_rate": 0.5,
+            "auroc": 0.6666666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.1111111111111111,
+                1.0
+              ],
+              "n_boot": 1943
+            }
+          },
+          "disambiguation_qa": {
+            "n": 3,
+            "base_rate": 0.6666666666666666,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1346
+            }
+          },
+          "dyck_languages": {
+            "n": 7,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "formal_fallacies": {
+            "n": 5,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "geometric_shapes": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_five_objects": {
+            "n": 3,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_seven_objects": {
+            "n": 7,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_three_objects": {
+            "n": 5,
+            "base_rate": 0.2,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1327
+            }
+          },
+          "movie_recommendation": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1033
+            }
+          },
+          "multistep_arithmetic_two": {
+            "n": 7,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "navigate": {
+            "n": 6,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.875,
+            "auroc_bootstrap": {
+              "ci": [
+                0.4,
+                1.0
+              ],
+              "n_boot": 1824
+            }
+          },
+          "object_counting": {
+            "n": 4,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "penguins_in_a_table": {
+            "n": 7,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "reasoning_about_colored_objects": {
+            "n": 3,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "ruin_names": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "salient_translation_error_detection": {
+            "n": 6,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1827
+            }
+          },
+          "snarks": {
+            "n": 4,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "sports_understanding": {
+            "n": 3,
+            "base_rate": 0.6666666666666666,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1345
+            }
+          },
+          "temporal_sequences": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1033
+            }
+          },
+          "tracking_shuffled_objects_five_objects": {
+            "n": 4,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "tracking_shuffled_objects_seven_objects": {
+            "n": 4,
+            "base_rate": 0.75,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1383
+            }
+          },
+          "web_of_lies": {
+            "n": 4,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "word_sorting": {
+            "n": 3,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1333
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.5185185185185185
+          },
+          {
+            "fraction_routed": 0.046296296296296294,
+            "accuracy": 0.5370370370370371
+          },
+          {
+            "fraction_routed": 0.10185185185185185,
+            "accuracy": 0.5740740740740741
+          },
+          {
+            "fraction_routed": 0.14814814814814814,
+            "accuracy": 0.6111111111111112
+          },
+          {
+            "fraction_routed": 0.2037037037037037,
+            "accuracy": 0.6388888888888888
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.6481481481481481
+          },
+          {
+            "fraction_routed": 0.2962962962962963,
+            "accuracy": 0.6574074074074074
+          },
+          {
+            "fraction_routed": 0.35185185185185186,
+            "accuracy": 0.6666666666666666
+          },
+          {
+            "fraction_routed": 0.39814814814814814,
+            "accuracy": 0.6851851851851852
+          },
+          {
+            "fraction_routed": 0.4537037037037037,
+            "accuracy": 0.7129629629629629
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.7407407407407407
+          },
+          {
+            "fraction_routed": 0.5462962962962963,
+            "accuracy": 0.7685185185185185
+          },
+          {
+            "fraction_routed": 0.6018518518518519,
+            "accuracy": 0.7777777777777778
+          },
+          {
+            "fraction_routed": 0.6481481481481481,
+            "accuracy": 0.7870370370370371
+          },
+          {
+            "fraction_routed": 0.7037037037037037,
+            "accuracy": 0.8055555555555556
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.8148148148148148
+          },
+          {
+            "fraction_routed": 0.7962962962962963,
+            "accuracy": 0.8240740740740741
+          },
+          {
+            "fraction_routed": 0.8518518518518519,
+            "accuracy": 0.8240740740740741
+          },
+          {
+            "fraction_routed": 0.8981481481481481,
+            "accuracy": 0.8240740740740741
+          },
+          {
+            "fraction_routed": 0.9537037037037037,
+            "accuracy": 0.8240740740740741
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.8240740740740741
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 0.7962962962962963
+      }
+    },
+    {
+      "seed": 1,
+      "train_info": {
+        "best_val_auroc": 0.8169642857142857,
+        "epochs_run": 0
+      },
+      "val": {
+        "n": 108,
+        "n_positive": 52,
+        "base_rate": 0.48148148148148145,
+        "auroc": 0.8169642857142857,
+        "auroc_bootstrap": {
+          "ci": [
+            0.7361540222024815,
+            0.8895920138888888
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.762159876940965,
+        "threshold": 0.0,
+        "routed_accuracy": 0.7685185185185185,
+        "fraction_routed_to_thinking": 1.0,
+        "baselines": {
+          "never_think": 0.5185185185185185,
+          "always_think": 0.7685185185185185,
+          "oracle": 0.8148148148148148
+        },
+        "by_difficulty": {
+          "boolean_expressions": {
+            "n": 5,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "causal_judgement": {
+            "n": 8,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "date_understanding": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "disambiguation_qa": {
+            "n": 3,
+            "base_rate": 0.3333333333333333,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1333
+            }
+          },
+          "dyck_languages": {
+            "n": 3,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "formal_fallacies": {
+            "n": 3,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "geometric_shapes": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1033
+            }
+          },
+          "hyperbaton": {
+            "n": 7,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_five_objects": {
+            "n": 7,
+            "base_rate": 0.8571428571428571,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1319
+            }
+          },
+          "logical_deduction_three_objects": {
+            "n": 3,
+            "base_rate": 0.3333333333333333,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1333
+            }
+          },
+          "movie_recommendation": {
+            "n": 6,
+            "base_rate": 0.6666666666666666,
+            "auroc": 0.625,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1827
+            }
+          },
+          "multistep_arithmetic_two": {
+            "n": 3,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "navigate": {
+            "n": 5,
+            "base_rate": 0.6,
+            "auroc": 0.8333333333333334,
+            "auroc_bootstrap": {
+              "ci": [
+                0.25,
+                1.0
+              ],
+              "n_boot": 1822
+            }
+          },
+          "object_counting": {
+            "n": 5,
+            "base_rate": 0.2,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1367
+            }
+          },
+          "penguins_in_a_table": {
+            "n": 5,
+            "base_rate": 0.2,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1327
+            }
+          },
+          "reasoning_about_colored_objects": {
+            "n": 5,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "ruin_names": {
+            "n": 5,
+            "base_rate": 0.2,
+            "auroc": 0.75,
+            "auroc_bootstrap": {
+              "ci": [
+                0.25,
+                1.0
+              ],
+              "n_boot": 1327
+            }
+          },
+          "salient_translation_error_detection": {
+            "n": 5,
+            "base_rate": 0.6,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1836
+            }
+          },
+          "snarks": {
+            "n": 4,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "sports_understanding": {
+            "n": 6,
+            "base_rate": 0.8333333333333334,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1341
+            }
+          },
+          "temporal_sequences": {
+            "n": 4,
+            "base_rate": 0.75,
+            "auroc": 0.3333333333333333,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1351
+            }
+          },
+          "tracking_shuffled_objects_five_objects": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1033
+            }
+          },
+          "tracking_shuffled_objects_seven_objects": {
+            "n": 2,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "web_of_lies": {
+            "n": 5,
+            "base_rate": 0.6,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1822
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.5185185185185185
+          },
+          {
+            "fraction_routed": 0.046296296296296294,
+            "accuracy": 0.5462962962962963
+          },
+          {
+            "fraction_routed": 0.10185185185185185,
+            "accuracy": 0.5648148148148148
+          },
+          {
+            "fraction_routed": 0.14814814814814814,
+            "accuracy": 0.5833333333333334
+          },
+          {
+            "fraction_routed": 0.2037037037037037,
+            "accuracy": 0.6111111111111112
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.6296296296296297
+          },
+          {
+            "fraction_routed": 0.2962962962962963,
+            "accuracy": 0.6574074074074074
+          },
+          {
+            "fraction_routed": 0.35185185185185186,
+            "accuracy": 0.6759259259259259
+          },
+          {
+            "fraction_routed": 0.39814814814814814,
+            "accuracy": 0.7037037037037037
+          },
+          {
+            "fraction_routed": 0.4537037037037037,
+            "accuracy": 0.7222222222222222
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.7407407407407407
+          },
+          {
+            "fraction_routed": 0.5462962962962963,
+            "accuracy": 0.7407407407407407
+          },
+          {
+            "fraction_routed": 0.6018518518518519,
+            "accuracy": 0.75
+          },
+          {
+            "fraction_routed": 0.6481481481481481,
+            "accuracy": 0.7685185185185185
+          },
+          {
+            "fraction_routed": 0.7037037037037037,
+            "accuracy": 0.7592592592592593
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.75
+          },
+          {
+            "fraction_routed": 0.7962962962962963,
+            "accuracy": 0.7592592592592593
+          },
+          {
+            "fraction_routed": 0.8518518518518519,
+            "accuracy": 0.7592592592592593
+          },
+          {
+            "fraction_routed": 0.8981481481481481,
+            "accuracy": 0.7685185185185185
+          },
+          {
+            "fraction_routed": 0.9537037037037037,
+            "accuracy": 0.7685185185185185
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.7685185185185185
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 0.6481481481481481
+      },
+      "test": {
+        "n": 108,
+        "n_positive": 52,
+        "base_rate": 0.48148148148148145,
+        "auroc": 0.8286401098901099,
+        "auroc_bootstrap": {
+          "ci": [
+            0.7503504387458467,
+            0.9042284402796205
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.8250567481866716,
+        "threshold": 0.0,
+        "routed_accuracy": 0.8240740740740741,
+        "fraction_routed_to_thinking": 1.0,
+        "baselines": {
+          "never_think": 0.5185185185185185,
+          "always_think": 0.8240740740740741,
+          "oracle": 0.8425925925925926
+        },
+        "by_difficulty": {
+          "boolean_expressions": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "causal_judgement": {
+            "n": 4,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "date_understanding": {
+            "n": 5,
+            "base_rate": 0.4,
+            "auroc": 0.3333333333333333,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1812
+            }
+          },
+          "disambiguation_qa": {
+            "n": 5,
+            "base_rate": 0.4,
+            "auroc": 0.6666666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1836
+            }
+          },
+          "dyck_languages": {
+            "n": 5,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "formal_fallacies": {
+            "n": 4,
+            "base_rate": 0.75,
+            "auroc": 0.3333333333333333,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1351
+            }
+          },
+          "geometric_shapes": {
+            "n": 3,
+            "base_rate": 0.6666666666666666,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1345
+            }
+          },
+          "hyperbaton": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_five_objects": {
+            "n": 6,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_seven_objects": {
+            "n": 3,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_three_objects": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "movie_recommendation": {
+            "n": 3,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "multistep_arithmetic_two": {
+            "n": 4,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "navigate": {
+            "n": 3,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1333
+            }
+          },
+          "object_counting": {
+            "n": 3,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1333
+            }
+          },
+          "penguins_in_a_table": {
+            "n": 5,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "reasoning_about_colored_objects": {
+            "n": 6,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "ruin_names": {
+            "n": 5,
+            "base_rate": 0.2,
+            "auroc": 0.75,
+            "auroc_bootstrap": {
+              "ci": [
+                0.25,
+                1.0
+              ],
+              "n_boot": 1327
+            }
+          },
+          "salient_translation_error_detection": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1033
+            }
+          },
+          "sports_understanding": {
+            "n": 3,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1345
+            }
+          },
+          "temporal_sequences": {
+            "n": 4,
+            "base_rate": 0.75,
+            "auroc": 0.3333333333333333,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1364
+            }
+          },
+          "tracking_shuffled_objects_five_objects": {
+            "n": 6,
+            "base_rate": 0.6666666666666666,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1810
+            }
+          },
+          "tracking_shuffled_objects_seven_objects": {
+            "n": 3,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1333
+            }
+          },
+          "tracking_shuffled_objects_three_objects": {
+            "n": 3,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "web_of_lies": {
+            "n": 6,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "word_sorting": {
+            "n": 10,
+            "base_rate": 0.6,
+            "auroc": 0.3333333333333333,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.73125
+              ],
+              "n_boot": 1986
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.5185185185185185
+          },
+          {
+            "fraction_routed": 0.046296296296296294,
+            "accuracy": 0.5370370370370371
+          },
+          {
+            "fraction_routed": 0.10185185185185185,
+            "accuracy": 0.5555555555555556
+          },
+          {
+            "fraction_routed": 0.14814814814814814,
+            "accuracy": 0.5740740740740741
+          },
+          {
+            "fraction_routed": 0.2037037037037037,
+            "accuracy": 0.6203703703703703
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.6481481481481481
+          },
+          {
+            "fraction_routed": 0.2962962962962963,
+            "accuracy": 0.6759259259259259
+          },
+          {
+            "fraction_routed": 0.35185185185185186,
+            "accuracy": 0.7037037037037037
+          },
+          {
+            "fraction_routed": 0.39814814814814814,
+            "accuracy": 0.7037037037037037
+          },
+          {
+            "fraction_routed": 0.4537037037037037,
+            "accuracy": 0.7129629629629629
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.7314814814814815
+          },
+          {
+            "fraction_routed": 0.5462962962962963,
+            "accuracy": 0.7407407407407407
+          },
+          {
+            "fraction_routed": 0.6018518518518519,
+            "accuracy": 0.7592592592592593
+          },
+          {
+            "fraction_routed": 0.6481481481481481,
+            "accuracy": 0.7685185185185185
+          },
+          {
+            "fraction_routed": 0.7037037037037037,
+            "accuracy": 0.7870370370370371
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.8055555555555556
+          },
+          {
+            "fraction_routed": 0.7962962962962963,
+            "accuracy": 0.8055555555555556
+          },
+          {
+            "fraction_routed": 0.8518518518518519,
+            "accuracy": 0.8148148148148148
+          },
+          {
+            "fraction_routed": 0.8981481481481481,
+            "accuracy": 0.8148148148148148
+          },
+          {
+            "fraction_routed": 0.9537037037037037,
+            "accuracy": 0.8240740740740741
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.8240740740740741
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 0.9537037037037037
+      }
+    },
+    {
+      "seed": 2,
+      "train_info": {
+        "best_val_auroc": 0.8013392857142857,
+        "epochs_run": 0
+      },
+      "val": {
+        "n": 108,
+        "n_positive": 52,
+        "base_rate": 0.48148148148148145,
+        "auroc": 0.8013392857142857,
+        "auroc_bootstrap": {
+          "ci": [
+            0.7148176933205225,
+            0.8772423223871935
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.7323888706888904,
+        "threshold": 0.0,
+        "routed_accuracy": 0.8240740740740741,
+        "fraction_routed_to_thinking": 1.0,
+        "baselines": {
+          "never_think": 0.5185185185185185,
+          "always_think": 0.8240740740740741,
+          "oracle": 0.8796296296296297
+        },
+        "by_difficulty": {
+          "boolean_expressions": {
+            "n": 4,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "causal_judgement": {
+            "n": 6,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "date_understanding": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "disambiguation_qa": {
+            "n": 7,
+            "base_rate": 0.2857142857142857,
+            "auroc": 0.8,
+            "auroc_bootstrap": {
+              "ci": [
+                0.4,
+                1.0
+              ],
+              "n_boot": 1790
+            }
+          },
+          "formal_fallacies": {
+            "n": 5,
+            "base_rate": 0.6,
+            "auroc": 0.4166666666666667,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1836
+            }
+          },
+          "geometric_shapes": {
+            "n": 4,
+            "base_rate": 0.75,
+            "auroc": 0.6666666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1370
+            }
+          },
+          "hyperbaton": {
+            "n": 4,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_five_objects": {
+            "n": 2,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_seven_objects": {
+            "n": 5,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_three_objects": {
+            "n": 3,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "movie_recommendation": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "multistep_arithmetic_two": {
+            "n": 7,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "navigate": {
+            "n": 5,
+            "base_rate": 0.4,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1812
+            }
+          },
+          "penguins_in_a_table": {
+            "n": 3,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1345
+            }
+          },
+          "reasoning_about_colored_objects": {
+            "n": 6,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "ruin_names": {
+            "n": 3,
+            "base_rate": 0.6666666666666666,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1333
+            }
+          },
+          "salient_translation_error_detection": {
+            "n": 7,
+            "base_rate": 0.42857142857142855,
+            "auroc": 0.16666666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.6666666666666666
+              ],
+              "n_boot": 1961
+            }
+          },
+          "snarks": {
+            "n": 3,
+            "base_rate": 0.6666666666666666,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1346
+            }
+          },
+          "sports_understanding": {
+            "n": 5,
+            "base_rate": 0.6,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1818
+            }
+          },
+          "temporal_sequences": {
+            "n": 7,
+            "base_rate": 0.7142857142857143,
+            "auroc": 0.3,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.8
+              ],
+              "n_boot": 1818
+            }
+          },
+          "tracking_shuffled_objects_five_objects": {
+            "n": 5,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "tracking_shuffled_objects_seven_objects": {
+            "n": 2,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "tracking_shuffled_objects_three_objects": {
+            "n": 3,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "web_of_lies": {
+            "n": 4,
+            "base_rate": 0.75,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1383
+            }
+          },
+          "word_sorting": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1033
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.5185185185185185
+          },
+          {
+            "fraction_routed": 0.046296296296296294,
+            "accuracy": 0.5370370370370371
+          },
+          {
+            "fraction_routed": 0.10185185185185185,
+            "accuracy": 0.5462962962962963
+          },
+          {
+            "fraction_routed": 0.14814814814814814,
+            "accuracy": 0.5833333333333334
+          },
+          {
+            "fraction_routed": 0.2037037037037037,
+            "accuracy": 0.6296296296296297
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.6388888888888888
+          },
+          {
+            "fraction_routed": 0.2962962962962963,
+            "accuracy": 0.6574074074074074
+          },
+          {
+            "fraction_routed": 0.35185185185185186,
+            "accuracy": 0.6944444444444444
+          },
+          {
+            "fraction_routed": 0.39814814814814814,
+            "accuracy": 0.7037037037037037
+          },
+          {
+            "fraction_routed": 0.4537037037037037,
+            "accuracy": 0.7129629629629629
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.7407407407407407
+          },
+          {
+            "fraction_routed": 0.5462962962962963,
+            "accuracy": 0.7592592592592593
+          },
+          {
+            "fraction_routed": 0.6018518518518519,
+            "accuracy": 0.7870370370370371
+          },
+          {
+            "fraction_routed": 0.6481481481481481,
+            "accuracy": 0.7962962962962963
+          },
+          {
+            "fraction_routed": 0.7037037037037037,
+            "accuracy": 0.7962962962962963
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.8055555555555556
+          },
+          {
+            "fraction_routed": 0.7962962962962963,
+            "accuracy": 0.8148148148148148
+          },
+          {
+            "fraction_routed": 0.8518518518518519,
+            "accuracy": 0.8240740740740741
+          },
+          {
+            "fraction_routed": 0.8981481481481481,
+            "accuracy": 0.8240740740740741
+          },
+          {
+            "fraction_routed": 0.9537037037037037,
+            "accuracy": 0.8240740740740741
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.8240740740740741
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 0.8518518518518519
+      },
+      "test": {
+        "n": 108,
+        "n_positive": 52,
+        "base_rate": 0.48148148148148145,
+        "auroc": 0.8828983516483516,
+        "auroc_bootstrap": {
+          "ci": [
+            0.810763735792671,
+            0.9391165641271461
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.8942034745010281,
+        "threshold": 0.0,
+        "routed_accuracy": 0.8425925925925926,
+        "fraction_routed_to_thinking": 1.0,
+        "baselines": {
+          "never_think": 0.5185185185185185,
+          "always_think": 0.8425925925925926,
+          "oracle": 0.8611111111111112
+        },
+        "by_difficulty": {
+          "boolean_expressions": {
+            "n": 3,
+            "base_rate": 0.3333333333333333,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1346
+            }
+          },
+          "causal_judgement": {
+            "n": 3,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "disambiguation_qa": {
+            "n": 2,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "dyck_languages": {
+            "n": 2,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "formal_fallacies": {
+            "n": 6,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "geometric_shapes": {
+            "n": 4,
+            "base_rate": 0.25,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1383
+            }
+          },
+          "hyperbaton": {
+            "n": 6,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_five_objects": {
+            "n": 6,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_seven_objects": {
+            "n": 2,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_three_objects": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "movie_recommendation": {
+            "n": 5,
+            "base_rate": 0.2,
+            "auroc": 0.25,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.75
+              ],
+              "n_boot": 1327
+            }
+          },
+          "multistep_arithmetic_two": {
+            "n": 5,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "navigate": {
+            "n": 5,
+            "base_rate": 0.8,
+            "auroc": 0.25,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.75
+              ],
+              "n_boot": 1327
+            }
+          },
+          "object_counting": {
+            "n": 4,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "penguins_in_a_table": {
+            "n": 3,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "reasoning_about_colored_objects": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1033
+            }
+          },
+          "ruin_names": {
+            "n": 7,
+            "base_rate": 0.14285714285714285,
+            "auroc": 0.3333333333333333,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.8
+              ],
+              "n_boot": 1309
+            }
+          },
+          "salient_translation_error_detection": {
+            "n": 5,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "snarks": {
+            "n": 5,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "sports_understanding": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1033
+            }
+          },
+          "temporal_sequences": {
+            "n": 3,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "tracking_shuffled_objects_five_objects": {
+            "n": 5,
+            "base_rate": 0.8,
+            "auroc": 0.75,
+            "auroc_bootstrap": {
+              "ci": [
+                0.25,
+                1.0
+              ],
+              "n_boot": 1327
+            }
+          },
+          "tracking_shuffled_objects_seven_objects": {
+            "n": 5,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "tracking_shuffled_objects_three_objects": {
+            "n": 5,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "web_of_lies": {
+            "n": 5,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "word_sorting": {
+            "n": 5,
+            "base_rate": 0.8,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1354
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.5185185185185185
+          },
+          {
+            "fraction_routed": 0.046296296296296294,
+            "accuracy": 0.5648148148148148
+          },
+          {
+            "fraction_routed": 0.10185185185185185,
+            "accuracy": 0.6018518518518519
+          },
+          {
+            "fraction_routed": 0.14814814814814814,
+            "accuracy": 0.6296296296296297
+          },
+          {
+            "fraction_routed": 0.2037037037037037,
+            "accuracy": 0.6666666666666666
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.6851851851851852
+          },
+          {
+            "fraction_routed": 0.2962962962962963,
+            "accuracy": 0.7222222222222222
+          },
+          {
+            "fraction_routed": 0.35185185185185186,
+            "accuracy": 0.7407407407407407
+          },
+          {
+            "fraction_routed": 0.39814814814814814,
+            "accuracy": 0.7407407407407407
+          },
+          {
+            "fraction_routed": 0.4537037037037037,
+            "accuracy": 0.75
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.7777777777777778
+          },
+          {
+            "fraction_routed": 0.5462962962962963,
+            "accuracy": 0.8055555555555556
+          },
+          {
+            "fraction_routed": 0.6018518518518519,
+            "accuracy": 0.8055555555555556
+          },
+          {
+            "fraction_routed": 0.6481481481481481,
+            "accuracy": 0.8148148148148148
+          },
+          {
+            "fraction_routed": 0.7037037037037037,
+            "accuracy": 0.8333333333333334
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.8333333333333334
+          },
+          {
+            "fraction_routed": 0.7962962962962963,
+            "accuracy": 0.8333333333333334
+          },
+          {
+            "fraction_routed": 0.8518518518518519,
+            "accuracy": 0.8518518518518519
+          },
+          {
+            "fraction_routed": 0.8981481481481481,
+            "accuracy": 0.8425925925925926
+          },
+          {
+            "fraction_routed": 0.9537037037037037,
+            "accuracy": 0.8425925925925926
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.8425925925925926
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 0.8518518518518519
+      }
+    },
+    {
+      "seed": 3,
+      "train_info": {
+        "best_val_auroc": 0.8403159340659341,
+        "epochs_run": 0
+      },
+      "val": {
+        "n": 108,
+        "n_positive": 52,
+        "base_rate": 0.48148148148148145,
+        "auroc": 0.8403159340659341,
+        "auroc_bootstrap": {
+          "ci": [
+            0.7611767274692971,
+            0.9117246471201212
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.8577657904609757,
+        "threshold": 0.0,
+        "routed_accuracy": 0.8518518518518519,
+        "fraction_routed_to_thinking": 1.0,
+        "baselines": {
+          "never_think": 0.5185185185185185,
+          "always_think": 0.8518518518518519,
+          "oracle": 0.8796296296296297
+        },
+        "by_difficulty": {
+          "boolean_expressions": {
+            "n": 9,
+            "base_rate": 0.1111111111111111,
+            "auroc": 0.75,
+            "auroc_bootstrap": {
+              "ci": [
+                0.4,
+                1.0
+              ],
+              "n_boot": 1323
+            }
+          },
+          "causal_judgement": {
+            "n": 6,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "date_understanding": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "disambiguation_qa": {
+            "n": 2,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "dyck_languages": {
+            "n": 2,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "formal_fallacies": {
+            "n": 4,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "hyperbaton": {
+            "n": 4,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_five_objects": {
+            "n": 5,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_seven_objects": {
+            "n": 5,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_three_objects": {
+            "n": 3,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "movie_recommendation": {
+            "n": 3,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1346
+            }
+          },
+          "multistep_arithmetic_two": {
+            "n": 7,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "navigate": {
+            "n": 4,
+            "base_rate": 0.5,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1750
+            }
+          },
+          "object_counting": {
+            "n": 3,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1345
+            }
+          },
+          "penguins_in_a_table": {
+            "n": 8,
+            "base_rate": 0.25,
+            "auroc": 0.5833333333333334,
+            "auroc_bootstrap": {
+              "ci": [
+                0.13880952380952416,
+                1.0
+              ],
+              "n_boot": 1824
+            }
+          },
+          "reasoning_about_colored_objects": {
+            "n": 4,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "ruin_names": {
+            "n": 3,
+            "base_rate": 0.6666666666666666,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1345
+            }
+          },
+          "salient_translation_error_detection": {
+            "n": 5,
+            "base_rate": 0.4,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1836
+            }
+          },
+          "snarks": {
+            "n": 4,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "sports_understanding": {
+            "n": 3,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "temporal_sequences": {
+            "n": 4,
+            "base_rate": 0.75,
+            "auroc": 0.6666666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1364
+            }
+          },
+          "tracking_shuffled_objects_five_objects": {
+            "n": 3,
+            "base_rate": 0.6666666666666666,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1346
+            }
+          },
+          "tracking_shuffled_objects_seven_objects": {
+            "n": 5,
+            "base_rate": 0.8,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1327
+            }
+          },
+          "tracking_shuffled_objects_three_objects": {
+            "n": 3,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "web_of_lies": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1033
+            }
+          },
+          "word_sorting": {
+            "n": 4,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.5185185185185185
+          },
+          {
+            "fraction_routed": 0.046296296296296294,
+            "accuracy": 0.5555555555555556
+          },
+          {
+            "fraction_routed": 0.10185185185185185,
+            "accuracy": 0.6018518518518519
+          },
+          {
+            "fraction_routed": 0.14814814814814814,
+            "accuracy": 0.6481481481481481
+          },
+          {
+            "fraction_routed": 0.2037037037037037,
+            "accuracy": 0.6851851851851852
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.6944444444444444
+          },
+          {
+            "fraction_routed": 0.2962962962962963,
+            "accuracy": 0.7314814814814815
+          },
+          {
+            "fraction_routed": 0.35185185185185186,
+            "accuracy": 0.7685185185185185
+          },
+          {
+            "fraction_routed": 0.39814814814814814,
+            "accuracy": 0.7777777777777778
+          },
+          {
+            "fraction_routed": 0.4537037037037037,
+            "accuracy": 0.7962962962962963
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.7962962962962963
+          },
+          {
+            "fraction_routed": 0.5462962962962963,
+            "accuracy": 0.7870370370370371
+          },
+          {
+            "fraction_routed": 0.6018518518518519,
+            "accuracy": 0.7870370370370371
+          },
+          {
+            "fraction_routed": 0.6481481481481481,
+            "accuracy": 0.7962962962962963
+          },
+          {
+            "fraction_routed": 0.7037037037037037,
+            "accuracy": 0.7962962962962963
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.8055555555555556
+          },
+          {
+            "fraction_routed": 0.7962962962962963,
+            "accuracy": 0.8240740740740741
+          },
+          {
+            "fraction_routed": 0.8518518518518519,
+            "accuracy": 0.8240740740740741
+          },
+          {
+            "fraction_routed": 0.8981481481481481,
+            "accuracy": 0.8333333333333334
+          },
+          {
+            "fraction_routed": 0.9537037037037037,
+            "accuracy": 0.8518518518518519
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.8518518518518519
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 0.9537037037037037
+      },
+      "test": {
+        "n": 108,
+        "n_positive": 52,
+        "base_rate": 0.48148148148148145,
+        "auroc": 0.8399725274725275,
+        "auroc_bootstrap": {
+          "ci": [
+            0.7593744384546272,
+            0.9104631217838765
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.8204592799811041,
+        "threshold": 0.0,
+        "routed_accuracy": 0.8148148148148148,
+        "fraction_routed_to_thinking": 1.0,
+        "baselines": {
+          "never_think": 0.5185185185185185,
+          "always_think": 0.8148148148148148,
+          "oracle": 0.8518518518518519
+        },
+        "by_difficulty": {
+          "causal_judgement": {
+            "n": 3,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "date_understanding": {
+            "n": 6,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.125,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.6
+              ],
+              "n_boot": 1832
+            }
+          },
+          "disambiguation_qa": {
+            "n": 8,
+            "base_rate": 0.5,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1987
+            }
+          },
+          "dyck_languages": {
+            "n": 6,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "formal_fallacies": {
+            "n": 3,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "geometric_shapes": {
+            "n": 5,
+            "base_rate": 0.6,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1818
+            }
+          },
+          "hyperbaton": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_five_objects": {
+            "n": 7,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_seven_objects": {
+            "n": 2,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_three_objects": {
+            "n": 6,
+            "base_rate": 0.16666666666666666,
+            "auroc": 0.2,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.6
+              ],
+              "n_boot": 1360
+            }
+          },
+          "movie_recommendation": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "multistep_arithmetic_two": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "navigate": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1033
+            }
+          },
+          "object_counting": {
+            "n": 4,
+            "base_rate": 0.25,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1383
+            }
+          },
+          "penguins_in_a_table": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "reasoning_about_colored_objects": {
+            "n": 3,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "ruin_names": {
+            "n": 5,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "salient_translation_error_detection": {
+            "n": 4,
+            "base_rate": 0.25,
+            "auroc": 0.6666666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1351
+            }
+          },
+          "snarks": {
+            "n": 6,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "sports_understanding": {
+            "n": 7,
+            "base_rate": 0.5714285714285714,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1960
+            }
+          },
+          "temporal_sequences": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1033
+            }
+          },
+          "tracking_shuffled_objects_five_objects": {
+            "n": 4,
+            "base_rate": 0.75,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1351
+            }
+          },
+          "tracking_shuffled_objects_seven_objects": {
+            "n": 4,
+            "base_rate": 0.75,
+            "auroc": 0.3333333333333333,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1370
+            }
+          },
+          "tracking_shuffled_objects_three_objects": {
+            "n": 3,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "web_of_lies": {
+            "n": 6,
+            "base_rate": 0.8333333333333334,
+            "auroc": 0.8,
+            "auroc_bootstrap": {
+              "ci": [
+                0.4,
+                1.0
+              ],
+              "n_boot": 1352
+            }
+          },
+          "word_sorting": {
+            "n": 3,
+            "base_rate": 0.6666666666666666,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1345
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.5185185185185185
+          },
+          {
+            "fraction_routed": 0.046296296296296294,
+            "accuracy": 0.5370370370370371
+          },
+          {
+            "fraction_routed": 0.10185185185185185,
+            "accuracy": 0.5648148148148148
+          },
+          {
+            "fraction_routed": 0.14814814814814814,
+            "accuracy": 0.5740740740740741
+          },
+          {
+            "fraction_routed": 0.2037037037037037,
+            "accuracy": 0.5925925925925926
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.6111111111111112
+          },
+          {
+            "fraction_routed": 0.2962962962962963,
+            "accuracy": 0.6296296296296297
+          },
+          {
+            "fraction_routed": 0.35185185185185186,
+            "accuracy": 0.6666666666666666
+          },
+          {
+            "fraction_routed": 0.39814814814814814,
+            "accuracy": 0.6851851851851852
+          },
+          {
+            "fraction_routed": 0.4537037037037037,
+            "accuracy": 0.7222222222222222
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.7222222222222222
+          },
+          {
+            "fraction_routed": 0.5462962962962963,
+            "accuracy": 0.7314814814814815
+          },
+          {
+            "fraction_routed": 0.6018518518518519,
+            "accuracy": 0.7592592592592593
+          },
+          {
+            "fraction_routed": 0.6481481481481481,
+            "accuracy": 0.7777777777777778
+          },
+          {
+            "fraction_routed": 0.7037037037037037,
+            "accuracy": 0.7962962962962963
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.7962962962962963
+          },
+          {
+            "fraction_routed": 0.7962962962962963,
+            "accuracy": 0.7962962962962963
+          },
+          {
+            "fraction_routed": 0.8518518518518519,
+            "accuracy": 0.8055555555555556
+          },
+          {
+            "fraction_routed": 0.8981481481481481,
+            "accuracy": 0.8055555555555556
+          },
+          {
+            "fraction_routed": 0.9537037037037037,
+            "accuracy": 0.8055555555555556
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.8148148148148148
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 1.0
+      }
+    },
+    {
+      "seed": 4,
+      "train_info": {
+        "best_val_auroc": 0.8523351648351648,
+        "epochs_run": 0
+      },
+      "val": {
+        "n": 108,
+        "n_positive": 52,
+        "base_rate": 0.48148148148148145,
+        "auroc": 0.8523351648351648,
+        "auroc_bootstrap": {
+          "ci": [
+            0.7735763293310464,
+            0.9189761094239811
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.8462166855674895,
+        "threshold": 0.0,
+        "routed_accuracy": 0.8333333333333334,
+        "fraction_routed_to_thinking": 1.0,
+        "baselines": {
+          "never_think": 0.5185185185185185,
+          "always_think": 0.8333333333333334,
+          "oracle": 0.8611111111111112
+        },
+        "by_difficulty": {
+          "boolean_expressions": {
+            "n": 6,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "causal_judgement": {
+            "n": 3,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "date_understanding": {
+            "n": 5,
+            "base_rate": 0.4,
+            "auroc": 0.8333333333333334,
+            "auroc_bootstrap": {
+              "ci": [
+                0.3229166666666702,
+                1.0
+              ],
+              "n_boot": 1836
+            }
+          },
+          "disambiguation_qa": {
+            "n": 5,
+            "base_rate": 0.6,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1836
+            }
+          },
+          "dyck_languages": {
+            "n": 4,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "formal_fallacies": {
+            "n": 3,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "geometric_shapes": {
+            "n": 4,
+            "base_rate": 0.5,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1761
+            }
+          },
+          "hyperbaton": {
+            "n": 7,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_five_objects": {
+            "n": 3,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_seven_objects": {
+            "n": 4,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_three_objects": {
+            "n": 4,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "movie_recommendation": {
+            "n": 4,
+            "base_rate": 0.5,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1750
+            }
+          },
+          "multistep_arithmetic_two": {
+            "n": 6,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "navigate": {
+            "n": 3,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1345
+            }
+          },
+          "object_counting": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1033
+            }
+          },
+          "penguins_in_a_table": {
+            "n": 5,
+            "base_rate": 0.2,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1327
+            }
+          },
+          "reasoning_about_colored_objects": {
+            "n": 3,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "ruin_names": {
+            "n": 6,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.25,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.8
+              ],
+              "n_boot": 1827
+            }
+          },
+          "salient_translation_error_detection": {
+            "n": 4,
+            "base_rate": 0.5,
+            "auroc": 0.75,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1761
+            }
+          },
+          "sports_understanding": {
+            "n": 4,
+            "base_rate": 0.75,
+            "auroc": 0.6666666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1370
+            }
+          },
+          "temporal_sequences": {
+            "n": 3,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "tracking_shuffled_objects_five_objects": {
+            "n": 5,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "tracking_shuffled_objects_seven_objects": {
+            "n": 3,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "tracking_shuffled_objects_three_objects": {
+            "n": 5,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "web_of_lies": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1033
+            }
+          },
+          "word_sorting": {
+            "n": 4,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.5185185185185185
+          },
+          {
+            "fraction_routed": 0.046296296296296294,
+            "accuracy": 0.5277777777777778
+          },
+          {
+            "fraction_routed": 0.10185185185185185,
+            "accuracy": 0.5648148148148148
+          },
+          {
+            "fraction_routed": 0.14814814814814814,
+            "accuracy": 0.5833333333333334
+          },
+          {
+            "fraction_routed": 0.2037037037037037,
+            "accuracy": 0.6203703703703703
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.6481481481481481
+          },
+          {
+            "fraction_routed": 0.2962962962962963,
+            "accuracy": 0.6666666666666666
+          },
+          {
+            "fraction_routed": 0.35185185185185186,
+            "accuracy": 0.7129629629629629
+          },
+          {
+            "fraction_routed": 0.39814814814814814,
+            "accuracy": 0.7314814814814815
+          },
+          {
+            "fraction_routed": 0.4537037037037037,
+            "accuracy": 0.75
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.7685185185185185
+          },
+          {
+            "fraction_routed": 0.5462962962962963,
+            "accuracy": 0.7777777777777778
+          },
+          {
+            "fraction_routed": 0.6018518518518519,
+            "accuracy": 0.7777777777777778
+          },
+          {
+            "fraction_routed": 0.6481481481481481,
+            "accuracy": 0.7962962962962963
+          },
+          {
+            "fraction_routed": 0.7037037037037037,
+            "accuracy": 0.8055555555555556
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.8055555555555556
+          },
+          {
+            "fraction_routed": 0.7962962962962963,
+            "accuracy": 0.8240740740740741
+          },
+          {
+            "fraction_routed": 0.8518518518518519,
+            "accuracy": 0.8240740740740741
+          },
+          {
+            "fraction_routed": 0.8981481481481481,
+            "accuracy": 0.8240740740740741
+          },
+          {
+            "fraction_routed": 0.9537037037037037,
+            "accuracy": 0.8240740740740741
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.8333333333333334
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 1.0
+      },
+      "test": {
+        "n": 108,
+        "n_positive": 52,
+        "base_rate": 0.48148148148148145,
+        "auroc": 0.7566964285714286,
+        "auroc_bootstrap": {
+          "ci": [
+            0.6593320741758242,
+            0.8436644860185887
+          ],
+          "n_boot": 2000
+        },
+        "auprc": 0.7500177605181425,
+        "threshold": 0.0,
+        "routed_accuracy": 0.7685185185185185,
+        "fraction_routed_to_thinking": 1.0,
+        "baselines": {
+          "never_think": 0.5185185185185185,
+          "always_think": 0.7685185185185185,
+          "oracle": 0.7962962962962963
+        },
+        "by_difficulty": {
+          "boolean_expressions": {
+            "n": 4,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "causal_judgement": {
+            "n": 4,
+            "base_rate": 0.75,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.5,
+                0.5
+              ],
+              "n_boot": 1383
+            }
+          },
+          "date_understanding": {
+            "n": 3,
+            "base_rate": 0.3333333333333333,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1345
+            }
+          },
+          "disambiguation_qa": {
+            "n": 6,
+            "base_rate": 0.6666666666666666,
+            "auroc": 0.375,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1824
+            }
+          },
+          "dyck_languages": {
+            "n": 2,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "geometric_shapes": {
+            "n": 4,
+            "base_rate": 0.5,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1750
+            }
+          },
+          "hyperbaton": {
+            "n": 6,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_five_objects": {
+            "n": 4,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_seven_objects": {
+            "n": 2,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "logical_deduction_three_objects": {
+            "n": 7,
+            "base_rate": 0.14285714285714285,
+            "auroc": 0.3333333333333333,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.75
+              ],
+              "n_boot": 1308
+            }
+          },
+          "movie_recommendation": {
+            "n": 7,
+            "base_rate": 0.5714285714285714,
+            "auroc": 0.6666666666666666,
+            "auroc_bootstrap": {
+              "ci": [
+                0.16666666666666666,
+                1.0
+              ],
+              "n_boot": 1958
+            }
+          },
+          "multistep_arithmetic_two": {
+            "n": 3,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "navigate": {
+            "n": 3,
+            "base_rate": 0.3333333333333333,
+            "auroc": 0.0,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.0
+              ],
+              "n_boot": 1345
+            }
+          },
+          "reasoning_about_colored_objects": {
+            "n": 4,
+            "base_rate": 0.25,
+            "auroc": 0.3333333333333333,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1364
+            }
+          },
+          "ruin_names": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "salient_translation_error_detection": {
+            "n": 7,
+            "base_rate": 0.2857142857142857,
+            "auroc": 0.4,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                0.9375
+              ],
+              "n_boot": 1831
+            }
+          },
+          "snarks": {
+            "n": 5,
+            "base_rate": 0.2,
+            "auroc": 0.75,
+            "auroc_bootstrap": {
+              "ci": [
+                0.25,
+                1.0
+              ],
+              "n_boot": 1327
+            }
+          },
+          "sports_understanding": {
+            "n": 7,
+            "base_rate": 0.7142857142857143,
+            "auroc": 0.5,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1820
+            }
+          },
+          "temporal_sequences": {
+            "n": 6,
+            "base_rate": 0.5,
+            "auroc": 0.3333333333333333,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1943
+            }
+          },
+          "tracking_shuffled_objects_five_objects": {
+            "n": 4,
+            "base_rate": 0.5,
+            "auroc": 0.75,
+            "auroc_bootstrap": {
+              "ci": [
+                0.0,
+                1.0
+              ],
+              "n_boot": 1761
+            }
+          },
+          "tracking_shuffled_objects_seven_objects": {
+            "n": 6,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "tracking_shuffled_objects_three_objects": {
+            "n": 2,
+            "base_rate": 0.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "web_of_lies": {
+            "n": 5,
+            "base_rate": 1.0,
+            "auroc": NaN,
+            "auroc_bootstrap": {
+              "ci": [
+                NaN,
+                NaN
+              ],
+              "n_boot": 0
+            }
+          },
+          "word_sorting": {
+            "n": 2,
+            "base_rate": 0.5,
+            "auroc": 1.0,
+            "auroc_bootstrap": {
+              "ci": [
+                1.0,
+                1.0
+              ],
+              "n_boot": 1033
+            }
+          }
+        },
+        "cost_curve": [
+          {
+            "fraction_routed": 0.0,
+            "accuracy": 0.5185185185185185
+          },
+          {
+            "fraction_routed": 0.046296296296296294,
+            "accuracy": 0.5370370370370371
+          },
+          {
+            "fraction_routed": 0.10185185185185185,
+            "accuracy": 0.5648148148148148
+          },
+          {
+            "fraction_routed": 0.14814814814814814,
+            "accuracy": 0.6018518518518519
+          },
+          {
+            "fraction_routed": 0.2037037037037037,
+            "accuracy": 0.6481481481481481
+          },
+          {
+            "fraction_routed": 0.25,
+            "accuracy": 0.6666666666666666
+          },
+          {
+            "fraction_routed": 0.2962962962962963,
+            "accuracy": 0.6759259259259259
+          },
+          {
+            "fraction_routed": 0.35185185185185186,
+            "accuracy": 0.6944444444444444
+          },
+          {
+            "fraction_routed": 0.39814814814814814,
+            "accuracy": 0.6944444444444444
+          },
+          {
+            "fraction_routed": 0.4537037037037037,
+            "accuracy": 0.6944444444444444
+          },
+          {
+            "fraction_routed": 0.5,
+            "accuracy": 0.7129629629629629
+          },
+          {
+            "fraction_routed": 0.5462962962962963,
+            "accuracy": 0.7129629629629629
+          },
+          {
+            "fraction_routed": 0.6018518518518519,
+            "accuracy": 0.7222222222222222
+          },
+          {
+            "fraction_routed": 0.6481481481481481,
+            "accuracy": 0.7407407407407407
+          },
+          {
+            "fraction_routed": 0.7037037037037037,
+            "accuracy": 0.7407407407407407
+          },
+          {
+            "fraction_routed": 0.75,
+            "accuracy": 0.7592592592592593
+          },
+          {
+            "fraction_routed": 0.7962962962962963,
+            "accuracy": 0.7685185185185185
+          },
+          {
+            "fraction_routed": 0.8518518518518519,
+            "accuracy": 0.7685185185185185
+          },
+          {
+            "fraction_routed": 0.8981481481481481,
+            "accuracy": 0.7592592592592593
+          },
+          {
+            "fraction_routed": 0.9537037037037037,
+            "accuracy": 0.7685185185185185
+          },
+          {
+            "fraction_routed": 1.0,
+            "accuracy": 0.7685185185185185
+          }
+        ],
+        "min_routed_for_always_think_accuracy": 0.7962962962962963
+      }
+    }
+  ]
+}
