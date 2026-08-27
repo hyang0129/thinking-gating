@@ -89,6 +89,12 @@ _TASK_REGISTRY: dict[str, tuple[str, Any, str]] = {
 }
 
 _THINK_CLOSE = re.compile(r"</think>", re.IGNORECASE)
+# Granite 3.3 wraps its answer in <response>...</response> when thinking is on
+# (its own system prompt instructs it to). Left in place, the tags ride along
+# into the grader; unwrap them so every family reaches the grader in the same
+# shape. Unclosed is deliberate -- a truncated response still yields its body.
+_RESPONSE_OPEN = re.compile(r"<response>", re.IGNORECASE)
+_RESPONSE_CLOSE = re.compile(r"</response>", re.IGNORECASE)
 
 
 # ---------------------------------------------------------------------------
@@ -106,7 +112,15 @@ def strip_thinking(text: str) -> str:
     the grader sees the truncation for what it is rather than an empty string.
     """
     matches = list(_THINK_CLOSE.finditer(text))
-    return text[matches[-1].end():].strip() if matches else text.strip()
+    answer = text[matches[-1].end():].strip() if matches else text.strip()
+
+    opens = list(_RESPONSE_OPEN.finditer(answer))
+    if opens:
+        answer = answer[opens[-1].end():]
+    closes = list(_RESPONSE_CLOSE.finditer(answer))
+    if closes:
+        answer = answer[:closes[0].start()]
+    return answer.strip()
 
 
 # Families spell the thinking toggle three different ways, so resolve it per
