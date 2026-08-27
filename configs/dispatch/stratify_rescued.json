@@ -1,0 +1,77 @@
+{
+  "_comment": [
+    "Do the rescued results survive category stratification? BBH's needs_thinking",
+    "score was a subtask detector, so its rescued score is guilty until proven",
+    "otherwise. MATH-500 and MMLU-Pro get the same treatment for symmetry.",
+    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/stratify_rescued.json"
+  ],
+  "name": "stratify_rescued",
+  "kind": "python_script",
+  "script": "scripts/stratify_check.py",
+  "constants": {
+    "out": "output/decomp_strat/{slug}__{target}"
+  },
+  "grid": {
+    "target": [
+      "rescued",
+      "needs_thinking"
+    ]
+  },
+  "zip": {
+    "slug": [
+      "bbh_subtask",
+      "math500_subject",
+      "mmlupro_category"
+    ],
+    "capdir": [
+      "bbh_thinking_qwen3",
+      "math500_thinking_qwen3",
+      "mmlupro_thinking_qwen3"
+    ],
+    "lab": [
+      "bbh",
+      "math500",
+      "mmlu_pro"
+    ],
+    "groupby": [
+      "sample_id",
+      "task-field:subject",
+      "task-field:category"
+    ],
+    "taskmod": [
+      "bbh",
+      "math500",
+      "mmlu_pro"
+    ]
+  },
+  "cell_id_template": "strat-{slug}-{target}",
+  "args": [
+    "--capture-dir",
+    "shared/icr_capture/{capdir}",
+    "--labels",
+    "shared/{lab}_labels.jsonl",
+    "--group-from",
+    "{groupby}",
+    "--task",
+    "{taskmod}",
+    "--target",
+    "{target}",
+    "--out-dir",
+    "{out}"
+  ],
+  "output_check": [
+    "{out}/aggregate_metrics.json"
+  ],
+  "env": {
+    "OMP_NUM_THREADS": "8",
+    "MKL_NUM_THREADS": "8"
+  },
+  "timeout_s": 5400,
+  "max_attempts": 2,
+  "priority": 20,
+  "tags": [
+    "probe",
+    "stratify",
+    "decomposition"
+  ]
+}
