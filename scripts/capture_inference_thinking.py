@@ -109,60 +109,92 @@ def strip_thinking(text: str) -> str:
     return text[matches[-1].end():].strip() if matches else text.strip()
 
 
-# Families spell the thinking toggle differently. Detect it from the template
-# source rather than whitelisting model names: an unrecognised name used to
-# fall through silently, rendering identical prompts for thinking-off and
+# Families spell the thinking toggle three different ways, so resolve it per
+# model rather than whitelisting names. An unrecognised name used to fall
+# through silently, rendering identical prompts for thinking-off and
 # thinking-on, which produces two identical captures and labels that mean
-# nothing. Ordered most- to least-specific.
+# nothing.
+#
+#   template kwarg   Qwen3, SmolLM3, Cogito -> enable_thinking=
+#                    Granite 3.3            -> thinking=
+#   system prompt    Nemotron-Nano          -> "detailed thinking on"/"off"
 _TOGGLE_KWARGS = ("enable_thinking", "thinking")
 
+# Model-name substring -> (system prompt when ON, system prompt when OFF).
+# These are quoted from the vendor model card; the toggle is a literal string
+# the model was tuned on, so it must match exactly.
+_SYSTEM_TOGGLES = {
+    "nemotron": ("detailed thinking on", "detailed thinking off"),
+}
 
-def detect_thinking_kwarg(tokenizer: Any, model_name: str) -> str:
-    """Which apply_chat_template kwarg toggles reasoning for this model."""
+
+class ThinkingToggle:
+    """How to render a prompt with reasoning on or off for one model."""
+
+    def __init__(self, kind: str, spec: Any):
+        self.kind = kind          # "kwarg" | "system"
+        self.spec = spec
+
+    def describe(self) -> str:
+        return (f"chat-template kwarg {self.spec!r}" if self.kind == "kwarg"
+                else f"system prompt {self.spec[0]!r}/{self.spec[1]!r}")
+
+    def render(self, tokenizer: Any, raw_prompt: str, enable_thinking: bool) -> str:
+        messages = [{"role": "user", "content": raw_prompt}]
+        kwargs: dict[str, Any] = dict(add_generation_prompt=True, tokenize=False)
+        if self.kind == "kwarg":
+            kwargs[self.spec] = enable_thinking
+        else:
+            on, off = self.spec
+            messages.insert(0, {"role": "system",
+                                "content": on if enable_thinking else off})
+        return tokenizer.apply_chat_template(messages, **kwargs)
+
+
+def detect_thinking_toggle(tokenizer: Any, model_name: str) -> ThinkingToggle:
+    """Resolve how this model switches reasoning on and off."""
+    lowered = model_name.lower()
+    for needle, prompts in _SYSTEM_TOGGLES.items():
+        if needle in lowered:
+            return ThinkingToggle("system", prompts)
+
     template = getattr(tokenizer, "chat_template", None) or ""
     if isinstance(template, list):       # multi-template tokenizers
         template = " ".join(t.get("template", "") for t in template)
     for kwarg in _TOGGLE_KWARGS:
         if kwarg in template:
-            return kwarg
+            return ThinkingToggle("kwarg", kwarg)
+
     raise ValueError(
-        f"no thinking toggle found in the chat template for {model_name!r}. "
-        f"Looked for {_TOGGLE_KWARGS}. This model may gate reasoning through a "
-        "system prompt instead (e.g. Nemotron), which needs its own code path — "
-        "do not fall back to an untoggled template, it silently makes the "
-        "thinking-off and thinking-on captures identical.")
+        f"no thinking toggle found for {model_name!r}. Looked for chat-template "
+        f"kwargs {_TOGGLE_KWARGS} and system-prompt families "
+        f"{tuple(_SYSTEM_TOGGLES)}. Do not fall back to an untoggled template: "
+        "it silently makes the thinking-off and thinking-on captures identical.")
 
 
 def apply_chat_template_to_prompt(
     raw_prompt: str, tokenizer: Any, model_name: str, enable_thinking: bool = False,
-    thinking_kwarg: str | None = None,
+    toggle: ThinkingToggle | None = None,
 ) -> str:
     """Render the prompt as a single user turn through the model's template."""
-    messages = [{"role": "user", "content": raw_prompt}]
-    kwargs: dict[str, Any] = dict(add_generation_prompt=True, tokenize=False)
-    if thinking_kwarg is None:
-        thinking_kwarg = detect_thinking_kwarg(tokenizer, model_name)
-    kwargs[thinking_kwarg] = enable_thinking
-    return tokenizer.apply_chat_template(messages, **kwargs)
+    if toggle is None:
+        toggle = detect_thinking_toggle(tokenizer, model_name)
+    return toggle.render(tokenizer, raw_prompt, enable_thinking)
 
 
 def verify_toggle_changes_prompt(tokenizer: Any, model_name: str,
-                                 thinking_kwarg: str) -> None:
+                                 toggle: ThinkingToggle) -> None:
     """Hard-fail if the toggle is inert. The failure is otherwise invisible."""
     probe = "What is 2 + 2?"
-    off = apply_chat_template_to_prompt(probe, tokenizer, model_name,
-                                        enable_thinking=False,
-                                        thinking_kwarg=thinking_kwarg)
-    on = apply_chat_template_to_prompt(probe, tokenizer, model_name,
-                                       enable_thinking=True,
-                                       thinking_kwarg=thinking_kwarg)
+    off = toggle.render(tokenizer, probe, False)
+    on = toggle.render(tokenizer, probe, True)
     if off == on:
         raise ValueError(
-            f"{model_name!r}: apply_chat_template({thinking_kwarg}=True/False) "
-            "renders byte-identical prompts, so the capture would compare a "
+            f"{model_name!r}: {toggle.describe()} renders byte-identical "
+            "prompts for reasoning on and off, so the capture would compare a "
             "model against itself. Refusing to run.")
-    logger.info("thinking toggle %r verified: off/on prompts differ by %d chars",
-                thinking_kwarg, abs(len(on) - len(off)))
+    logger.info("thinking toggle verified (%s): off/on prompts differ",
+                toggle.describe())
 
 
 def build_prompt(
@@ -172,7 +204,7 @@ def build_prompt(
     model_name: str | None = None,
     chat_template: bool = False,
     enable_thinking: bool = False,
-    thinking_kwarg: str | None = None,
+    toggle: Any = None,
 ) -> str:
     raw_prompt = _prompt_default(task_module, sample)
     if not chat_template:
@@ -180,7 +212,7 @@ def build_prompt(
     assert tokenizer is not None and model_name is not None
     return apply_chat_template_to_prompt(
         raw_prompt, tokenizer, model_name, enable_thinking=enable_thinking,
-        thinking_kwarg=thinking_kwarg,
+        toggle=toggle,
     )
 
 
@@ -316,10 +348,10 @@ def run_capture(args: argparse.Namespace) -> int:
 
     # Establish the toggle before spending a GPU-hour on it, and record which
     # kwarg was used so a capture is self-describing across model families.
-    thinking_kwarg = None
+    toggle = None
     if args.chat_template:
-        thinking_kwarg = detect_thinking_kwarg(tokenizer, args.model)
-        verify_toggle_changes_prompt(tokenizer, args.model, thinking_kwarg)
+        toggle = detect_thinking_toggle(tokenizer, args.model)
+        verify_toggle_changes_prompt(tokenizer, args.model, toggle)
     load_fn_name, is_correct_adapter, _ = _TASK_REGISTRY[args.task]
 
     try:
@@ -352,7 +384,8 @@ def run_capture(args: argparse.Namespace) -> int:
 
     if not config_path.exists():
         capture_config = build_writer_config(model, args)
-        capture_config["thinking_kwarg"] = thinking_kwarg
+        capture_config["thinking_toggle"] = (
+            toggle.describe() if toggle is not None else None)
         config_path.write_text(json.dumps(capture_config, indent=2))
 
     acts_off, acts_on, meta_rows = [], [], []
@@ -364,13 +397,13 @@ def run_capture(args: argparse.Namespace) -> int:
         prompts_off = [
             build_prompt(s, task_module, tokenizer, args.model,
                          chat_template=args.chat_template, enable_thinking=False,
-                         thinking_kwarg=thinking_kwarg)
+                         toggle=toggle)
             for s in batch
         ]
         prompts_on = [
             build_prompt(s, task_module, tokenizer, args.model,
                          chat_template=args.chat_template, enable_thinking=True,
-                         thinking_kwarg=thinking_kwarg)
+                         toggle=toggle)
             for s in batch
         ]
 

@@ -1,16 +1,22 @@
 {
   "_comment": [
-    "Cogito v1 preview (Llama-3.1-8B base, 32 layers). Uses enable_thinking, same kwarg as Qwen3 -- a different family on an identical toggle.",
-    "Replication of the Qwen3-8B captures on a second model family, to answer whether the prefill signal is a property of reasoning models generally or of Qwen3's thinking-mode tuning specifically.",
+    "Nemotron-Nano 8B v1 (NVIDIA): Llama-3.1-8B base with a reasoning toggle,",
+    "driven by the system prompt 'detailed thinking on'/'off' rather than a",
+    "chat-template kwarg. Chosen over deepcogito/cogito-8b because it is the",
+    "mainstream Llama-3.1-with-thinking model (220k downloads vs 964) and is",
+    "widely reported in existing benchmarks.",
+    "Replication of the Qwen3-8B captures on a second model family, to answer",
+    "whether the prefill signal is a property of reasoning models generally or",
+    "of Qwen3's thinking-mode tuning specifically.",
     "Thinking budgets are held identical to the Qwen3 runs on purpose.",
-    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/capture_cogito8b.json"
+    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/capture_nemotron8b.json"
   ],
-  "name": "capture_cogito8b",
+  "name": "capture_nemotron8b",
   "kind": "python_script",
   "script": "scripts/capture_inference_thinking.py",
   "constants": {
-    "model": "deepcogito/cogito-v1-preview-llama-8B",
-    "slug": "cogito8b",
+    "model": "nvidia/Llama-3.1-Nemotron-Nano-8B-v1",
+    "slug": "nemotron8b",
     "out": "shared/icr_capture/{tslug}_thinking_{slug}",
     "shard_count": "4"
   },
@@ -90,6 +96,6 @@
   "tags": [
     "capture",
     "crossmodel",
-    "cogito8b"
+    "nemotron8b"
   ]
 }
