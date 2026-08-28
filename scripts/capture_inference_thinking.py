@@ -278,12 +278,26 @@ def load_model(model_name: str, attn_implementation: str = "sdpa"):
     # `torch_dtype` rather than the newer `dtype` alias: it is honored across
     # the whole transformers 4.x range this repo pins, where `dtype` only
     # exists from 4.56 on.
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        attn_implementation=attn_implementation,
-        torch_dtype=dtype,
-        device_map="auto",
-    )
+    def _load(attn: str):
+        return AutoModelForCausalLM.from_pretrained(
+            model_name,
+            attn_implementation=attn,
+            torch_dtype=dtype,
+            device_map="auto",
+        )
+
+    try:
+        model = _load(attn_implementation)
+    except ValueError as exc:
+        # Not every architecture has an SDPA path -- gpt-oss, for one, refuses
+        # it outright. Eager is slower but universally available, and a failed
+        # load here costs a whole dispatched cell, so fall back rather than die.
+        if attn_implementation == "eager" or "attention implementation" not in str(exc).lower():
+            raise
+        logger.warning("%s rejected attn_implementation=%r, falling back to "
+                       "eager: %s", model_name, attn_implementation,
+                       str(exc).split(".")[0])
+        model = _load("eager")
     model.eval()
     return tokenizer, model
 
