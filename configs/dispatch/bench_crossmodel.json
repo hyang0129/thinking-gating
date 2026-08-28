@@ -1,0 +1,66 @@
+{
+  "_comment": [
+    "The cross-model bench: labels then probes, one cell per (model, task,",
+    "objective). Each cell generates its own labels first, so the cell is",
+    "self-contained and idempotent -- generate_labels overwrites, the probe",
+    "output_check gates the rerun.",
+    "",
+    "Qwen3-8B is deliberately NOT in the grid. Its capture dirs predate the",
+    "{task}_thinking_{slug} convention (gsm8k_full_ vs gsm8kfull_), and its",
+    "numbers for all three objectives already exist under output/decomp/ from",
+    "the decomposition run. Re-running it here would burn compute to reproduce",
+    "numbers we have, behind a path alias that would rot.",
+    "",
+    "Re-expanding is safe: cells whose captures are not on disk yet fail and",
+    "can be retried once they land; finished cells are skipped.",
+    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/bench_crossmodel.json"
+  ],
+  "name": "bench_crossmodel",
+  "kind": "shell",
+  "constants": {
+    "cap": "shared/icr_capture/{tcap}_thinking_{slug}",
+    "lab": "shared/xm/{slug}__{task}_labels.jsonl",
+    "out": "output/xm/{slug}__{task}__{target}"
+  },
+  "grid": {
+    "slug": [
+      "nemotron8b",
+      "granite33",
+      "qwen3_14b",
+      "gptoss20b"
+    ],
+    "target": [
+      "needs_thinking",
+      "rescued",
+      "helped"
+    ]
+  },
+  "zip": {
+    "task": [
+      "gsm8k",
+      "math500",
+      "mmlu_pro"
+    ],
+    "tcap": [
+      "gsm8kfull",
+      "math500",
+      "mmlupro"
+    ]
+  },
+  "cell_id_template": "bench-{slug}-{task}-{target}",
+  "command": "mkdir -p shared/xm && .venv/bin/python scripts/generate_labels.py --capture-dir {cap} --out-file {lab} && .venv/bin/python scripts/run_experiment.py --capture-dir {cap} --labels {lab} --out-dir {out} --method logreg --target {target} --seeds 42 1 2 3 4",
+  "output_check": [
+    "{out}/aggregate_metrics.json"
+  ],
+  "env": {
+    "OMP_NUM_THREADS": "8",
+    "MKL_NUM_THREADS": "8"
+  },
+  "timeout_s": 7200,
+  "max_attempts": 2,
+  "priority": 30,
+  "tags": [
+    "bench",
+    "crossmodel"
+  ]
+}
