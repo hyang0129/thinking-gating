@@ -13,6 +13,9 @@
     "",
     "Re-expanding is safe: cells whose captures are not on disk yet fail and",
     "can be retried once they land; finished cells are skipped.",
+    "Cells guard on shard count first: a bench cell that starts while its",
+    "capture is still writing will train on partial data and report a",
+    "confident wrong number. Ask gpt-oss/gsm8k, which trained on 990/1319.",
     "Queue: python scripts/dispatch/queue.py expand configs/dispatch/bench_crossmodel.json"
   ],
   "name": "bench_crossmodel",
@@ -20,7 +23,8 @@
   "constants": {
     "cap": "shared/icr_capture/{tcap}_thinking_{slug}",
     "lab": "shared/xm/{slug}__{task}_labels.jsonl",
-    "out": "output/xm/{slug}__{task}__{target}"
+    "out": "output/xm/{slug}__{task}__{target}",
+    "shards": "4"
   },
   "grid": {
     "slug": [
@@ -48,7 +52,7 @@
     ]
   },
   "cell_id_template": "bench-{slug}-{task}-{target}",
-  "command": "mkdir -p shared/xm && .venv/bin/python scripts/generate_labels.py --capture-dir {cap} --out-file {lab} && .venv/bin/python scripts/run_experiment.py --capture-dir {cap} --labels {lab} --out-dir {out} --method logreg --target {target} --seeds 42 1 2 3 4",
+  "command": "n=$(ls {cap}/meta.shard*.jsonl 2>/dev/null | wc -l); if [ \"$n\" -ne {shards} ]; then echo \"capture incomplete: $n/{shards} shards in {cap}\" >&2; exit 1; fi; mkdir -p shared/xm && .venv/bin/python scripts/generate_labels.py --capture-dir {cap} --out-file {lab} && .venv/bin/python scripts/run_experiment.py --capture-dir {cap} --labels {lab} --out-dir {out} --method logreg --target {target} --seeds 42 1 2 3 4",
   "output_check": [
     "{out}/aggregate_metrics.json"
   ],
