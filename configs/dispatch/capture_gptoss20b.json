@@ -8,7 +8,13 @@
     "--max-response-len is 1024 rather than 320 for exactly that reason:",
     "at 320 the low-effort responses would truncate before the final",
     "channel and every correct_off would read as wrong.",
-    "Thinking budgets match the Qwen3-8B runs so the comparison is like for like.",
+    "Thinking budgets are RAISED over the Qwen3 runs (6144/12288/8192 vs",
+    "3072/8192/6144): a 4-sample smoke on easy GSM8K truncated 1 of 4 at 2048.",
+    "Holding the token budget fixed across models does not hold the",
+    "intervention fixed -- it just starves the model that reasons longer, and a",
+    "truncated thinking pass is scored wrong, which fabricates 'thinking did",
+    "not help'. Truncation flags are recorded either way; use --drop-truncated",
+    "for the sensitivity check.",
     "Queue: python scripts/dispatch/queue.py expand configs/dispatch/capture_gptoss20b.json"
   ],
   "name": "capture_gptoss20b",
@@ -40,9 +46,9 @@
       "mmlupro"
     ],
     "think": [
-      "3072",
-      "8192",
-      "6144"
+      "6144",
+      "12288",
+      "8192"
     ],
     "maxs": [
       "0",
