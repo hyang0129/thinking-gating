@@ -1,0 +1,96 @@
+{
+  "_comment": [
+    "gpt-oss-20b (OpenAI, MoE ~3.6B active, mxfp4). reasoning_effort",
+    "high vs low -- NOT a true off switch: at 'low' the model still emits",
+    "analysis-channel reasoning. The label for this model therefore reads",
+    "'more reasoning helps', not 'reasoning helps', and it must not be",
+    "pooled with the binary-toggle models without saying so.",
+    "--max-response-len is 1024 rather than 320 for exactly that reason:",
+    "at 320 the low-effort responses would truncate before the final",
+    "channel and every correct_off would read as wrong.",
+    "Thinking budgets match the Qwen3-8B runs so the comparison is like for like.",
+    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/capture_gptoss20b.json"
+  ],
+  "name": "capture_gptoss20b",
+  "kind": "python_script",
+  "script": "scripts/capture_inference_thinking.py",
+  "constants": {
+    "model": "openai/gpt-oss-20b",
+    "slug": "gptoss20b",
+    "out": "shared/icr_capture/{tslug}_thinking_{slug}",
+    "shard_count": "4"
+  },
+  "grid": {
+    "shard": [
+      "00",
+      "01",
+      "02",
+      "03"
+    ]
+  },
+  "zip": {
+    "task": [
+      "gsm8k",
+      "math500",
+      "mmlu_pro"
+    ],
+    "tslug": [
+      "gsm8kfull",
+      "math500",
+      "mmlupro"
+    ],
+    "think": [
+      "3072",
+      "8192",
+      "6144"
+    ],
+    "maxs": [
+      "0",
+      "0",
+      "1000"
+    ]
+  },
+  "cell_id_template": "capture-{slug}-{tslug}-shard{shard}",
+  "args": [
+    "--task",
+    "{task}",
+    "--model",
+    "{model}",
+    "--out-dir",
+    "{out}",
+    "--max-samples",
+    "{maxs}",
+    "--batch-size",
+    "8",
+    "--max-prompt-len",
+    "1024",
+    "--max-response-len",
+    "1024",
+    "--max-response-len-thinking",
+    "{think}",
+    "--chat-template",
+    "--shard-index",
+    "{shard}",
+    "--shard-count",
+    "{shard_count}"
+  ],
+  "output_check": [
+    "{out}/meta.shard{shard}.jsonl",
+    "{out}/activations_thinking_off.shard{shard}.npz",
+    "{out}/activations_thinking_on.shard{shard}.npz"
+  ],
+  "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "HF_DATASETS_OFFLINE": "1",
+    "CUDA_MPS_PIPE_DIRECTORY": "/no/such/path"
+  },
+  "timeout_s": 43200,
+  "max_attempts": 2,
+  "priority": 10,
+  "tags": [
+    "capture",
+    "crossmodel",
+    "gptoss20b"
+  ]
+}

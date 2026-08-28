@@ -1,0 +1,90 @@
+{
+  "_comment": [
+    "Qwen3-14B: same family as the 8B anchor, so this isolates SCALE rather",
+    "than family. enable_thinking, identical mechanism to Qwen3-8B.",
+    "Thinking budgets match the Qwen3-8B runs so the comparison is like for like.",
+    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/capture_qwen3_14b.json"
+  ],
+  "name": "capture_qwen3_14b",
+  "kind": "python_script",
+  "script": "scripts/capture_inference_thinking.py",
+  "constants": {
+    "model": "Qwen/Qwen3-14B",
+    "slug": "qwen3_14b",
+    "out": "shared/icr_capture/{tslug}_thinking_{slug}",
+    "shard_count": "4"
+  },
+  "grid": {
+    "shard": [
+      "00",
+      "01",
+      "02",
+      "03"
+    ]
+  },
+  "zip": {
+    "task": [
+      "gsm8k",
+      "math500",
+      "mmlu_pro"
+    ],
+    "tslug": [
+      "gsm8kfull",
+      "math500",
+      "mmlupro"
+    ],
+    "think": [
+      "3072",
+      "8192",
+      "6144"
+    ],
+    "maxs": [
+      "0",
+      "0",
+      "1000"
+    ]
+  },
+  "cell_id_template": "capture-{slug}-{tslug}-shard{shard}",
+  "args": [
+    "--task",
+    "{task}",
+    "--model",
+    "{model}",
+    "--out-dir",
+    "{out}",
+    "--max-samples",
+    "{maxs}",
+    "--batch-size",
+    "8",
+    "--max-prompt-len",
+    "1024",
+    "--max-response-len",
+    "320",
+    "--max-response-len-thinking",
+    "{think}",
+    "--chat-template",
+    "--shard-index",
+    "{shard}",
+    "--shard-count",
+    "{shard_count}"
+  ],
+  "output_check": [
+    "{out}/meta.shard{shard}.jsonl",
+    "{out}/activations_thinking_off.shard{shard}.npz",
+    "{out}/activations_thinking_on.shard{shard}.npz"
+  ],
+  "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "HF_DATASETS_OFFLINE": "1",
+    "CUDA_MPS_PIPE_DIRECTORY": "/no/such/path"
+  },
+  "timeout_s": 43200,
+  "max_attempts": 2,
+  "priority": 10,
+  "tags": [
+    "capture",
+    "crossmodel",
+    "qwen3_14b"
+  ]
+}
