@@ -95,6 +95,12 @@ _THINK_CLOSE = re.compile(r"</think>", re.IGNORECASE)
 # shape. Unclosed is deliberate -- a truncated response still yields its body.
 _RESPONSE_OPEN = re.compile(r"<response>", re.IGNORECASE)
 _RESPONSE_CLOSE = re.compile(r"</response>", re.IGNORECASE)
+# gpt-oss speaks OpenAI's harmony format: reasoning goes to the "analysis"
+# channel and the answer to the "final" channel, with no <think> tags in
+# sight. Cut at the last final-channel marker or the grader sees the whole
+# chain of thought and scores the reasoning instead of the answer.
+_HARMONY_FINAL = re.compile(r"<\|channel\|>final<\|message\|>")
+_HARMONY_END = re.compile(r"<\|(?:end|return|call)\|>")
 
 
 # ---------------------------------------------------------------------------
@@ -111,6 +117,12 @@ def strip_thinking(text: str) -> str:
     A response truncated mid-thought has no closing tag; return it unchanged so
     the grader sees the truncation for what it is rather than an empty string.
     """
+    finals = list(_HARMONY_FINAL.finditer(text))
+    if finals:
+        answer = text[finals[-1].end():]
+        stop = _HARMONY_END.search(answer)
+        return (answer[:stop.start()] if stop else answer).strip()
+
     matches = list(_THINK_CLOSE.finditer(text))
     answer = text[matches[-1].end():].strip() if matches else text.strip()
 
@@ -141,6 +153,14 @@ _SYSTEM_TOGGLES = {
     "nemotron": ("detailed thinking on", "detailed thinking off"),
 }
 
+# Some families grade reasoning rather than switching it. gpt-oss takes
+# reasoning_effort=low|medium|high, so "off" is the lowest setting rather than
+# a true off -- less thinking, not none. Worth stating in any writeup: for
+# these models the label is "more reasoning helps", not "reasoning helps".
+_VALUE_TOGGLES = {
+    "gpt-oss": ("reasoning_effort", "high", "low"),
+}
+
 
 class ThinkingToggle:
     """How to render a prompt with reasoning on or off for one model."""
@@ -150,14 +170,20 @@ class ThinkingToggle:
         self.spec = spec
 
     def describe(self) -> str:
-        return (f"chat-template kwarg {self.spec!r}" if self.kind == "kwarg"
-                else f"system prompt {self.spec[0]!r}/{self.spec[1]!r}")
+        if self.kind == "kwarg":
+            return f"chat-template kwarg {self.spec!r}"
+        if self.kind == "kwarg_value":
+            return "chat-template kwarg %s=%r/%r" % self.spec
+        return f"system prompt {self.spec[0]!r}/{self.spec[1]!r}"
 
     def render(self, tokenizer: Any, raw_prompt: str, enable_thinking: bool) -> str:
         messages = [{"role": "user", "content": raw_prompt}]
         kwargs: dict[str, Any] = dict(add_generation_prompt=True, tokenize=False)
         if self.kind == "kwarg":
             kwargs[self.spec] = enable_thinking
+        elif self.kind == "kwarg_value":
+            name, on, off = self.spec
+            kwargs[name] = on if enable_thinking else off
         else:
             on, off = self.spec
             messages.insert(0, {"role": "system",
@@ -171,6 +197,9 @@ def detect_thinking_toggle(tokenizer: Any, model_name: str) -> ThinkingToggle:
     for needle, prompts in _SYSTEM_TOGGLES.items():
         if needle in lowered:
             return ThinkingToggle("system", prompts)
+    for needle, spec in _VALUE_TOGGLES.items():
+        if needle in lowered:
+            return ThinkingToggle("kwarg_value", spec)
 
     template = getattr(tokenizer, "chat_template", None) or ""
     if isinstance(template, list):       # multi-template tokenizers
