@@ -1,0 +1,125 @@
+{
+  "_comment": [
+    "V3 CAPTURE -- fixes the truncation confound.",
+    "The anchor, re-captured with a workable off-budget.",
+    "",
+    "v1/v2 ran the thinking-OFF pass at --max-response-len 320. Qwen3's",
+    "non-thinking mode still writes chain-of-thought, so 75% of MATH-500",
+    "off-responses were cut off mid-answer and graded wrong. correct_off",
+    "became near-deterministic in truncation (0.037 correct when capped",
+    "vs 0.944 when not), and the identical probe scored HIGHER predicting",
+    "truncated_off than predicting the label (0.922 vs 0.879).",
+    "",
+    "Off-budgets here are sized from the v2 data: complete off-responses",
+    "were censored at the cap (max 311/320/319 observed) and MATH-500",
+    "answers reach ~720 words at p99. Thinking-on budgets are unchanged.",
+    "The capture script now errors above 20% off-truncation, so a still",
+    "-too-small budget will announce itself.",
+    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/capture_qwen3v3.json"
+  ],
+  "name": "capture_qwen3v3",
+  "kind": "python_script",
+  "script": "scripts/capture_inference_thinking.py",
+  "constants": {
+    "model": "Qwen/Qwen3-8B",
+    "slug": "qwen3v3",
+    "out": "shared/icr_capture/{tslug}_thinking_{slug}",
+    "shard_count": "4"
+  },
+  "grid": {
+    "shard": [
+      "00",
+      "01",
+      "02",
+      "03"
+    ]
+  },
+  "zip": {
+    "task": [
+      "gsm8k",
+      "math500",
+      "mmlu_pro",
+      "bbh",
+      "lsat"
+    ],
+    "tslug": [
+      "gsm8kfull",
+      "math500",
+      "mmlupro",
+      "bbh",
+      "lsat"
+    ],
+    "think": [
+      "3072",
+      "8192",
+      "6144",
+      "4096",
+      "8192"
+    ],
+    "off": [
+      "1024",
+      "2048",
+      "1024",
+      "1024",
+      "1024"
+    ],
+    "maxs": [
+      "0",
+      "0",
+      "1000",
+      "0",
+      "0"
+    ],
+    "batch": [
+      "16",
+      "8",
+      "16",
+      "16",
+      "16"
+    ]
+  },
+  "cell_id_template": "capture-{slug}-{tslug}-shard{shard}",
+  "args": [
+    "--task",
+    "{task}",
+    "--model",
+    "{model}",
+    "--out-dir",
+    "{out}",
+    "--max-samples",
+    "{maxs}",
+    "--batch-size",
+    "{batch}",
+    "--max-prompt-len",
+    "1024",
+    "--max-response-len",
+    "{off}",
+    "--max-response-len-thinking",
+    "{think}",
+    "--chat-template",
+    "--shard-index",
+    "{shard}",
+    "--shard-count",
+    "{shard_count}"
+  ],
+  "output_check": [
+    "{out}/meta.shard{shard}.jsonl",
+    "{out}/activations_thinking_off.shard{shard}.npz",
+    "{out}/activations_thinking_on.shard{shard}.npz"
+  ],
+  "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "HF_DATASETS_OFFLINE": "1",
+    "CUDA_MPS_PIPE_DIRECTORY": "/no/such/path"
+  },
+  "timeout_s": 43200,
+  "max_attempts": 2,
+  "priority": 5,
+  "tags": [
+    "capture",
+    "v3",
+    "truncation-fix",
+    "qwen3v3"
+  ]
+}
