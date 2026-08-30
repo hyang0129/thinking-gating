@@ -56,6 +56,16 @@ logger = logging.getLogger("experiment")
 # Data
 # ---------------------------------------------------------------------------
 
+def select_layers(activations: np.ndarray, layers: list[int]) -> np.ndarray:
+    """(N, L+1, H) -> (N, len(layers)*H), layers concatenated.
+
+    One layer throws away most of the network's state, but concatenating costs
+    features linearly, and these probes are already sample-starved -- so this
+    helps only where n is large enough to afford the dimensionality.
+    """
+    return np.concatenate([select_layer(activations, l) for l in layers], axis=1)
+
+
 def select_layer(activations: np.ndarray, layer: int) -> np.ndarray:
     """(N, L+1, H) -> (N, H) for one layer. Negative indices count from the end."""
     n_layers = activations.shape[1]
@@ -487,6 +497,12 @@ def main(argv: list[str] | None = None) -> int:
                         "already committed to rendering that prompt.")
     p.add_argument("--layer", type=int, default=None,
                    help="Layer to probe (default: the middle layer)")
+    p.add_argument("--layers", type=int, nargs="+", default=None,
+                   help="Probe several layers concatenated. Overrides --layer. "
+                        "Costs features linearly, so it needs a large n.")
+    p.add_argument("--layer-stride", type=int, default=0,
+                   help="With --layers unset, take every Nth layer (e.g. 4 -> "
+                        "layers 0,4,8,...). Shorthand for a spread of depths.")
     p.add_argument("--layer-sweep", action="store_true",
                    help="Train on every layer with the first seed and report AUROC per layer")
     p.add_argument("--seeds", type=int, nargs="+", default=[42, 1, 2, 3, 4])
@@ -602,9 +618,20 @@ def main(argv: list[str] | None = None) -> int:
                     best_layer, sweep_val[best_layer], sweep_test[best_layer])
         args.layer = best_layer
 
-    X = select_layer(activations, args.layer)
-    logger.info("probing layer %d — features %s, method=%s",
-                args.layer, X.shape, args.method)
+    if args.layer_stride and not args.layers:
+        args.layers = list(range(0, n_layers, args.layer_stride))
+    if args.layers:
+        for l in args.layers:
+            if not -n_layers <= l < n_layers:
+                logger.error("--layers %d out of range for %d layers", l, n_layers)
+                return 1
+        X = select_layers(activations, args.layers)
+        logger.info("probing layers %s — features %s, method=%s",
+                    args.layers, X.shape, args.method)
+    else:
+        X = select_layer(activations, args.layer)
+        logger.info("probing layer %d — features %s, method=%s",
+                    args.layer, X.shape, args.method)
 
     per_seed = []
     for seed in args.seeds:
