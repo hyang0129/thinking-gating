@@ -539,6 +539,7 @@ def run_capture(args: argparse.Namespace) -> int:
     helped = sum(1 for r in meta_rows if not r["correct_off"] and r["correct_on"])
     hurt = sum(1 for r in meta_rows if r["correct_off"] and not r["correct_on"])
     trunc = sum(r["truncated_on"] for r in meta_rows)
+    trunc_off = sum(r["truncated_off"] for r in meta_rows)
 
     logger.info("wrote %s and activations %s", meta_path.name, np.stack(acts_off).shape)
     logger.info("thinking-OFF accuracy: %d/%d (%.1f%%)", n_off, n, 100 * n_off / n)
@@ -550,6 +551,25 @@ def run_capture(args: argparse.Namespace) -> int:
             "%d/%d thinking-on responses hit the %d-token cap — their labels "
             "reflect truncation, not reasoning; raise --max-response-len-thinking",
             trunc, n, args.max_response_len_thinking,
+        )
+
+    # Thinking-OFF truncation is the more dangerous of the two and used to go
+    # unreported. correct_off defines BOTH objectives -- needs_thinking is
+    # ~correct_off, and rescued conditions on it -- so a capped off-pass does
+    # not measure "the model cannot do this without thinking", it measures
+    # "the model did not finish writing in N tokens". At a 320-token cap on
+    # MATH-500 that reached 75% of rows, correct_off became almost a pure
+    # function of truncation (3.7% correct when capped vs 94.4% when not) and
+    # the probe scored higher predicting truncation than predicting the label.
+    if trunc_off:
+        level = logger.error if trunc_off > 0.2 * n else logger.warning
+        level(
+            "%d/%d (%.1f%%) thinking-OFF responses hit the %d-token cap. "
+            "correct_off then reflects response LENGTH, not capability, and "
+            "both needs_thinking and rescued inherit that confound. Raise "
+            "--max-response-len until this is near zero before trusting any "
+            "label from this capture.",
+            trunc_off, n, 100 * trunc_off / n, args.max_response_len,
         )
     return 0
 
