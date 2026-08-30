@@ -1,0 +1,91 @@
+{
+  "target": "needs_thinking",
+  "n": 2819,
+  "base_rate": 0.4164597374955658,
+  "seeds": [
+    42,
+    1,
+    2,
+    3,
+    4
+  ],
+  "capture_dirs": [
+    "shared/icr_capture/gsm8k_full_thinking_qwen3",
+    "shared/icr_capture/math500_thinking_qwen3",
+    "shared/icr_capture/mmlupro_thinking_qwen3"
+  ],
+  "baselines": {
+    "length_chars": {
+      "test_auroc": {
+        "mean": 0.6325590118347022,
+        "ci": [
+          0.6140491062226838,
+          0.6510689174467206
+        ],
+        "sd": 0.021117044492641745,
+        "n": 5
+      },
+      "test_auroc_bootstrap": {
+        "ci": [
+          0.5843780606299619,
+          0.6796828457740736
+        ],
+        "n_seeds": 5
+      }
+    },
+    "length_words": {
+      "test_auroc": {
+        "mean": 0.6134902670891806,
+        "ci": [
+          0.5923579957654042,
+          0.6346225384129571
+        ],
+        "sd": 0.024108773060680454,
+        "n": 5
+      },
+      "test_auroc_bootstrap": {
+        "ci": [
+          0.5638446175799976,
+          0.6614114609278724
+        ],
+        "n_seeds": 5
+      }
+    },
+    "tfidf_word": {
+      "test_auroc": {
+        "mean": 0.8207256030524478,
+        "ci": [
+          0.8081142006696007,
+          0.8333370054352949
+        ],
+        "sd": 0.014387731132473885,
+        "n": 5
+      },
+      "test_auroc_bootstrap": {
+        "ci": [
+          0.7849865441599341,
+          0.8554067176157398
+        ],
+        "n_seeds": 5
+      }
+    },
+    "tfidf_char": {
+      "test_auroc": {
+        "mean": 0.818454374959581,
+        "ci": [
+          0.8057598677211154,
+          0.8311488821980465
+        ],
+        "sd": 0.014482541390853088,
+        "n": 5
+      },
+      "test_auroc_bootstrap": {
+        "ci": [
+          0.7823794902999265,
+          0.8536366387894372
+        ],
+        "n_seeds": 5
+      }
+    }
+  }
+}
