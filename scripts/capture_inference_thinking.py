@@ -365,6 +365,14 @@ def generate_batch(model, tokenizer, input_ids, attention_mask, max_new_tokens: 
     return texts, truncated, lengths
 
 
+# Above this share of thinking-OFF responses hitting the token cap, the capture
+# is refused rather than published. correct_off defines both objectives, so a
+# truncated off-pass does not measure capability -- it measures response length.
+# See paper/results/metrics/truncation/README.md for the round of results this
+# cost. 0.2 is a backstop, not a target: a healthy capture is near zero.
+OFF_TRUNCATION_LIMIT = 0.2
+
+
 def select_shard(dataset: list, shard_index: int, shard_count: int) -> list:
     """Round-robin slice, so every shard mixes easy and hard items evenly.
 
@@ -562,15 +570,57 @@ def run_capture(args: argparse.Namespace) -> int:
     # function of truncation (3.7% correct when capped vs 94.4% when not) and
     # the probe scored higher predicting truncation than predicting the label.
     if trunc_off:
-        level = logger.error if trunc_off > 0.2 * n else logger.warning
+        rate = trunc_off / n
+        level = logger.error if rate > OFF_TRUNCATION_LIMIT else logger.warning
         level(
             "%d/%d (%.1f%%) thinking-OFF responses hit the %d-token cap. "
             "correct_off then reflects response LENGTH, not capability, and "
             "both needs_thinking and rescued inherit that confound. Raise "
             "--max-response-len until this is near zero before trusting any "
             "label from this capture.",
-            trunc_off, n, 100 * trunc_off / n, args.max_response_len,
+            trunc_off, n, 100 * rate, args.max_response_len,
         )
+        if rate > OFF_TRUNCATION_LIMIT:
+            # Fail the run, and make the failure stick.
+            #
+            # A non-zero exit alone is not enough. The dispatch worker checks
+            # `output_check` BEFORE running a claimed cell (worker.py, the
+            # resume path) and marks it skipped when those paths exist -- so a
+            # capture that wrote its files and then exited non-zero would be
+            # filed as failed once and laundered into "skipped" by the next
+            # worker that touched it. Quarantining the meta file leaves
+            # output_check unsatisfiable, so the cell stays failed until
+            # someone re-runs it with a bigger budget.
+            #
+            # The data is not deleted: the activations stay put and the meta
+            # rows move aside intact, so the truncation can be measured (that
+            # is how the confound was diagnosed) without any downstream script
+            # picking them up as a normal capture.
+            quarantined = meta_path.with_suffix(meta_path.suffix + ".quarantined")
+            meta_path.replace(quarantined)
+            (out_dir / f"TRUNCATION_FAILURE.{suffix}.json").write_text(
+                json.dumps({
+                    "reason": "thinking-OFF truncation above limit",
+                    "off_truncation_rate": round(rate, 4),
+                    "limit": OFF_TRUNCATION_LIMIT,
+                    "n_truncated": trunc_off,
+                    "n_samples": n,
+                    "max_response_len": args.max_response_len,
+                    "task": args.task,
+                    "model": args.model,
+                    "shard": suffix,
+                    "quarantined_meta": quarantined.name,
+                }, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            logger.error(
+                "REFUSING to publish this capture: %s renamed to %s. "
+                "correct_off is not trustworthy at this truncation rate, so "
+                "every label derived from it would be confounded. Re-run with "
+                "a larger --max-response-len.",
+                meta_path.name, quarantined.name,
+            )
+            return 1
     return 0
 
 
