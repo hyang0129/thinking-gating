@@ -15,7 +15,17 @@
     "answers reach ~720 words at p99. Thinking-on budgets are unchanged.",
     "The capture script now errors above 20% off-truncation, so a still",
     "-too-small budget will announce itself.",
-    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/capture_nemotronv3.json"
+    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/capture_nemotronv3.json",
+    "",
+    "NAMING: capture dirs are {task}_thinking_{model-slug}, with {task} the",
+    "task module name exactly. Earlier rounds spelled the same task three",
+    "ways -- gsm8k_full (all 1319 rows, vs a 500-row pilot), gsm8kfull, and",
+    "gsm8k -- plus lsat_long (8192 thinking budget) vs lsat, and mmlupro vs",
+    "mmlu_pro. Those qualifiers encoded capture parameters that varied at",
+    "the time and no longer do: v3 captures each task once, gsm8k at full",
+    "size and lsat at the long budget. The divergence already cost coverage",
+    "-- bench_crossmodel dropped Qwen3-8B rather than resolve gsm8k_full_",
+    "against gsm8kfull_."
   ],
   "name": "capture_nemotronv3",
   "kind": "python_script",
@@ -43,9 +53,9 @@
       "lsat"
     ],
     "tslug": [
-      "gsm8kfull",
+      "gsm8k",
       "math500",
-      "mmlupro",
+      "mmlu_pro",
       "bbh",
       "lsat"
     ],

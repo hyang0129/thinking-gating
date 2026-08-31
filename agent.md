@@ -385,6 +385,21 @@ implying work is in flight.
 
 ### Data Paths
 - Relative paths: `shared/icr_capture/`, `shared/`, `output/` (relative to repo root, on local or cluster alike)
+- **Capture dirs are `{task}_thinking_{model-slug}`, where `{task}` is the task
+  module name exactly** — `gsm8k`, `math500`, `mmlu_pro`, `bbh`, `lsat`. No
+  qualifiers. Earlier rounds spelled one task three ways (`gsm8k_full`,
+  `gsm8kfull`, `gsm8k`) plus `lsat_long`/`lsat` and `mmlupro`/`mmlu_pro`,
+  because the suffix encoded a capture parameter that varied at the time: full
+  1319 rows against a 500-row pilot, an 8192 thinking budget against 3072.
+  Those distinctions are gone — v3 captures each task once, gsm8k at full size
+  and lsat at the long budget — so the qualifiers now name nothing. Vary the
+  **model slug**, never the task name. The divergence has already cost
+  coverage: `bench_crossmodel` dropped Qwen3-8B outright rather than reconcile
+  `gsm8k_full_` against `gsm8kfull_`.
+- Two same-named captures can differ in ways the name does not show.
+  `gsm8k_thinking_qwen3` is the 500-row pilot and `gsm8k_full_thinking_qwen3`
+  is all 1319 — so **resolve legacy dirs through the alias table in
+  `run_full_analysis.sh`, never by probing for a plausible directory name.**
 - Absolute paths: `/raid0/think-gating/` on Empire AI for large artifacts; `scp` **data** back after long runs (data is gitignored, never committed — the no-`scp` rule is about code going the other way)
 
 ## Writing New Scripts

@@ -30,16 +30,36 @@ METHOD="${METHOD:-logreg}"
 SEEDS="${SEEDS:-42 1 2 3 4}"
 METRICS_DIR="paper/results/metrics"
 
-# task -> capture directory (the v2 captures, with valid thinking budgets)
+# task -> capture directory. Captures are named {task}_thinking_{CAPTURE_SLUG}
+# with {task} the task module name exactly, so this is one substitution rather
+# than a table to keep in sync.
+#
+#   CAPTURE_SLUG=qwen3v3 bash scripts/run_full_analysis.sh
+#
+# The legacy branch covers the pre-v3 captures, which spelled three tasks
+# differently: gsm8k_full (all 1319 rows, as against a 500-row pilot),
+# lsat_long (8192 thinking budget, as against 3072) and mmlupro. Those
+# qualifiers marked capture parameters that varied then and do not now -- v3
+# captures each task once, gsm8k at full size and lsat at the long budget --
+# so they are history to read, not a convention to extend. Do not add to this
+# branch; name new captures after the task.
+CAPTURE_SLUG="${CAPTURE_SLUG:-qwen3}"
+
+# The alias is consulted BEFORE the plain name, and the order is load-bearing:
+# shared/icr_capture/gsm8k_thinking_qwen3 also exists and is a 500-row pilot,
+# so probing for the plain name first would silently swap the legacy analysis
+# from 1319 rows to 500 and report it as the same run.
 capture_dir() {
-  case "$1" in
-    gsm8k)    echo "shared/icr_capture/gsm8k_full_thinking_qwen3" ;;
-    lsat)     echo "shared/icr_capture/lsat_long_thinking_qwen3" ;;
-    math500)  echo "shared/icr_capture/math500_thinking_qwen3" ;;
-    mmlu_pro) echo "shared/icr_capture/mmlupro_thinking_qwen3" ;;
-    bbh)      echo "shared/icr_capture/bbh_thinking_qwen3" ;;
-    *) echo "" ;;
-  esac
+  local task="$1"
+  if [ "$CAPTURE_SLUG" = "qwen3" ]; then
+    case "$task" in
+      gsm8k)    echo "shared/icr_capture/gsm8k_full_thinking_qwen3" ; return ;;
+      lsat)     echo "shared/icr_capture/lsat_long_thinking_qwen3"  ; return ;;
+      mmlu_pro) echo "shared/icr_capture/mmlupro_thinking_qwen3"    ; return ;;
+    esac
+  fi
+  local dir="shared/icr_capture/${task}_thinking_${CAPTURE_SLUG}"
+  if [ -d "$dir" ]; then echo "$dir"; else echo ""; fi
 }
 labels_file() { echo "shared/${1}_labels.jsonl"; }
 probe_dir()   { echo "output/probe_${1}_${2}"; }
