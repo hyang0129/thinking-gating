@@ -47,7 +47,9 @@ the finding. A confound in the experimental design is invariant to the model.
 
 The capture script warned on thinking-ON truncation and said nothing about
 thinking-OFF -- the more damaging of the two, since `correct_off` defines both
-objectives. Now fixed: the script errors above 20% off-truncation.
+objectives. Now reported: the script logs the off-truncation rate at ERROR level above
+20%. It still exits 0, so a dispatched cell will not fail on it -- the log
+has to be read.
 
 ## No salvage from existing data
 

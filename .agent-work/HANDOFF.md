@@ -1,217 +1,197 @@
 # Thinking-Mode Gating Experiment — Agent Handoff
 
-**Date:** 2026-08-21  
-**Status:** Bootstrap complete and self-contained; ready for Phase 2 (label generation & training)  
+**Date:** 2026-08-31
+**Status:** Pipeline complete and exercised across 5 models / 5 benchmarks. All
+pre-08-30 probe results retracted (truncation confound). V3 re-captures queued
+on Empire AI, blocked on GPU allocation.
 **Owner:** Hong Yang
 
 ---
 
 ## Context
 
-Repo for Pathway 1 (thinking-mode gating). Goal: **train a small probe on prefill hidden states (last-prompt-token activation) to predict whether extended reasoning (thinking mode) will improve query outcome.**
+Pathway 1 of the prefill-applications line of work: **train a small probe on the
+prefill hidden state (last-prompt-token activation) to predict whether extended
+reasoning will improve a query's outcome** — i.e. a router that decides where to
+spend thinking compute. Named gap in HRBench: no evaluated method uses target-
+model prefill state for thinking-mode routing.
 
-**The repo is self-contained.** Task modules, dispatch tooling, and the Python environment all live here; nothing is symlinked or imported from a sibling checkout, on the laptop or on Empire AI. Setup is `bash scripts/setup_env.sh` (builds `./.venv`) in both places — see `.agent-work/EMPIRE_AI_SETUP.md`.
+**The repo is self-contained.** Task modules, dispatch tooling, and the venv all
+live here. `bash scripts/setup_env.sh` on any machine. See
+`.agent-work/EMPIRE_AI_SETUP.md` for cluster workflow, `agent.md` for the
+operating rules (which machine may do what, dispatch hygiene, pitfalls).
 
-### Experiment Summary
-- **Tasks:** GSM8K (primary, train/val/test split) + LSAT Logic Games (secondary, transfer test)
-- **Labels:** Binary ("thinking_helped" = wrong→correct with thinking; "thinking_no_help" = everything else)
-- **Probe:** MLP or contrastive on (N, num_layers, hidden_dim) prefill activations
-- **Design:** 60/20/20 splits, 5-fold CV, multi-seed reporting, cross-task transfer for confound removal
+### The three objectives
 
-### Phase 1 (Complete)
-- ✅ Discovery: reasoning tasks survey (Agent A), label schema design (Agent B), experiment structure (Agent C)
-- ✅ Bootstrap: repo initialized, `capture_inference_thinking.py` adapted, configs + requirements locked
-- ✅ Self-containment pass (2026-08-21):
-  - `tasks/gsm8k.py` (`openai/gsm8k`) and `tasks/lsat.py` (`hails/agieval-lsat-ar`, 230 test rows) written in-repo, with prompt formatting, answer extraction, graders, and heuristic difficulty buckets
-  - `scripts/gpu_dispatch.py`, `scripts/launch_jupyter.py`, `utils/jupyter_exec.py` vendored in
-  - `scripts/setup_env.sh` builds the repo's own `.venv`; `configs/nodes.example.json` templates the gitignored `configs/nodes.json`
-  - `requirements.txt` re-pinned: the old `transformers==4.40` pin could not load Qwen3 at all, so `>= 4.51` is now a hard floor (`enable_thinking` lives there too); unused `pytorch-lightning`/`torchvision`/`json5` dropped, `accelerate`/`requests`/`websocket-client` added
-  - Capture script's task registry trimmed to the two tasks that actually have modules here; `difficulty` now flows into `meta.jsonl`
-- ✅ Cell + worker dispatch (2026-08-21): `scripts/dispatch/` — a generic worker plus a manifest-driven cell queue, so fan-out work (multi-seed, multi-method, per-dataset) never needs a new worker script. Four cell kinds (`python_script`, `python_code`, `call` any importable function, `shell`), resume via `output_check`, retries, timeouts, stale-claim recovery. 23 tests in `tests/test_dispatch.py`, all passing (stdlib only, no GPU).
-- **Output:** `/Users/hong/Documents/code-projects/thinking-gating/` with capture script ready to run
+| target | label | meaning |
+|---|---|---|
+| `needs_thinking` | `~correct_off` | model is wrong *without* thinking. Correctness prediction — already well studied. Better balanced than `helped`, and does not depend on the thinking budget. |
+| `helped` | `~correct_off & correct_on` | thinking flipped the answer. Confounded — mostly driven by the `~correct_off` term. The original framing; largely superseded. |
+| `rescued` | `correct_on`, restricted to `correct_off == False` | **the load-bearing one.** On this subset `needs_thinking` is constant by construction, so difficulty cannot explain the signal. Above chance here means the prefill state encodes the *marginal value of reasoning* — the only claim here that is not already in the literature. |
 
 ---
 
-## Phase 2: Label Generation & Training (Next Steps)
+## What is built (done, working, tested)
 
-### 2a. Label Generation (`generate_labels.py`)
-**Input:** `shared/icr_capture/{task}_thinking_qwen3/meta.jsonl` + activations NPZs  
-**Output:** `shared/{task}_thinking_labels.jsonl` with schema:
-```json
-{
-  "idx": 0,
-  "prompt_hash": "...",
-  "label": "helped",          // "helped" | "not_helped" | graded: "hurt"
-  "correct_off": true,
-  "correct_on": false,
-  "difficulty": "hard",       // carried through from the task module via meta.jsonl
-  "confidence": 0.8
-}
-```
+- **Capture** (`scripts/capture_inference_thinking.py`): paired thinking-off/on
+  inference, prefill from a dedicated forward pass, batching + sharding,
+  per-task budgets. Thinking toggle is detected from the chat template, not a
+  name whitelist — covers `enable_thinking`, system-prompt toggles, graded
+  reasoning levels, harmony-format extraction, and eager-attention fallback for
+  architectures that reject SDPA.
+- **Pipeline:** `generate_labels.py` → `run_experiment.py` (MLP/logreg, 5 seeds,
+  AUROC ± bootstrap CI, by-difficulty, routed accuracy vs never/always/oracle)
+  → `eval_transfer.py`. `utils/capture_io.py` loads shards; `run_full_analysis.sh`
+  goes captures-in → results-table-out.
+- **Controls:** `stratify_check.py`, `validate_bench.py`, `tests/test_pipeline.py`
+  (synthetic end-to-end + signal-free negative control), `tests/test_dispatch.py`.
+- **Dispatch:** `scripts/dispatch/` — manifest-driven cell queue, one generic
+  worker, atomic claims, resume/retry/timeout/stale recovery.
+- **Tasks:** gsm8k, lsat, math500, mmlu_pro, bbh.
+- **Models run:** Qwen3-8B (anchor), Qwen3-14B, Nemotron-Nano-8B, Granite-3.3,
+  gpt-oss-20b.
 
-**Tasks:**
-1. Parse meta.jsonl and extract correctness pairs (correct_off, correct_on)
-2. Generate binary labels: "helped" if wrong→correct, else "not_helped"
-3. Optionally log graded labels (hurt) for analysis
-4. Stratify by difficulty (read the `difficulty` field the capture script writes into meta.jsonl)
-5. Write to JSONL with per-sample metadata
-6. Report label distribution (base rates: expect ~20-25% "helped" on GSM8K)
-
-**Key decisions locked:**
-- Binary for pilot (graded collection is optional future work)
-- Difficulty stratification is critical (prevents "hardness detector" probe)
-- Same-dataset labels (no cross-task contamination in label generation)
+Still unwritten: `scripts/template_ablation.py` (optional, low priority).
 
 ---
 
-### 2b. Probe Training & Evaluation (`run_experiment.py`)
-**Input:** prefill activations (NPZ) + labels (JSONL)  
-**Output:** trained probes + evaluation results
+## The blocker: the truncation confound (2026-08-30)
 
-**Tasks:**
-1. Load prefill activations from `activations_thinking_off.npz` (N, num_layers, hidden_dim)
-2. Split into 60/20/20 train/val/test (5 independent seeds)
-3. Train probe on each split:
-   - MLP baseline: (hidden_dim) → [256, 64] → (1)
-   - Optional contrastive: embed, then binary classification
-   - Adam + early stopping on validation loss
-4. Evaluate on test set (per-seed AUROC, mean ± 95% CI across 5 seeds)
-5. Stratify eval by difficulty (catch if AUC on easy ≈ 0.5 → overfitting to difficulty)
-6. Compare vs. baselines:
-   - "Always think" accuracy
-   - "Never think" accuracy
-   - Oracle (ground-truth)
-7. Save checkpoint per seed + aggregate metrics
+**Every `needs_thinking` and `rescued` number produced before 2026-08-30 is
+confounded and must not be quoted.** Full writeup:
+`paper/results/metrics/truncation/README.md`.
 
-**Output format:**
-```json
-{
-  "method": "mlp",
-  "task": "gsm8k",
-  "seeds": [42, 1, 2, 3, 4],
-  "train_auroc": [0.78, 0.80, 0.75, 0.81, 0.77],
-  "val_auroc": [0.76, 0.79, 0.74, 0.80, 0.76],
-  "test_auroc": [0.75, 0.78, 0.72, 0.79, 0.75],
-  "test_auroc_mean": 0.758,
-  "test_auroc_ci": [0.725, 0.791],
-  "auc_by_difficulty": {
-    "easy": 0.52,
-    "medium": 0.71,
-    "hard": 0.85
-  }
-}
-```
+The thinking-OFF pass ran at `--max-response-len 320`. Qwen3 writes chain-of-
+thought even with thinking off, so long answers were cut off and graded wrong
+for running long rather than for being unable.
 
----
+| task | off truncated | correct_off when truncated | when not |
+|---|---|---|---|
+| MATH-500 | 75.2% | 0.037 | 0.944 |
+| MMLU-Pro | 49.3% | 0.061 | 0.700 |
+| GSM8K | 11.6% | 0.196 | 0.943 |
 
-### 2c. Transfer Evaluation (`eval_transfer.py`)
-**Input:** trained probe from GSM8K + LSAT prefill activations + labels  
-**Output:** cross-task transfer AUROC
+Decisive test — train the identical probe to predict `truncated_off` instead of
+the label:
 
-**Tasks:**
-1. Load trained probe from GSM8K (best-seed checkpoint)
-2. Load LSAT prefill activations + labels (no retraining)
-3. Evaluate probe zero-shot on LSAT test set
-4. Report AUROC + compare to GSM8K test AUROC
-5. Interpret:
-   - <5pp drop: strong transfer ✓
-   - 5–15pp drop: moderate (label distribution shift)
-   - >15pp drop: transfer failure (format overfitting) ✗
+| task | probe → truncation | probe → needs_thinking |
+|---|---|---|
+| MATH-500 | **0.922** | 0.879 |
+| MMLU-Pro | **0.872** | 0.782 |
+| GSM8K | **0.811** | 0.702 |
 
-**Expected:** ~0.75 GSM8K → ~0.70 LSAT (−5pp) if signal is reasoning-general
+It predicts truncation better than the label on every task, and reported AUROC
+ranks the tasks exactly by truncation rate. All three model families shared the
+cap, so the cross-family replication reproduced the artifact — a design confound
+is invariant to the model.
+
+No salvage: dropping truncated rows leaves MATH-500 with 124 rows of which 7 are
+wrong. Re-capture is required. The capture script warned on thinking-ON
+truncation and was silent on thinking-OFF (the more damaging of the two, since
+`correct_off` defines both objectives); it now logs at ERROR level above 20%.
+It still exits 0, so a dispatched cell will not fail on it — the log must be
+read.
 
 ---
 
-### 2d. Template Ablation (Optional, `template_ablation.py`)
-**Input:** ~500 queries, render under 2 different prompt templates  
-**Output:** probe drift vs. label drift alignment
+## Next: the v3 re-capture
 
-**Tasks:**
-1. Load subset of GSM8K (500 examples)
-2. Render each query under 2 templates: (a) raw, (b) reformatted
-3. Run thinking-off + thinking-on inference for both templates
-4. Extract prefill activations for both
-5. Compute probe predictions on both templates
-6. Measure: drift in predictions vs. drift in correctness labels
-7. If aligned → format-safe; if probe drift >> label drift → risk
+`configs/dispatch/capture_qwen3v3.json`, `configs/dispatch/capture_nemotronv3.json`
+— 2 models × 5 benchmarks × 4 shards. Off-budgets 320 → 1024 (2048 for MATH-500),
+sized from v2 data (complete off-responses were censored at the old cap, max
+observed 311/320/319; MATH-500 answers reach ~720 words at p99). Thinking-on
+budgets unchanged so the on-side stays comparable. LSAT is back in — its
+"degenerate labels" diagnosis (off-accuracy below the guess floor) is itself a
+plausible truncation artifact.
 
----
+### Cluster state, checked 2026-08-31
 
-## Implementation Notes
+- `shared/dispatch/capture_qwen3v3` and `capture_nemotronv3` are **already
+  expanded**: 20 cells each, **all pending, none ever claimed, 0% done**.
+- `squeue --me`: six `jupyter_empire_*` allocations, **all PENDING on
+  `(Priority)`**. Nothing is running; no GPU node is held.
+- `gpu_jobs.json`: 17 `finished`, 5 stale `unknown` (Aug 27–28 workers whose
+  nodes went away without the manifest updating).
+- Cluster checkout is at `f252f87`, same as local, with
+  `paper/results/metrics/gsm8k_full__helped.json` showing as deleted in the
+  working tree there.
 
-### Available in-repo
-- Task modules with loader + grader + difficulty: `tasks/gsm8k.py`, `tasks/lsat.py`
-- Capture with paired thinking-off/on inference and prefill extraction: `scripts/capture_inference_thinking.py`
-- Cluster dispatch: `scripts/gpu_dispatch.py`, `scripts/launch_jupyter.py`, `utils/jupyter_exec.py`
-- Fan-out dispatch: `scripts/dispatch/` (cell queue + generic worker) — write a manifest, not a worker
-- Probe training is written fresh here (plain torch MLP + scikit-learn metrics) — no external skeleton to port
+### To restart
 
-### New code (Phase 2) — written 2026-08-24
-- `scripts/generate_labels.py` ✅
-- `scripts/run_experiment.py` ✅ (torch MLP + logreg baseline, 5 seeds, stratified AUROC, routed accuracy)
-- `scripts/eval_transfer.py` ✅
-- `utils/capture_io.py` ✅ (shard-aware capture loading)
-- `tests/test_pipeline.py` ✅ (synthetic end-to-end, incl. signal-free negative control)
-- `scripts/template_ablation.py` — still optional, not written
+1. Cancel the redundant pending Jupyter jobs so they stop competing, keep one.
+2. When a node lands, dispatch one worker per node:
+   `python scripts/gpu_dispatch.py run .venv/bin/python scripts/dispatch/worker.py --root shared/dispatch/capture_qwen3v3`
+   (re-expanding is idempotent; finished cells are skipped).
+3. Watch: `python scripts/dispatch/queue.py status --root shared/dispatch/capture_qwen3v3`
+4. `scp` the captures back (data is gitignored; the no-`scp` rule is about code
+   going the *other* way).
+5. Re-run labels → probes → decomposition → baselines.
 
-### Dispatch & Execution
-- Environment: `bash scripts/setup_env.sh` once per machine (~5 min, mostly the torch wheel)
-- Label generation: CPU-only, quick (~5 min for 1k examples)
-- Training: Single GPU (A100), ~1 hour for 5 seeds on 500-1k examples — or fan the seeds out as cells across nodes
-- Transfer eval: Single GPU, ~10 min
-- **Total:** ~2-3 hours on Empire AI (1 GPU node via `gpu_dispatch.py`, dispatching `.venv/bin/python`)
-
----
-
-## Checkpoints & Success Criteria
-
-| Phase | Done | Success Criterion | Next Action |
-|-------|------|-------------------|-------------|
-| **Phase 1** | ✅ | Repo bootstrap + capture script ready | Run capture on GSM8K pilot (user decision) |
-| **Phase 2a** | ⏳ | Labels generated, base rate ~20% | Spot-check label distribution |
-| **Phase 2b** | ⏳ | GSM8K probe train/val/test AUROC >0.70 | Proceed to transfer test |
-| **Phase 2c** | ⏳ | LSAT transfer AUROC >0.65 (< 10pp drop) | Attempt template ablation |
-| **Phase 2d** | ⏳ | Probe drift ≈ label drift on templates | Write up findings, start paper |
+**Consider folding into the same capture, since it requires re-running anyway:**
+mean-pooled prompt-token activations (only the last token was ever saved;
+token pooling is usually a large gain in probing work), and ~3k rows from the
+full MATH corpus (would take `rescued` from 369 rows to ~2200 — the cheapest
+large win available).
 
 ---
 
-## Files & Paths
+## Findings that survive the confound
 
-**Repo root:** `/Users/hong/Documents/code-projects/thinking-gating/`
+These are about the estimator and the method, not the labels, so they carry
+forward:
 
-**Key files:**
-- `scripts/setup_env.sh` — builds `./.venv` (run first, on every machine)
-- `scripts/capture_inference_thinking.py` — paired capture (ready)
-- `tasks/gsm8k.py`, `tasks/lsat.py` — in-repo loaders/graders (ready)
-- `scripts/gpu_dispatch.py`, `scripts/launch_jupyter.py` — cluster dispatch (ready)
-- `configs/nodes.example.json` — template for the gitignored `configs/nodes.json`
-- `scripts/generate_labels.py` — needs writing
-- `scripts/run_experiment.py` — needs writing
-- `scripts/eval_transfer.py` — needs writing
-- `configs/datasets/{gsm8k,lsat}_thinking.json` — locked
-- `configs/methods/{mlp,contrastive}.json` — locked
-- `.agent-work/HANDOFF.md` — this file
-
-**Data paths (relative to repo root or absolute on Empire AI):**
-- `shared/icr_capture/gsm8k_thinking_qwen3/` — GSM8K thinking-mode capture (not yet generated)
-- `shared/icr_capture/lsat_thinking_qwen3/` — LSAT thinking-mode capture (not yet generated)
-- `shared/gsm8k_thinking_labels.jsonl` — labels (Phase 2a output)
-- `shared/lsat_thinking_labels.jsonl` — labels (Phase 2a output)
-- `output/gsm8k_probe/` — trained probes (Phase 2b output)
+- **Quote the bootstrap CI.** `test_auroc.ci` is a normal approximation over 5
+  seeds that re-split a *fixed* sample — it measures split-to-split spread, not
+  population uncertainty, and is 1.6–8.8× too narrow. An earlier "12/14 MMLU-Pro
+  categories above chance" became 5/14 under `test_auroc_bootstrap.ci`.
+- **Sample size is the binding constraint, not capacity.** Every tuning gain
+  came from more rows (pooling 3 tasks: 0.624 → 0.692); the same config applied
+  per-task *hurt* (−0.010 mean). A 37-layer sweep selected on validation raised
+  val AUROC 0.695 → 0.827 and *lowered* test 0.703 → 0.662. The a-priori middle
+  layer is as good as anything.
+- **Text baselines are mandatory** — an 8B forward pass has to beat TF-IDF on
+  the raw question, on identical splits/seeds/target.
+- **Pooled `needs_thinking` is confounded by task identity** (base rates 0.144 /
+  0.738 / 0.615), so it is not evidence of query-level signal. Pooled `rescued`
+  (0.721 / 0.713 / 0.569) is the clean comparison.
+- **Stratification catches hardness detectors** — the BBH result was a subtask
+  detector; `stratify_check.py` exists because of it.
 
 ---
 
-## Questions for Next Agent
+## Open work beyond the re-capture
 
-1. **Capture priority:** Should we run the full GSM8K capture first, or do a smoke test (100 examples) to verify the script works?
-2. **Label distribution:** Once labels are generated, what's the acceptable "thinking_helped" base rate? (Agent B estimated 20–25%, but pilot data might differ.)
-3. **Probe complexity:** Start with simple MLP, or also train contrastive probe in parallel?
-4. **LSAT sample size:** `hails/agieval-lsat-ar` ships a single 230-row test split. Is 230 enough for the transfer eval, or should a second reasoning task be added alongside it?
+1. **Thinking-off confidence / answer entropy baseline** — the strongest
+   remaining competitor to the probe, and cheap. Should exist before any
+   writeup.
+2. A small fine-tuned text encoder (MiniLM/DeBERTa) on the same labels.
+3. `template_ablation.py` — minimal-pair format-robustness check, still optional.
+4. Transfer eval re-run once v3 labels exist (the LSAT verdict is currently
+   untrustworthy for the same truncation reason).
 
 ---
 
-## Contacts & Context
+## Files & paths
+
+**Repo:** `/Users/hong/Documents/code-projects/thinking-gating/`
+**Cluster:** `~/LLM_research/thinking-gating/` on Empire AI; large artifacts in
+`/raid0/think-gating/`.
+
+- `agent.md` (symlinked `claude.md`) — operating rules, dispatch, pitfalls
+- `.agent-work/EMPIRE_AI_SETUP.md` — cluster setup and dispatch workflow
+- `paper/results/` — provenance record; every quoted number traces to a file
+  here. Read the per-group READMEs (`truncation/`, `baselines/`,
+  `decomposition/`, `tuning/`) before quoting anything — the caveats are the
+  load-bearing part.
+- `output/` — working metrics, promoted to `paper/results/` when citable
+- `shared/icr_capture/` — captures (v1/v2 only; no v3 yet)
+
+**Never edit a `.bib` file directly.** Cite in prose with enough context for a
+human to verify, and get explicit approval before any bibliography insertion.
+
+---
+
+## Contacts
 
 - **User:** Hong Yang (hooong.yang@gmail.com)
-- **Paper:** Paper draft will live in `thinking-gating/paper/`
-- **Dispatch:** Empire AI cluster via this repo's `scripts/gpu_dispatch.py` — full setup in `.agent-work/EMPIRE_AI_SETUP.md`
+- **Paper draft:** `thinking-gating/paper/`
