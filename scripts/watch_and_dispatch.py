@@ -69,16 +69,29 @@ def sh(cmd: list[str], timeout: int = 300) -> tuple[int, str]:
         return 127, f"command not found: {cmd[0]}"
 
 
+# What a dispatched worker actually executes. Deliberately not the whole tree:
+# paper/results/ and output/ churn constantly on the cluster (a full analysis
+# run leaves ~60 files behind), and none of it changes what the worker runs.
+# Gating on those would mean the watcher never fires.
+CODE_PATHS = ["scripts", "tasks", "utils", "configs", "requirements.txt"]
+
+
 def checkout_is_clean() -> tuple[bool, str]:
-    """Dispatching code that is not committed and pushed is not reproducible."""
-    rc, dirty = sh(["git", "status", "--porcelain"])
+    """Dispatching code that is not committed and pushed is not reproducible.
+
+    Checks the code paths only (tracked *and* untracked, so a stray edited
+    script cannot slip through), plus HEAD against upstream.
+    """
+    rc, dirty = sh(["git", "status", "--porcelain", "--"] + CODE_PATHS)
     if rc != 0:
         return False, f"git status failed: {dirty}"
     if dirty:
-        return False, "working tree is dirty:\n" + dirty
+        return False, "code paths are dirty:\n" + dirty
     rc, head = sh(["git", "rev-parse", "HEAD"])
     rc2, upstream = sh(["git", "rev-parse", "@{u}"])
-    if rc == 0 and rc2 == 0 and head != upstream:
+    if rc != 0 or rc2 != 0:
+        return False, f"cannot resolve HEAD/upstream: {head} {upstream}"
+    if head != upstream:
         return False, f"HEAD {head[:8]} != upstream {upstream[:8]} — pull first"
     return True, head[:8]
 
