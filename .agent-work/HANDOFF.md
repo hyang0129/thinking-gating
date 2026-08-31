@@ -112,6 +112,16 @@ plausible truncation artifact.
   `(Priority)`**. Nothing is running; no GPU node is held.
 - `gpu_jobs.json`: 17 `finished`, 5 stale `unknown` (Aug 27–28 workers whose
   nodes went away without the manifest updating).
+- **Three v2-era queues were retired on 2026-08-31** so no worker resumes them:
+  `bench_crossmodel` (9 cells), `capture_gptoss20b` (4), `capture_qwen3_14b` (1).
+  Their pending cells hard-code `--max-response-len 320` (or train on captures
+  that do), so finishing them would regenerate the confound. Cells moved to
+  `<root>/retired/`, with a `RETIRED.md` in each; `done/` and logs untouched.
+  **`queue.py expand` de-duplicates against `pending`/`done`/`failed` only, not
+  `retired`** — re-expanding `configs/dispatch/bench_crossmodel.json`,
+  `capture_gptoss20b.json` or `capture_qwen3_14b.json` will recreate them.
+  Every other queue is 100% done with nothing failed; the only live work is the
+  40 v3 cells.
 - Cluster checkout is at `f252f87`, same as local, with
   `paper/results/metrics/gsm8k_full__helped.json` showing as deleted in the
   working tree there.
