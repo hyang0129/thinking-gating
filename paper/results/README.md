@@ -5,6 +5,16 @@ come from these files, never retyped from a log.** Each file is the exact
 output of the script named below, so a claim can always be traced to the run
 that produced it.
 
+## Retracted results
+
+`retracted-2026-08-26/` holds the full 2026-08-26 analysis — 5 tasks × 2
+objectives plus all 20 transfer pairs. **None of it may be quoted.** Every
+capture behind it truncated the thinking-OFF pass, so `correct_off` measures
+response length rather than capability and both objectives inherit that. It is
+kept because it is one half of the comparison that diagnosed the confound; see
+`metrics/truncation/README.md`. Note that the pre-2026-08-30 files still in
+`metrics/` are confounded on the same grounds.
+
 ## Layout
 
     metrics/<capture>__<target>.json          run_experiment.py aggregate_metrics.json

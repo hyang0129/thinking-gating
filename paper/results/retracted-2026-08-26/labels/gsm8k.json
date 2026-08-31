@@ -1,0 +1,36 @@
+{
+  "n": 1319,
+  "base_rate_helped": 0.10386656557998483,
+  "graded_counts": {
+    "no_change_correct": 1098,
+    "helped": 137,
+    "no_change_wrong": 53,
+    "hurt": 31
+  },
+  "accuracy_thinking_off": 0.8559514783927218,
+  "accuracy_thinking_on": 0.9363153904473086,
+  "oracle_accuracy": 0.9598180439727066,
+  "truncated_on": 80,
+  "by_difficulty": {
+    "easy": {
+      "n": 326,
+      "base_rate_helped": 0.027607361963190184,
+      "accuracy_thinking_off": 0.9601226993865031,
+      "accuracy_thinking_on": 0.9693251533742331
+    },
+    "hard": {
+      "n": 325,
+      "base_rate_helped": 0.24307692307692308,
+      "accuracy_thinking_off": 0.6861538461538461,
+      "accuracy_thinking_on": 0.8984615384615384
+    },
+    "medium": {
+      "n": 668,
+      "base_rate_helped": 0.07335329341317365,
+      "accuracy_thinking_off": 0.8877245508982036,
+      "accuracy_thinking_on": 0.938622754491018
+    }
+  },
+  "model": "Qwen/Qwen3-8B",
+  "task": "gsm8k"
+}

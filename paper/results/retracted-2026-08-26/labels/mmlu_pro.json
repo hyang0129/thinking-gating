@@ -1,0 +1,36 @@
+{
+  "n": 1000,
+  "base_rate_helped": 0.35,
+  "graded_counts": {
+    "no_change_correct": 350,
+    "helped": 350,
+    "no_change_wrong": 265,
+    "hurt": 35
+  },
+  "accuracy_thinking_off": 0.385,
+  "accuracy_thinking_on": 0.7,
+  "oracle_accuracy": 0.735,
+  "truncated_on": 159,
+  "by_difficulty": {
+    "easy": {
+      "n": 810,
+      "base_rate_helped": 0.3617283950617284,
+      "accuracy_thinking_off": 0.3888888888888889,
+      "accuracy_thinking_on": 0.7185185185185186
+    },
+    "hard": {
+      "n": 71,
+      "base_rate_helped": 0.323943661971831,
+      "accuracy_thinking_off": 0.22535211267605634,
+      "accuracy_thinking_on": 0.4788732394366197
+    },
+    "medium": {
+      "n": 119,
+      "base_rate_helped": 0.2857142857142857,
+      "accuracy_thinking_off": 0.453781512605042,
+      "accuracy_thinking_on": 0.7058823529411765
+    }
+  },
+  "model": "Qwen/Qwen3-8B",
+  "task": "mmlu_pro"
+}

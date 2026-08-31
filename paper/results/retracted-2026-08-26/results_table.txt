@@ -1,0 +1,56 @@
+task            target               n   base  AUROC [95% CI]        worst stratum           never  always  oracle  routed  waste
+---------------------------------------------------------------------------------------------------------------------------------
+bbh             helped             540   0.33  0.788 [0.760,0.816]   easy:0.629              0.530   0.828   0.863   0.828   0.12
+bbh             needs_thinking     540   0.48  0.838 [0.793,0.883]   hard:0.765              0.519   0.815   0.839   0.815   0.12
+gsm8k           helped            1319   0.10  0.728 [0.693,0.763]   hard:0.630              0.858   0.939   0.964   0.935   0.25
+gsm8k           needs_thinking    1319   0.14  0.702 [0.660,0.744]   hard:0.592              0.856   0.940   0.961   0.934   0.21
+lsat            helped             230   0.65  0.526 [0.443,0.610]   medium:0.502            0.139   0.757   0.791   0.757   0.02
+lsat            needs_thinking     230   0.84  0.464 [0.344,0.585]   medium:0.456            0.152   0.791   0.830   0.791   0.00
+math500         helped             500   0.53  0.666 [0.622,0.710]   hard:0.586              0.250   0.766   0.770   0.766   0.05
+math500         needs_thinking     500   0.74  0.879 [0.860,0.899]   easy:0.819              0.260   0.790   0.794   0.790   0.08
+mmlu_pro        helped            1000   0.35  0.720 [0.704,0.736]   easy:0.717              0.369   0.683   0.719   0.683   0.06
+mmlu_pro        needs_thinking    1000   0.61  0.782 [0.774,0.789]   hard:0.651              0.385   0.704   0.743   0.701   0.09
+
+Transfer (no retraining: source scaler and threshold reused)
+source            target            objective        src AUROC  transfer AUROC          drop pp  verdict
+--------------------------------------------------------------------------------------------------------
+bbh               gsm8k             helped               0.788  0.577 [0.524,0.629]        21.1  weak transfer — above chance but large drop
+bbh               gsm8k             needs_thinking       0.838  0.507 [0.447,0.566]        33.1  no transfer — target at chance
+bbh               lsat              helped               0.788  0.495 [0.470,0.520]        29.3  no transfer — target at chance
+bbh               lsat              needs_thinking       0.838  0.524 [0.507,0.541]        31.4  weak transfer — above chance but large drop
+bbh               math500           helped               0.788  0.533 [0.482,0.584]        25.5  no transfer — target at chance
+bbh               math500           needs_thinking       0.838  0.502 [0.495,0.510]        33.6  no transfer — target at chance
+bbh               mmlu_pro          helped               0.788  0.584 [0.542,0.625]        20.5  weak transfer — above chance but large drop
+bbh               mmlu_pro          needs_thinking       0.838  0.424 [0.334,0.514]        41.4  no transfer — target at chance
+gsm8k             bbh               helped               0.728  0.704 [0.697,0.711]         2.4  strong transfer
+gsm8k             bbh               needs_thinking       0.702  0.632 [0.543,0.721]         7.0  partial transfer
+gsm8k             lsat              helped               0.728  0.516 [0.492,0.541]        21.2  no transfer — target at chance
+gsm8k             lsat              needs_thinking       0.702  0.502 [0.485,0.518]        20.0  no transfer — target at chance
+gsm8k             math500           helped               0.728  0.615 [0.594,0.637]        11.2  partial transfer
+gsm8k             math500           needs_thinking       0.702  0.620 [0.592,0.648]         8.2  partial transfer
+gsm8k             mmlu_pro          helped               0.728  0.606 [0.524,0.689]        12.1  partial transfer
+gsm8k             mmlu_pro          needs_thinking       0.702  0.614 [0.540,0.689]         8.7  partial transfer
+lsat              bbh               helped               0.526  0.521 [0.454,0.587]         0.6  undefined — source probe was at chance
+lsat              bbh               needs_thinking       0.464  0.537 [0.476,0.598]        -7.2  undefined — source probe was at chance
+lsat              gsm8k             helped               0.526  0.464 [0.401,0.527]         6.2  undefined — source probe was at chance
+lsat              gsm8k             needs_thinking       0.464  0.480 [0.451,0.509]        -1.5  undefined — source probe was at chance
+lsat              math500           helped               0.526  0.513 [0.445,0.582]         1.3  undefined — source probe was at chance
+lsat              math500           needs_thinking       0.464  0.537 [0.492,0.583]        -7.3  undefined — source probe was at chance
+lsat              mmlu_pro          helped               0.526  0.507 [0.456,0.559]         1.9  undefined — source probe was at chance
+lsat              mmlu_pro          needs_thinking       0.464  0.505 [0.467,0.542]        -4.0  undefined — source probe was at chance
+math500           bbh               helped               0.666  0.689 [0.673,0.704]        -2.3  strong transfer
+math500           bbh               needs_thinking       0.879  0.712 [0.697,0.727]        16.7  weak transfer — above chance but large drop
+math500           gsm8k             helped               0.666  0.686 [0.654,0.718]        -2.0  strong transfer
+math500           gsm8k             needs_thinking       0.879  0.687 [0.641,0.733]        19.3  weak transfer — above chance but large drop
+math500           lsat              helped               0.666  0.457 [0.437,0.478]        20.9  no transfer — target at chance
+math500           lsat              needs_thinking       0.879  0.523 [0.505,0.541]        35.6  weak transfer — above chance but large drop
+math500           mmlu_pro          helped               0.666  0.605 [0.504,0.706]         6.1  partial transfer
+math500           mmlu_pro          needs_thinking       0.879  0.685 [0.651,0.720]        19.4  weak transfer — above chance but large drop
+mmlu_pro          bbh               helped               0.720  0.615 [0.568,0.662]        10.5  partial transfer
+mmlu_pro          bbh               needs_thinking       0.782  0.624 [0.578,0.670]        15.8  weak transfer — above chance but large drop
+mmlu_pro          gsm8k             helped               0.720  0.589 [0.524,0.653]        13.1  partial transfer
+mmlu_pro          gsm8k             needs_thinking       0.782  0.582 [0.550,0.614]        19.9  weak transfer — above chance but large drop
+mmlu_pro          lsat              helped               0.720  0.518 [0.506,0.530]        20.2  weak transfer — above chance but large drop
+mmlu_pro          lsat              needs_thinking       0.782  0.502 [0.471,0.534]        27.9  no transfer — target at chance
+mmlu_pro          math500           helped               0.720  0.486 [0.410,0.563]        23.4  no transfer — target at chance
+mmlu_pro          math500           needs_thinking       0.782  0.643 [0.631,0.655]        13.8  partial transfer

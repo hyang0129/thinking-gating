@@ -1,0 +1,646 @@
+{
+  "target_task": "math500",
+  "target_objective": "helped",
+  "target_model": "Qwen/Qwen3-8B",
+  "n_target": 500,
+  "base_rate_helped": 0.526,
+  "transfer_auroc": {
+    "mean": 0.6154032503890521,
+    "ci": [
+      0.5937174860988197,
+      0.6370890146792845
+    ],
+    "sd": 0.024740226069896492,
+    "n": 5
+  },
+  "transfer_routed_accuracy": {
+    "mean": 0.6888,
+    "ci": [
+      0.574354796063793,
+      0.8032452039362069
+    ],
+    "sd": 0.13056492637764555,
+    "n": 5
+  },
+  "target_baselines": {
+    "never_think": 0.262,
+    "always_think": 0.782,
+    "oracle": 0.788
+  },
+  "per_probe": [
+    {
+      "n": 500,
+      "n_positive": 263,
+      "base_rate": 0.526,
+      "auroc": 0.6169081195552775,
+      "auprc": 0.5603508705475636,
+      "threshold": 0.0,
+      "routed_accuracy": 0.782,
+      "fraction_routed_to_thinking": 1.0,
+      "baselines": {
+        "never_think": 0.262,
+        "always_think": 0.782,
+        "oracle": 0.788
+      },
+      "by_difficulty": {
+        "easy": {
+          "n": 133,
+          "base_rate": 0.3157894736842105,
+          "auroc": 0.7802197802197802
+        },
+        "hard": {
+          "n": 262,
+          "base_rate": 0.6221374045801527,
+          "auroc": 0.44494019954142655
+        },
+        "medium": {
+          "n": 105,
+          "base_rate": 0.5523809523809524,
+          "auroc": 0.6118855465884079
+        }
+      },
+      "cost_curve": [
+        {
+          "fraction_routed": 0.0,
+          "accuracy": 0.262
+        },
+        {
+          "fraction_routed": 0.05,
+          "accuracy": 0.28
+        },
+        {
+          "fraction_routed": 0.1,
+          "accuracy": 0.302
+        },
+        {
+          "fraction_routed": 0.15,
+          "accuracy": 0.328
+        },
+        {
+          "fraction_routed": 0.2,
+          "accuracy": 0.362
+        },
+        {
+          "fraction_routed": 0.25,
+          "accuracy": 0.398
+        },
+        {
+          "fraction_routed": 0.3,
+          "accuracy": 0.43
+        },
+        {
+          "fraction_routed": 0.35,
+          "accuracy": 0.466
+        },
+        {
+          "fraction_routed": 0.4,
+          "accuracy": 0.496
+        },
+        {
+          "fraction_routed": 0.45,
+          "accuracy": 0.534
+        },
+        {
+          "fraction_routed": 0.5,
+          "accuracy": 0.574
+        },
+        {
+          "fraction_routed": 0.55,
+          "accuracy": 0.604
+        },
+        {
+          "fraction_routed": 0.6,
+          "accuracy": 0.632
+        },
+        {
+          "fraction_routed": 0.65,
+          "accuracy": 0.662
+        },
+        {
+          "fraction_routed": 0.7,
+          "accuracy": 0.692
+        },
+        {
+          "fraction_routed": 0.75,
+          "accuracy": 0.718
+        },
+        {
+          "fraction_routed": 0.8,
+          "accuracy": 0.742
+        },
+        {
+          "fraction_routed": 0.85,
+          "accuracy": 0.756
+        },
+        {
+          "fraction_routed": 0.9,
+          "accuracy": 0.774
+        },
+        {
+          "fraction_routed": 0.95,
+          "accuracy": 0.782
+        },
+        {
+          "fraction_routed": 1.0,
+          "accuracy": 0.782
+        }
+      ],
+      "min_routed_for_always_think_accuracy": 0.95,
+      "seed": 42,
+      "target_objective": "helped",
+      "probe": "output/probe_gsm8k_helped/seed_42/checkpoint.json"
+    },
+    {
+      "n": 500,
+      "n_positive": 263,
+      "base_rate": 0.526,
+      "auroc": 0.5986106431791565,
+      "auprc": 0.5493637494963053,
+      "threshold": 0.0,
+      "routed_accuracy": 0.782,
+      "fraction_routed_to_thinking": 1.0,
+      "baselines": {
+        "never_think": 0.262,
+        "always_think": 0.782,
+        "oracle": 0.788
+      },
+      "by_difficulty": {
+        "easy": {
+          "n": 133,
+          "base_rate": 0.3157894736842105,
+          "auroc": 0.7142857142857143
+        },
+        "hard": {
+          "n": 262,
+          "base_rate": 0.6221374045801527,
+          "auroc": 0.44041643428146493
+        },
+        "medium": {
+          "n": 105,
+          "base_rate": 0.5523809523809524,
+          "auroc": 0.6287600880410859
+        }
+      },
+      "cost_curve": [
+        {
+          "fraction_routed": 0.0,
+          "accuracy": 0.262
+        },
+        {
+          "fraction_routed": 0.05,
+          "accuracy": 0.28
+        },
+        {
+          "fraction_routed": 0.1,
+          "accuracy": 0.306
+        },
+        {
+          "fraction_routed": 0.15,
+          "accuracy": 0.342
+        },
+        {
+          "fraction_routed": 0.2,
+          "accuracy": 0.368
+        },
+        {
+          "fraction_routed": 0.25,
+          "accuracy": 0.394
+        },
+        {
+          "fraction_routed": 0.3,
+          "accuracy": 0.412
+        },
+        {
+          "fraction_routed": 0.35,
+          "accuracy": 0.452
+        },
+        {
+          "fraction_routed": 0.4,
+          "accuracy": 0.488
+        },
+        {
+          "fraction_routed": 0.45,
+          "accuracy": 0.526
+        },
+        {
+          "fraction_routed": 0.5,
+          "accuracy": 0.554
+        },
+        {
+          "fraction_routed": 0.55,
+          "accuracy": 0.584
+        },
+        {
+          "fraction_routed": 0.6,
+          "accuracy": 0.62
+        },
+        {
+          "fraction_routed": 0.65,
+          "accuracy": 0.652
+        },
+        {
+          "fraction_routed": 0.7,
+          "accuracy": 0.686
+        },
+        {
+          "fraction_routed": 0.75,
+          "accuracy": 0.722
+        },
+        {
+          "fraction_routed": 0.8,
+          "accuracy": 0.748
+        },
+        {
+          "fraction_routed": 0.85,
+          "accuracy": 0.77
+        },
+        {
+          "fraction_routed": 0.9,
+          "accuracy": 0.786
+        },
+        {
+          "fraction_routed": 0.95,
+          "accuracy": 0.784
+        },
+        {
+          "fraction_routed": 1.0,
+          "accuracy": 0.782
+        }
+      ],
+      "min_routed_for_always_think_accuracy": 0.9,
+      "seed": 1,
+      "target_objective": "helped",
+      "probe": "output/probe_gsm8k_helped/seed_1/checkpoint.json"
+    },
+    {
+      "n": 500,
+      "n_positive": 263,
+      "base_rate": 0.526,
+      "auroc": 0.5834336044664774,
+      "auprc": 0.5409460398438517,
+      "threshold": 0.0,
+      "routed_accuracy": 0.782,
+      "fraction_routed_to_thinking": 1.0,
+      "baselines": {
+        "never_think": 0.262,
+        "always_think": 0.782,
+        "oracle": 0.788
+      },
+      "by_difficulty": {
+        "easy": {
+          "n": 133,
+          "base_rate": 0.3157894736842105,
+          "auroc": 0.6983254840397698
+        },
+        "hard": {
+          "n": 262,
+          "base_rate": 0.6221374045801527,
+          "auroc": 0.4236846997583194
+        },
+        "medium": {
+          "n": 105,
+          "base_rate": 0.5523809523809524,
+          "auroc": 0.6151870873074101
+        }
+      },
+      "cost_curve": [
+        {
+          "fraction_routed": 0.0,
+          "accuracy": 0.262
+        },
+        {
+          "fraction_routed": 0.05,
+          "accuracy": 0.278
+        },
+        {
+          "fraction_routed": 0.1,
+          "accuracy": 0.302
+        },
+        {
+          "fraction_routed": 0.15,
+          "accuracy": 0.33
+        },
+        {
+          "fraction_routed": 0.2,
+          "accuracy": 0.358
+        },
+        {
+          "fraction_routed": 0.25,
+          "accuracy": 0.392
+        },
+        {
+          "fraction_routed": 0.3,
+          "accuracy": 0.426
+        },
+        {
+          "fraction_routed": 0.35,
+          "accuracy": 0.458
+        },
+        {
+          "fraction_routed": 0.4,
+          "accuracy": 0.492
+        },
+        {
+          "fraction_routed": 0.45,
+          "accuracy": 0.514
+        },
+        {
+          "fraction_routed": 0.5,
+          "accuracy": 0.55
+        },
+        {
+          "fraction_routed": 0.55,
+          "accuracy": 0.582
+        },
+        {
+          "fraction_routed": 0.6,
+          "accuracy": 0.616
+        },
+        {
+          "fraction_routed": 0.65,
+          "accuracy": 0.648
+        },
+        {
+          "fraction_routed": 0.7,
+          "accuracy": 0.682
+        },
+        {
+          "fraction_routed": 0.75,
+          "accuracy": 0.71
+        },
+        {
+          "fraction_routed": 0.8,
+          "accuracy": 0.736
+        },
+        {
+          "fraction_routed": 0.85,
+          "accuracy": 0.764
+        },
+        {
+          "fraction_routed": 0.9,
+          "accuracy": 0.772
+        },
+        {
+          "fraction_routed": 0.95,
+          "accuracy": 0.778
+        },
+        {
+          "fraction_routed": 1.0,
+          "accuracy": 0.782
+        }
+      ],
+      "min_routed_for_always_think_accuracy": 1.0,
+      "seed": 2,
+      "target_objective": "helped",
+      "probe": "output/probe_gsm8k_helped/seed_2/checkpoint.json"
+    },
+    {
+      "n": 500,
+      "n_positive": 263,
+      "base_rate": 0.526,
+      "auroc": 0.6354703117228987,
+      "auprc": 0.575908074994039,
+      "threshold": 0.00014891655882820487,
+      "routed_accuracy": 0.588,
+      "fraction_routed_to_thinking": 0.52,
+      "baselines": {
+        "never_think": 0.262,
+        "always_think": 0.782,
+        "oracle": 0.788
+      },
+      "by_difficulty": {
+        "easy": {
+          "n": 133,
+          "base_rate": 0.3157894736842105,
+          "auroc": 0.7375719518576661
+        },
+        "hard": {
+          "n": 262,
+          "base_rate": 0.6221374045801527,
+          "auroc": 0.45872838817624095
+        },
+        "medium": {
+          "n": 105,
+          "base_rate": 0.5523809523809524,
+          "auroc": 0.6729640498899486
+        }
+      },
+      "cost_curve": [
+        {
+          "fraction_routed": 0.0,
+          "accuracy": 0.262
+        },
+        {
+          "fraction_routed": 0.05,
+          "accuracy": 0.282
+        },
+        {
+          "fraction_routed": 0.1,
+          "accuracy": 0.304
+        },
+        {
+          "fraction_routed": 0.15,
+          "accuracy": 0.336
+        },
+        {
+          "fraction_routed": 0.2,
+          "accuracy": 0.37
+        },
+        {
+          "fraction_routed": 0.25,
+          "accuracy": 0.406
+        },
+        {
+          "fraction_routed": 0.3,
+          "accuracy": 0.43
+        },
+        {
+          "fraction_routed": 0.35,
+          "accuracy": 0.462
+        },
+        {
+          "fraction_routed": 0.4,
+          "accuracy": 0.498
+        },
+        {
+          "fraction_routed": 0.45,
+          "accuracy": 0.538
+        },
+        {
+          "fraction_routed": 0.5,
+          "accuracy": 0.572
+        },
+        {
+          "fraction_routed": 0.55,
+          "accuracy": 0.606
+        },
+        {
+          "fraction_routed": 0.6,
+          "accuracy": 0.642
+        },
+        {
+          "fraction_routed": 0.65,
+          "accuracy": 0.672
+        },
+        {
+          "fraction_routed": 0.7,
+          "accuracy": 0.708
+        },
+        {
+          "fraction_routed": 0.75,
+          "accuracy": 0.728
+        },
+        {
+          "fraction_routed": 0.8,
+          "accuracy": 0.752
+        },
+        {
+          "fraction_routed": 0.85,
+          "accuracy": 0.762
+        },
+        {
+          "fraction_routed": 0.9,
+          "accuracy": 0.776
+        },
+        {
+          "fraction_routed": 0.95,
+          "accuracy": 0.784
+        },
+        {
+          "fraction_routed": 1.0,
+          "accuracy": 0.782
+        }
+      ],
+      "min_routed_for_always_think_accuracy": 0.95,
+      "seed": 3,
+      "target_objective": "helped",
+      "probe": "output/probe_gsm8k_helped/seed_3/checkpoint.json"
+    },
+    {
+      "n": 500,
+      "n_positive": 263,
+      "base_rate": 0.526,
+      "auroc": 0.64259357302145,
+      "auprc": 0.5814288473369541,
+      "threshold": 6.651472176599782e-06,
+      "routed_accuracy": 0.51,
+      "fraction_routed_to_thinking": 0.41,
+      "baselines": {
+        "never_think": 0.262,
+        "always_think": 0.782,
+        "oracle": 0.788
+      },
+      "by_difficulty": {
+        "easy": {
+          "n": 133,
+          "base_rate": 0.3157894736842105,
+          "auroc": 0.760858189429618
+        },
+        "hard": {
+          "n": 262,
+          "base_rate": 0.6221374045801527,
+          "auroc": 0.46061845448348515
+        },
+        "medium": {
+          "n": 105,
+          "base_rate": 0.5523809523809524,
+          "auroc": 0.6933235509904622
+        }
+      },
+      "cost_curve": [
+        {
+          "fraction_routed": 0.0,
+          "accuracy": 0.262
+        },
+        {
+          "fraction_routed": 0.05,
+          "accuracy": 0.28
+        },
+        {
+          "fraction_routed": 0.1,
+          "accuracy": 0.312
+        },
+        {
+          "fraction_routed": 0.15,
+          "accuracy": 0.34
+        },
+        {
+          "fraction_routed": 0.2,
+          "accuracy": 0.366
+        },
+        {
+          "fraction_routed": 0.25,
+          "accuracy": 0.404
+        },
+        {
+          "fraction_routed": 0.3,
+          "accuracy": 0.44
+        },
+        {
+          "fraction_routed": 0.35,
+          "accuracy": 0.474
+        },
+        {
+          "fraction_routed": 0.4,
+          "accuracy": 0.508
+        },
+        {
+          "fraction_routed": 0.45,
+          "accuracy": 0.538
+        },
+        {
+          "fraction_routed": 0.5,
+          "accuracy": 0.574
+        },
+        {
+          "fraction_routed": 0.55,
+          "accuracy": 0.608
+        },
+        {
+          "fraction_routed": 0.6,
+          "accuracy": 0.644
+        },
+        {
+          "fraction_routed": 0.65,
+          "accuracy": 0.676
+        },
+        {
+          "fraction_routed": 0.7,
+          "accuracy": 0.704
+        },
+        {
+          "fraction_routed": 0.75,
+          "accuracy": 0.736
+        },
+        {
+          "fraction_routed": 0.8,
+          "accuracy": 0.746
+        },
+        {
+          "fraction_routed": 0.85,
+          "accuracy": 0.772
+        },
+        {
+          "fraction_routed": 0.9,
+          "accuracy": 0.776
+        },
+        {
+          "fraction_routed": 0.95,
+          "accuracy": 0.782
+        },
+        {
+          "fraction_routed": 1.0,
+          "accuracy": 0.782
+        }
+      ],
+      "min_routed_for_always_think_accuracy": 0.95,
+      "seed": 4,
+      "target_objective": "helped",
+      "probe": "output/probe_gsm8k_helped/seed_4/checkpoint.json"
+    }
+  ],
+  "source_task": "gsm8k",
+  "source_test_auroc": 0.7278481012658228,
+  "auroc_drop_pp": 11.24448508767707,
+  "verdict": "partial transfer"
+}
