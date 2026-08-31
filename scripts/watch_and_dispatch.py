@@ -204,9 +204,16 @@ def main() -> int:
 
         ok, detail = checkout_is_clean()
         if not ok:
-            logger.error("refusing to dispatch — %s", detail)
-            logger.error("fix the checkout and restart the watcher; not retrying")
-            return 3
+            # Keep waiting rather than exiting. This watcher is meant to sit
+            # through a multi-day queue, and the checkout going briefly behind
+            # upstream is routine -- any push from the laptop does it. Dying on
+            # that would mean the one process whose whole job is to be present
+            # when a node lands is reliably absent right after a push. A `git
+            # pull` on the cluster fixes it and the next poll proceeds.
+            logger.error("not dispatching this poll — %s", detail)
+            logger.error("fix the checkout (git pull); the watcher keeps waiting")
+            time.sleep(args.interval)
+            continue
         logger.info("checkout clean at %s", detail)
 
         # nodes.json goes stale as allocations come and go; dispatch only
