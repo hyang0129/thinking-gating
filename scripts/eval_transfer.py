@@ -45,6 +45,22 @@ from scripts.run_experiment import (  # noqa: E402
     Standardizer, evaluate_split, mean_ci, select_layer,
 )
 
+# The verdict vocabulary, named once. These strings are the public shape of a
+# transfer result -- they land in paper/results/ and get asserted on in
+# tests/test_pipeline.py -- and they have already drifted once: 9dd2db2
+# rewrote the three original verdicts into these five and the test kept
+# asserting membership in a hand-copied list of the old ones, so it failed
+# on every run afterwards while the code was correct. Import VERDICTS rather
+# than retyping them.
+VERDICT_UNDEFINED = "undefined — source probe was at chance"
+VERDICT_NONE = "no transfer — target at chance"
+VERDICT_STRONG = "strong transfer"
+VERDICT_PARTIAL = "partial transfer"
+VERDICT_WEAK = "weak transfer — above chance but large drop"
+VERDICTS = (VERDICT_UNDEFINED, VERDICT_NONE, VERDICT_STRONG,
+            VERDICT_PARTIAL, VERDICT_WEAK)
+
+
 logger = logging.getLogger("transfer")
 
 
@@ -202,15 +218,15 @@ def main(argv: list[str] | None = None) -> int:
         # end above chance, and only then how much was lost.
         target_lo = transfer_auroc["ci"][0]
         if source_auroc < 0.55:
-            verdict = "undefined — source probe was at chance"
+            verdict = VERDICT_UNDEFINED
         elif target_lo <= 0.5:
-            verdict = "no transfer — target at chance"
+            verdict = VERDICT_NONE
         elif drop_pp < 5:
-            verdict = "strong transfer"
+            verdict = VERDICT_STRONG
         elif drop_pp <= 15:
-            verdict = "partial transfer"
+            verdict = VERDICT_PARTIAL
         else:
-            verdict = "weak transfer — above chance but large drop"
+            verdict = VERDICT_WEAK
         summary["source_task"] = source.get("task")
         summary["source_test_auroc"] = source_auroc
         summary["auroc_drop_pp"] = drop_pp

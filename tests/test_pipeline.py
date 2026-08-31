@@ -51,7 +51,14 @@ def make_capture(out_dir: Path, n: int, seed: int, *, task: str = "gsm8k",
     direction /= np.linalg.norm(direction)
 
     acts = rng.normal(size=(n, N_LAYERS, HIDDEN)).astype(np.float16)
-    projection = acts[:, SIGNAL_LAYER, :].astype(np.float32) @ direction
+    # errstate, then assert: the BLAS behind matmul sets FP exception flags on
+    # its SIMD tail lanes, so numpy reports divide-by-zero/overflow/underflow
+    # here (six warnings a run on macOS arm64) even though every element of the
+    # result is finite. Silencing it keeps a genuine warning visible; the
+    # assert is what actually checks the arithmetic.
+    with np.errstate(all="ignore"):
+        projection = acts[:, SIGNAL_LAYER, :].astype(np.float32) @ direction
+    assert np.isfinite(projection).all(), "planted-signal projection went non-finite"
     projection = (projection - projection.mean()) / projection.std()
     bias = np.log(base_rate / (1 - base_rate))
     p_helped = 1 / (1 + np.exp(-(signal * projection + bias)))
@@ -291,9 +298,12 @@ def test_transfer_applies_source_probe_without_refitting():
         assert len(result["per_probe"]) == 2
         assert result["transfer_auroc"]["mean"] > 0.6, result["transfer_auroc"]
         assert "auroc_drop_pp" in result and "verdict" in result
-        assert result["verdict"] in (
-            "strong transfer", "moderate — likely label distribution shift",
-            "transfer failure (format overfitting)")
+        # Imported, not retyped: this assertion was a hand-copied list of the
+        # pre-9dd2db2 verdicts and failed on every run once the vocabulary
+        # changed. The planted signal also lands near the strong/partial
+        # boundary (~5pp drop), so pinning one exact verdict would flap.
+        from scripts.eval_transfer import VERDICTS
+        assert result["verdict"] in VERDICTS, result["verdict"]
 
 
 def test_mlp_checkpoint_round_trips_through_transfer():
