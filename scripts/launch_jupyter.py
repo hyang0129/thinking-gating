@@ -43,7 +43,13 @@ MAX_TOTAL_JOBS = 12      # all jobs in any state, including PENDING/queued
 # --- Submission shape (matches the approved sbatch line) ---------------------
 JUPYTER_SCRIPT = Path.home() / "rit_rc_scripts" / "empire_jupyter_lab.sh"
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SBATCH_FLAGS = ["--cpus-per-task=16", "--mem-per-cpu=24g", "--time=0-72:00:00", "--qos=rit"]
+# 8 x 8g = 64G. Was 16 x 24g = 384G, which no alpha node could satisfy: with
+# the cluster full, the largest free block was 341G and most nodes had under
+# 30G, so every allocation sat PENDING indefinitely. SLURM reports that as
+# Reason=Priority, which reads like ordinary queue contention and is not.
+# An 8B model is ~16G of VRAM and peaks near 32G of host RAM while loading
+# shards, so 64G is still roomy. The 12-job caps above are untouched.
+SBATCH_FLAGS = ["--cpus-per-task=8", "--mem-per-cpu=8g", "--time=0-72:00:00", "--qos=rit"]
 PORT_MIN, PORT_MAX = 8800, 8899  # 88xx convention (see gpu_dispatch._port_is_88xx)
 
 # A jupyter allocation's name is "jupyter_empire_<port>" once the job's own
