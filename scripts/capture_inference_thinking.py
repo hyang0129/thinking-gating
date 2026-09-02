@@ -328,6 +328,48 @@ def prefill_hidden_states(model, input_ids, attention_mask) -> np.ndarray:
     return stacked.to(torch.float16).cpu().numpy()
 
 
+def sequence_confidence(model, sequences, prompt_len: int, n_new: list[int],
+                        pad_id: int) -> list[dict]:
+    """Mean log-prob and mean predictive entropy over each row's generated tokens.
+
+    This is the baseline any reviewer asks for first: if the model can simply
+    say it is unsure, a probe on its hidden state has to beat that to be worth
+    a forward pass.
+
+    Scored one row at a time on purpose. A batched forward materialises
+    (batch, seq, vocab) logits -- at batch 16, 3k tokens and a 150k vocab that
+    is ~20GB and OOMs the node. One row is ~1GB and the extra forwards are
+    cheap next to thousands of sequential decode steps.
+    """
+    import torch
+    import torch.nn.functional as F
+
+    out = []
+    for i in range(sequences.shape[0]):
+        n = int(n_new[i])
+        if n <= 0:
+            out.append({"mean_logprob": None, "min_logprob": None,
+                        "mean_entropy": None})
+            continue
+        seq = sequences[i : i + 1, : prompt_len + n]
+        with torch.no_grad():
+            logits = model(input_ids=seq, use_cache=False).logits[0].float()
+        # position t predicts token t+1, so the generated tokens are scored by
+        # the logits at prompt_len-1 .. prompt_len+n-2
+        pred = logits[prompt_len - 1 : prompt_len + n - 1]
+        tgt = seq[0, prompt_len : prompt_len + n]
+        logprobs = -F.cross_entropy(pred, tgt, reduction="none")
+        lsm = F.log_softmax(pred, dim=-1)
+        entropy = -(lsm.exp() * lsm).sum(dim=-1)
+        out.append({
+            "mean_logprob": float(logprobs.mean()),
+            "min_logprob": float(logprobs.min()),
+            "mean_entropy": float(entropy.mean()),
+        })
+        del logits, pred, lsm, entropy
+    return out
+
+
 def generate_batch(model, tokenizer, input_ids, attention_mask, max_new_tokens: int):
     """Greedy-decode a batch. Returns (texts, truncated_flags, n_new_tokens)."""
     import torch
@@ -362,7 +404,7 @@ def generate_batch(model, tokenizer, input_ids, attention_mask, max_new_tokens: 
         else:
             truncated.append(True)
             lengths.append(int(row.shape[0]))
-    return texts, truncated, lengths
+    return texts, truncated, lengths, out.sequences
 
 
 # Above this share of thinking-OFF responses hitting the token cap, the capture
@@ -484,14 +526,25 @@ def run_capture(args: argparse.Namespace) -> int:
             ).to(model.device)
 
             hidden = prefill_hidden_states(model, tokens.input_ids, tokens.attention_mask)
-            texts, truncated, lengths = generate_batch(
+            texts, truncated, lengths, sequences = generate_batch(
                 model, tokenizer, tokens.input_ids, tokens.attention_mask, budget
             )
+            # Confidence on the thinking-OFF pass only. That is the pass a
+            # router would actually have available, and it is the baseline the
+            # probe has to beat: if the model can just say it is unsure, a
+            # hidden-state probe needs to justify its forward pass.
+            conf = [None] * len(texts)
+            if args.capture_logprobs and mode == "off":
+                conf = sequence_confidence(
+                    model, sequences, tokens.input_ids.shape[1], lengths,
+                    tokenizer.pad_token_id)
             results[mode] = {
                 "hidden": hidden, "texts": texts,
                 "truncated": truncated, "lengths": lengths,
+                "confidence": conf,
                 "prompt_lens": tokens.attention_mask.sum(dim=1).tolist(),
             }
+            del sequences
             del tokens
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
@@ -518,6 +571,7 @@ def run_capture(args: argparse.Namespace) -> int:
                 "correct_off": correct_off,
                 "correct_on": correct_on,
                 "truncated_off": results["off"]["truncated"][i],
+                "confidence_off": results["off"]["confidence"][i],
                 "truncated_on": results["on"]["truncated"][i],
                 "n_tokens_off": results["off"]["lengths"][i],
                 "n_tokens_on": results["on"]["lengths"][i],
@@ -648,6 +702,11 @@ def build_parser() -> argparse.ArgumentParser:
                    choices=["sdpa", "eager", "flash_attention_2"])
     p.add_argument("--shard-index", type=int, default=0)
     p.add_argument("--shard-count", type=int, default=1)
+    p.add_argument("--capture-logprobs", action="store_true",
+                   help="Also record mean/min token log-probability and mean "
+                        "predictive entropy of the thinking-OFF generation. "
+                        "This is the confidence baseline the probe must beat. "
+                        "Costs one extra forward pass per row.")
     p.add_argument("--log-level", default="INFO",
                    choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     return p

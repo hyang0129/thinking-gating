@@ -25,6 +25,7 @@
     "the time and no longer do: v3 captures each task once, gsm8k at full",
     "size and lsat at the long budget. The divergence already cost coverage",
     "-- bench_crossmodel dropped Qwen3-8B rather than resolve gsm8k_full_",
+    "Also records thinking-OFF confidence (mean/min token log-prob, mean predictive entropy) so the 'why not just use the model's own uncertainty' baseline can be run without another capture.",
     "against gsm8kfull_."
   ],
   "name": "capture_nemotronv3",
@@ -110,7 +111,8 @@
     "--shard-index",
     "{shard}",
     "--shard-count",
-    "{shard_count}"
+    "{shard_count}",
+    "--capture-logprobs"
   ],
   "output_check": [
     "{out}/meta.shard{shard}.jsonl",
