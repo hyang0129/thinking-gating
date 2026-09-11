@@ -1,0 +1,30 @@
+{
+  "target": "rescued",
+  "capture_dir": "shared/icr_capture/bbh_thinking_qwen3v3",
+  "group_from": "sample_id",
+  "layer": 18,
+  "seeds": [
+    42,
+    1,
+    2,
+    3,
+    4
+  ],
+  "n": 175,
+  "n_groups": 22,
+  "base_rate": 0.5714285714285714,
+  "test_auroc_bootstrap": {
+    "mean": 0.738,
+    "ci": [
+      0.5565901976674611,
+      0.8902292800835054
+    ]
+  },
+  "within_group_auroc_bootstrap": {
+    "mean": 0.5061111111111111,
+    "ci": [
+      0.00935817805383023,
+      1.0
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+task      target               n   base  prefill probe           best text                             best confidence                       
+---------------------------------------------------------------------------------------------------------------------------------------------
+bbh       helped             540  0.185  0.734 [0.611, 0.844]    -                                     -                                     
+bbh       needs_thinking     540  0.324  0.820 [0.732, 0.898]    tfidf_char 0.846 [0.761, 0.920]       n_tokens_off 0.560 [0.445, 0.675]     
+bbh       rescued            175  0.571  0.738 [0.557, 0.890]    tfidf_word 0.723 [0.533, 0.884]       mean_entropy 0.571 [0.378, 0.755]     
+gsm8k     helped            1319  0.036  0.688 [0.508, 0.852]    -                                     -                                     
+gsm8k     needs_thinking    1319  0.067  0.687 [0.561, 0.800]    tfidf_word 0.634 [0.516, 0.750]       n_tokens_off 0.690 [0.543, 0.823]     
+gsm8k     rescued             89  0.539  0.597 [0.308, 0.861]    length_chars 0.583 [0.285, 0.866]     min_logprob 0.578 [0.288, 0.849]      
+math500   helped             500  0.078  0.626 [0.438, 0.801]    -                                     -                                     
+math500   needs_thinking     500  0.236  0.699 [0.561, 0.818]    length_chars 0.715 [0.590, 0.827]     confidence_lr 0.814 [0.700, 0.914]    
+math500   rescued            118  0.331  0.559 [0.318, 0.787]    tfidf_char 0.642 [0.404, 0.848]       n_tokens_off 0.524 [0.284, 0.750]     
+mmlu_pro  helped            1000  0.131  0.516 [0.391, 0.641]    -                                     -                                     
+mmlu_pro  needs_thinking    1000  0.376  0.659 [0.582, 0.736]    tfidf_word 0.617 [0.535, 0.697]       confidence_lr 0.646 [0.564, 0.724]    
+mmlu_pro  rescued            376  0.348  0.489 [0.349, 0.634]    length_chars 0.506 [0.373, 0.640]     n_tokens_off 0.607 [0.474, 0.732]     

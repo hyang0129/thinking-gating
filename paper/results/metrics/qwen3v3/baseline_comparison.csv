@@ -1,0 +1,13 @@
+task,target,n,base_rate,probe_mean,probe_lo,probe_hi,text_name,text_mean,text_lo,text_hi,conf_name,conf_mean,conf_lo,conf_hi
+bbh,helped,540,0.1852,0.7340,0.6113,0.8443,,,,,,,,
+bbh,needs_thinking,540,0.3241,0.8200,0.7318,0.8979,tfidf_char,0.8456,0.7615,0.9195,n_tokens_off,0.5600,0.4450,0.6751
+bbh,rescued,175,0.5714,0.7380,0.5566,0.8902,tfidf_word,0.7230,0.5328,0.8836,mean_entropy,0.5707,0.3782,0.7548
+gsm8k,helped,1319,0.0364,0.6879,0.5080,0.8515,,,,,,,,
+gsm8k,needs_thinking,1319,0.0675,0.6868,0.5611,0.8003,tfidf_word,0.6344,0.5158,0.7502,n_tokens_off,0.6897,0.5427,0.8232
+gsm8k,rescued,89,0.5393,0.5972,0.3084,0.8609,length_chars,0.5833,0.2855,0.8658,min_logprob,0.5778,0.2883,0.8486
+math500,helped,500,0.0780,0.6261,0.4384,0.8009,,,,,,,,
+math500,needs_thinking,500,0.2360,0.6992,0.5607,0.8180,length_chars,0.7152,0.5901,0.8265,confidence_lr,0.8142,0.7001,0.9141
+math500,rescued,118,0.3305,0.5594,0.3176,0.7870,tfidf_char,0.6422,0.4045,0.8478,n_tokens_off,0.5242,0.2839,0.7500
+mmlu_pro,helped,1000,0.1310,0.5160,0.3908,0.6408,,,,,,,,
+mmlu_pro,needs_thinking,1000,0.3760,0.6586,0.5822,0.7358,tfidf_word,0.6170,0.5354,0.6965,confidence_lr,0.6456,0.5642,0.7242
+mmlu_pro,rescued,376,0.3484,0.4895,0.3494,0.6342,length_chars,0.5060,0.3730,0.6402,n_tokens_off,0.6068,0.4744,0.7315

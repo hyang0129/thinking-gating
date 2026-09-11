@@ -1,0 +1,30 @@
+{
+  "target": "needs_thinking",
+  "capture_dir": "shared/icr_capture/bbh_thinking_qwen3v3",
+  "group_from": "sample_id",
+  "layer": 18,
+  "seeds": [
+    42,
+    1,
+    2,
+    3,
+    4
+  ],
+  "n": 540,
+  "n_groups": 27,
+  "base_rate": 0.32407407407407407,
+  "test_auroc_bootstrap": {
+    "mean": 0.8199608610567515,
+    "ci": [
+      0.7317651896510053,
+      0.8979498311077039
+    ]
+  },
+  "within_group_auroc_bootstrap": {
+    "mean": 0.4937533355867075,
+    "ci": [
+      0.22973232849762987,
+      0.7645350682146135
+    ]
+  }
+}

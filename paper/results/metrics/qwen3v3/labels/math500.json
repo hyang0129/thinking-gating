@@ -1,0 +1,36 @@
+{
+  "n": 500,
+  "base_rate_helped": 0.078,
+  "graded_counts": {
+    "no_change_correct": 352,
+    "helped": 39,
+    "hurt": 30,
+    "no_change_wrong": 79
+  },
+  "accuracy_thinking_off": 0.764,
+  "accuracy_thinking_on": 0.782,
+  "oracle_accuracy": 0.842,
+  "truncated_on": 85,
+  "by_difficulty": {
+    "easy": {
+      "n": 133,
+      "base_rate_helped": 0.015037593984962405,
+      "accuracy_thinking_off": 0.9097744360902256,
+      "accuracy_thinking_on": 0.9022556390977443
+    },
+    "hard": {
+      "n": 262,
+      "base_rate_helped": 0.10687022900763359,
+      "accuracy_thinking_off": 0.6641221374045801,
+      "accuracy_thinking_on": 0.6870229007633588
+    },
+    "medium": {
+      "n": 105,
+      "base_rate_helped": 0.08571428571428572,
+      "accuracy_thinking_off": 0.8285714285714286,
+      "accuracy_thinking_on": 0.8666666666666667
+    }
+  },
+  "model": "Qwen/Qwen3-8B",
+  "task": "math500"
+}

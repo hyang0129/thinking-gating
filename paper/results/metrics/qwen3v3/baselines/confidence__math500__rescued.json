@@ -1,0 +1,114 @@
+{
+  "target": "rescued",
+  "n": 118,
+  "base_rate": 0.3305084745762712,
+  "seeds": [
+    42,
+    1,
+    2,
+    3,
+    4
+  ],
+  "capture_dirs": [
+    "shared/icr_capture/math500_thinking_qwen3v3"
+  ],
+  "features": [
+    "mean_logprob",
+    "min_logprob",
+    "mean_entropy",
+    "n_tokens_off"
+  ],
+  "sees_thinking_off_generation": true,
+  "baselines": {
+    "mean_logprob": {
+      "test_auroc": {
+        "mean": 0.4859375,
+        "ci": [
+          0.40271297076958024,
+          0.5691620292304198
+        ],
+        "sd": 0.09494678814012089,
+        "n": 5
+      },
+      "test_auroc_bootstrap": {
+        "ci": [
+          0.2177546936494305,
+          0.7467842578003423
+        ],
+        "n_seeds": 5
+      }
+    },
+    "min_logprob": {
+      "test_auroc": {
+        "mean": 0.5046875,
+        "ci": [
+          0.41492960080026375,
+          0.5944453991997362
+        ],
+        "sd": 0.1024003898613184,
+        "n": 5
+      },
+      "test_auroc_bootstrap": {
+        "ci": [
+          0.24570821367655257,
+          0.7715992647058824
+        ],
+        "n_seeds": 5
+      }
+    },
+    "mean_entropy": {
+      "test_auroc": {
+        "mean": 0.5046875,
+        "ci": [
+          0.4161129264581251,
+          0.5932620735418748
+        ],
+        "sd": 0.10105039159065639,
+        "n": 5
+      },
+      "test_auroc_bootstrap": {
+        "ci": [
+          0.23638591269841275,
+          0.7746594568625816
+        ],
+        "n_seeds": 5
+      }
+    },
+    "n_tokens_off": {
+      "test_auroc": {
+        "mean": 0.52421875,
+        "ci": [
+          0.43758463589612917,
+          0.6108528641038707
+        ],
+        "sd": 0.09883661648302465,
+        "n": 5
+      },
+      "test_auroc_bootstrap": {
+        "ci": [
+          0.28388429495851375,
+          0.7500191687880832
+        ],
+        "n_seeds": 5
+      }
+    },
+    "confidence_lr": {
+      "test_auroc": {
+        "mean": 0.45625,
+        "ci": [
+          0.39883322939353866,
+          0.5136667706064613
+        ],
+        "sd": 0.06550398067579558,
+        "n": 5
+      },
+      "test_auroc_bootstrap": {
+        "ci": [
+          0.2072752171226678,
+          0.712161802074631
+        ],
+        "n_seeds": 5
+      }
+    }
+  }
+}

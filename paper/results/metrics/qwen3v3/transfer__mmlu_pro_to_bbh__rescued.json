@@ -1,0 +1,788 @@
+{
+  "target_task": "bbh",
+  "target_objective": "rescued",
+  "target_model": "Qwen/Qwen3-8B",
+  "n_target": 175,
+  "base_rate": 0.5714285714285714,
+  "objective": "rescued",
+  "prefill_mode": "off",
+  "transfer_auroc": {
+    "mean": 0.5504133333333333,
+    "ci": [
+      0.46314672763781095,
+      0.6376799390288557
+    ],
+    "sd": 0.09955819515349913,
+    "n": 5
+  },
+  "transfer_routed_accuracy": {
+    "mean": 0.5714285714285714,
+    "ci": [
+      0.5714285714285714,
+      0.5714285714285714
+    ],
+    "sd": 0.0,
+    "n": 5
+  },
+  "target_baselines": {
+    "never_think": 0.0,
+    "always_think": 0.5714285714285714,
+    "oracle": 0.5714285714285714
+  },
+  "per_probe": [
+    {
+      "n": 175,
+      "n_positive": 100,
+      "base_rate": 0.5714285714285714,
+      "auroc": 0.46353333333333335,
+      "auroc_bootstrap": {
+        "ci": [
+          0.37337618030805786,
+          0.5519507823980301
+        ],
+        "n_boot": 2000
+      },
+      "auprc": 0.5131403882205425,
+      "threshold": 0.0,
+      "routed_accuracy": 0.5714285714285714,
+      "fraction_routed_to_thinking": 1.0,
+      "baselines": {
+        "never_think": 0.0,
+        "always_think": 0.5714285714285714,
+        "oracle": 0.5714285714285714
+      },
+      "by_difficulty": {
+        "easy": {
+          "n": 91,
+          "base_rate": 0.5604395604395604,
+          "auroc": 0.33308823529411763,
+          "auroc_bootstrap": {
+            "ci": [
+              0.2170179263565892,
+              0.45317779975097044
+            ],
+            "n_boot": 2000
+          }
+        },
+        "hard": {
+          "n": 31,
+          "base_rate": 0.5161290322580645,
+          "auroc": 0.6333333333333333,
+          "auroc_bootstrap": {
+            "ci": [
+              0.42735042735042733,
+              0.828950179937022
+            ],
+            "n_boot": 2000
+          }
+        },
+        "medium": {
+          "n": 53,
+          "base_rate": 0.6226415094339622,
+          "auroc": 0.55,
+          "auroc_bootstrap": {
+            "ci": [
+              0.3835953898050975,
+              0.7107924836601307
+            ],
+            "n_boot": 2000
+          }
+        }
+      },
+      "cost_curve": [
+        {
+          "fraction_routed": 0.0,
+          "accuracy": 0.0
+        },
+        {
+          "fraction_routed": 0.05142857142857143,
+          "accuracy": 0.011428571428571429
+        },
+        {
+          "fraction_routed": 0.10285714285714286,
+          "accuracy": 0.017142857142857144
+        },
+        {
+          "fraction_routed": 0.14857142857142858,
+          "accuracy": 0.04
+        },
+        {
+          "fraction_routed": 0.2,
+          "accuracy": 0.08
+        },
+        {
+          "fraction_routed": 0.25142857142857145,
+          "accuracy": 0.12
+        },
+        {
+          "fraction_routed": 0.29714285714285715,
+          "accuracy": 0.14857142857142858
+        },
+        {
+          "fraction_routed": 0.3485714285714286,
+          "accuracy": 0.18285714285714286
+        },
+        {
+          "fraction_routed": 0.4,
+          "accuracy": 0.2057142857142857
+        },
+        {
+          "fraction_routed": 0.4514285714285714,
+          "accuracy": 0.24
+        },
+        {
+          "fraction_routed": 0.5028571428571429,
+          "accuracy": 0.26857142857142857
+        },
+        {
+          "fraction_routed": 0.5485714285714286,
+          "accuracy": 0.29714285714285715
+        },
+        {
+          "fraction_routed": 0.6,
+          "accuracy": 0.33714285714285713
+        },
+        {
+          "fraction_routed": 0.6514285714285715,
+          "accuracy": 0.37714285714285717
+        },
+        {
+          "fraction_routed": 0.6971428571428572,
+          "accuracy": 0.41714285714285715
+        },
+        {
+          "fraction_routed": 0.7485714285714286,
+          "accuracy": 0.44571428571428573
+        },
+        {
+          "fraction_routed": 0.8,
+          "accuracy": 0.48
+        },
+        {
+          "fraction_routed": 0.8514285714285714,
+          "accuracy": 0.5028571428571429
+        },
+        {
+          "fraction_routed": 0.9028571428571428,
+          "accuracy": 0.5257142857142857
+        },
+        {
+          "fraction_routed": 0.9485714285714286,
+          "accuracy": 0.5428571428571428
+        },
+        {
+          "fraction_routed": 1.0,
+          "accuracy": 0.5714285714285714
+        }
+      ],
+      "min_routed_for_always_think_accuracy": 1.0,
+      "seed": 42,
+      "target_objective": "rescued",
+      "probe": "output/qwen3v3/probe_mmlu_pro_rescued/seed_42/checkpoint.json"
+    },
+    {
+      "n": 175,
+      "n_positive": 100,
+      "base_rate": 0.5714285714285714,
+      "auroc": 0.4461333333333333,
+      "auroc_bootstrap": {
+        "ci": [
+          0.35568116131120686,
+          0.5315517187914125
+        ],
+        "n_boot": 2000
+      },
+      "auprc": 0.5148403574762244,
+      "threshold": 0.0,
+      "routed_accuracy": 0.5714285714285714,
+      "fraction_routed_to_thinking": 1.0,
+      "baselines": {
+        "never_think": 0.0,
+        "always_think": 0.5714285714285714,
+        "oracle": 0.5714285714285714
+      },
+      "by_difficulty": {
+        "easy": {
+          "n": 91,
+          "base_rate": 0.5604395604395604,
+          "auroc": 0.3252450980392157,
+          "auroc_bootstrap": {
+            "ci": [
+              0.2125123274161736,
+              0.44115783302063744
+            ],
+            "n_boot": 2000
+          }
+        },
+        "hard": {
+          "n": 31,
+          "base_rate": 0.5161290322580645,
+          "auroc": 0.5333333333333333,
+          "auroc_bootstrap": {
+            "ci": [
+              0.31932773109243695,
+              0.7368585526315788
+            ],
+            "n_boot": 2000
+          }
+        },
+        "medium": {
+          "n": 53,
+          "base_rate": 0.6226415094339622,
+          "auroc": 0.5348484848484848,
+          "auroc_bootstrap": {
+            "ci": [
+              0.37361233967271124,
+              0.6942049689440993
+            ],
+            "n_boot": 2000
+          }
+        }
+      },
+      "cost_curve": [
+        {
+          "fraction_routed": 0.0,
+          "accuracy": 0.0
+        },
+        {
+          "fraction_routed": 0.05142857142857143,
+          "accuracy": 0.022857142857142857
+        },
+        {
+          "fraction_routed": 0.10285714285714286,
+          "accuracy": 0.02857142857142857
+        },
+        {
+          "fraction_routed": 0.14857142857142858,
+          "accuracy": 0.05142857142857143
+        },
+        {
+          "fraction_routed": 0.2,
+          "accuracy": 0.09142857142857143
+        },
+        {
+          "fraction_routed": 0.25142857142857145,
+          "accuracy": 0.12
+        },
+        {
+          "fraction_routed": 0.29714285714285715,
+          "accuracy": 0.14285714285714285
+        },
+        {
+          "fraction_routed": 0.3485714285714286,
+          "accuracy": 0.17714285714285713
+        },
+        {
+          "fraction_routed": 0.4,
+          "accuracy": 0.22285714285714286
+        },
+        {
+          "fraction_routed": 0.4514285714285714,
+          "accuracy": 0.24
+        },
+        {
+          "fraction_routed": 0.5028571428571429,
+          "accuracy": 0.26857142857142857
+        },
+        {
+          "fraction_routed": 0.5485714285714286,
+          "accuracy": 0.2914285714285714
+        },
+        {
+          "fraction_routed": 0.6,
+          "accuracy": 0.32571428571428573
+        },
+        {
+          "fraction_routed": 0.6514285714285715,
+          "accuracy": 0.36
+        },
+        {
+          "fraction_routed": 0.6971428571428572,
+          "accuracy": 0.38285714285714284
+        },
+        {
+          "fraction_routed": 0.7485714285714286,
+          "accuracy": 0.4228571428571429
+        },
+        {
+          "fraction_routed": 0.8,
+          "accuracy": 0.4514285714285714
+        },
+        {
+          "fraction_routed": 0.8514285714285714,
+          "accuracy": 0.49142857142857144
+        },
+        {
+          "fraction_routed": 0.9028571428571428,
+          "accuracy": 0.5142857142857142
+        },
+        {
+          "fraction_routed": 0.9485714285714286,
+          "accuracy": 0.5485714285714286
+        },
+        {
+          "fraction_routed": 1.0,
+          "accuracy": 0.5714285714285714
+        }
+      ],
+      "min_routed_for_always_think_accuracy": 1.0,
+      "seed": 1,
+      "target_objective": "rescued",
+      "probe": "output/qwen3v3/probe_mmlu_pro_rescued/seed_1/checkpoint.json"
+    },
+    {
+      "n": 175,
+      "n_positive": 100,
+      "base_rate": 0.5714285714285714,
+      "auroc": 0.5402666666666667,
+      "auroc_bootstrap": {
+        "ci": [
+          0.45141072600481125,
+          0.6289366058683584
+        ],
+        "n_boot": 2000
+      },
+      "auprc": 0.637389913185947,
+      "threshold": 0.0,
+      "routed_accuracy": 0.5714285714285714,
+      "fraction_routed_to_thinking": 1.0,
+      "baselines": {
+        "never_think": 0.0,
+        "always_think": 0.5714285714285714,
+        "oracle": 0.5714285714285714
+      },
+      "by_difficulty": {
+        "easy": {
+          "n": 91,
+          "base_rate": 0.5604395604395604,
+          "auroc": 0.4122549019607843,
+          "auroc_bootstrap": {
+            "ci": [
+              0.2942898781134075,
+              0.5292775960558439
+            ],
+            "n_boot": 2000
+          }
+        },
+        "hard": {
+          "n": 31,
+          "base_rate": 0.5161290322580645,
+          "auroc": 0.6208333333333333,
+          "auroc_bootstrap": {
+            "ci": [
+              0.41249451754385963,
+              0.8125
+            ],
+            "n_boot": 2000
+          }
+        },
+        "medium": {
+          "n": 53,
+          "base_rate": 0.6226415094339622,
+          "auroc": 0.6651515151515152,
+          "auroc_bootstrap": {
+            "ci": [
+              0.49925988642583474,
+              0.8050766167953667
+            ],
+            "n_boot": 2000
+          }
+        }
+      },
+      "cost_curve": [
+        {
+          "fraction_routed": 0.0,
+          "accuracy": 0.0
+        },
+        {
+          "fraction_routed": 0.05142857142857143,
+          "accuracy": 0.045714285714285714
+        },
+        {
+          "fraction_routed": 0.10285714285714286,
+          "accuracy": 0.08
+        },
+        {
+          "fraction_routed": 0.14857142857142858,
+          "accuracy": 0.10857142857142857
+        },
+        {
+          "fraction_routed": 0.2,
+          "accuracy": 0.13714285714285715
+        },
+        {
+          "fraction_routed": 0.25142857142857145,
+          "accuracy": 0.17714285714285713
+        },
+        {
+          "fraction_routed": 0.29714285714285715,
+          "accuracy": 0.18857142857142858
+        },
+        {
+          "fraction_routed": 0.3485714285714286,
+          "accuracy": 0.22285714285714286
+        },
+        {
+          "fraction_routed": 0.4,
+          "accuracy": 0.24571428571428572
+        },
+        {
+          "fraction_routed": 0.4514285714285714,
+          "accuracy": 0.26857142857142857
+        },
+        {
+          "fraction_routed": 0.5028571428571429,
+          "accuracy": 0.29714285714285715
+        },
+        {
+          "fraction_routed": 0.5485714285714286,
+          "accuracy": 0.3142857142857143
+        },
+        {
+          "fraction_routed": 0.6,
+          "accuracy": 0.35428571428571426
+        },
+        {
+          "fraction_routed": 0.6514285714285715,
+          "accuracy": 0.37714285714285717
+        },
+        {
+          "fraction_routed": 0.6971428571428572,
+          "accuracy": 0.4
+        },
+        {
+          "fraction_routed": 0.7485714285714286,
+          "accuracy": 0.4342857142857143
+        },
+        {
+          "fraction_routed": 0.8,
+          "accuracy": 0.46285714285714286
+        },
+        {
+          "fraction_routed": 0.8514285714285714,
+          "accuracy": 0.4857142857142857
+        },
+        {
+          "fraction_routed": 0.9028571428571428,
+          "accuracy": 0.5142857142857142
+        },
+        {
+          "fraction_routed": 0.9485714285714286,
+          "accuracy": 0.5371428571428571
+        },
+        {
+          "fraction_routed": 1.0,
+          "accuracy": 0.5714285714285714
+        }
+      ],
+      "min_routed_for_always_think_accuracy": 1.0,
+      "seed": 2,
+      "target_objective": "rescued",
+      "probe": "output/qwen3v3/probe_mmlu_pro_rescued/seed_2/checkpoint.json"
+    },
+    {
+      "n": 175,
+      "n_positive": 100,
+      "base_rate": 0.5714285714285714,
+      "auroc": 0.6718,
+      "auroc_bootstrap": {
+        "ci": [
+          0.5871199612531096,
+          0.7523427308919394
+        ],
+        "n_boot": 2000
+      },
+      "auprc": 0.6828397403568465,
+      "threshold": 0.0,
+      "routed_accuracy": 0.5714285714285714,
+      "fraction_routed_to_thinking": 1.0,
+      "baselines": {
+        "never_think": 0.0,
+        "always_think": 0.5714285714285714,
+        "oracle": 0.5714285714285714
+      },
+      "by_difficulty": {
+        "easy": {
+          "n": 91,
+          "base_rate": 0.5604395604395604,
+          "auroc": 0.6700980392156862,
+          "auroc_bootstrap": {
+            "ci": [
+              0.5535714285714286,
+              0.7738369025830812
+            ],
+            "n_boot": 2000
+          }
+        },
+        "hard": {
+          "n": 31,
+          "base_rate": 0.5161290322580645,
+          "auroc": 0.5208333333333334,
+          "auroc_bootstrap": {
+            "ci": [
+              0.3025210084033613,
+              0.7333823529411762
+            ],
+            "n_boot": 2000
+          }
+        },
+        "medium": {
+          "n": 53,
+          "base_rate": 0.6226415094339622,
+          "auroc": 0.7659090909090909,
+          "auroc_bootstrap": {
+            "ci": [
+              0.6222862554112555,
+              0.8879040404040404
+            ],
+            "n_boot": 2000
+          }
+        }
+      },
+      "cost_curve": [
+        {
+          "fraction_routed": 0.0,
+          "accuracy": 0.0
+        },
+        {
+          "fraction_routed": 0.05142857142857143,
+          "accuracy": 0.04
+        },
+        {
+          "fraction_routed": 0.10285714285714286,
+          "accuracy": 0.08
+        },
+        {
+          "fraction_routed": 0.14857142857142858,
+          "accuracy": 0.12
+        },
+        {
+          "fraction_routed": 0.2,
+          "accuracy": 0.1657142857142857
+        },
+        {
+          "fraction_routed": 0.25142857142857145,
+          "accuracy": 0.19428571428571428
+        },
+        {
+          "fraction_routed": 0.29714285714285715,
+          "accuracy": 0.22285714285714286
+        },
+        {
+          "fraction_routed": 0.3485714285714286,
+          "accuracy": 0.2742857142857143
+        },
+        {
+          "fraction_routed": 0.4,
+          "accuracy": 0.3028571428571429
+        },
+        {
+          "fraction_routed": 0.4514285714285714,
+          "accuracy": 0.3314285714285714
+        },
+        {
+          "fraction_routed": 0.5028571428571429,
+          "accuracy": 0.34285714285714286
+        },
+        {
+          "fraction_routed": 0.5485714285714286,
+          "accuracy": 0.38857142857142857
+        },
+        {
+          "fraction_routed": 0.6,
+          "accuracy": 0.41714285714285715
+        },
+        {
+          "fraction_routed": 0.6514285714285715,
+          "accuracy": 0.42857142857142855
+        },
+        {
+          "fraction_routed": 0.6971428571428572,
+          "accuracy": 0.4514285714285714
+        },
+        {
+          "fraction_routed": 0.7485714285714286,
+          "accuracy": 0.4742857142857143
+        },
+        {
+          "fraction_routed": 0.8,
+          "accuracy": 0.4857142857142857
+        },
+        {
+          "fraction_routed": 0.8514285714285714,
+          "accuracy": 0.5085714285714286
+        },
+        {
+          "fraction_routed": 0.9028571428571428,
+          "accuracy": 0.5314285714285715
+        },
+        {
+          "fraction_routed": 0.9485714285714286,
+          "accuracy": 0.5542857142857143
+        },
+        {
+          "fraction_routed": 1.0,
+          "accuracy": 0.5714285714285714
+        }
+      ],
+      "min_routed_for_always_think_accuracy": 1.0,
+      "seed": 3,
+      "target_objective": "rescued",
+      "probe": "output/qwen3v3/probe_mmlu_pro_rescued/seed_3/checkpoint.json"
+    },
+    {
+      "n": 175,
+      "n_positive": 100,
+      "base_rate": 0.5714285714285714,
+      "auroc": 0.6303333333333333,
+      "auroc_bootstrap": {
+        "ci": [
+          0.547012354662937,
+          0.7119910546720429
+        ],
+        "n_boot": 2000
+      },
+      "auprc": 0.728653863934563,
+      "threshold": 0.0,
+      "routed_accuracy": 0.5714285714285714,
+      "fraction_routed_to_thinking": 1.0,
+      "baselines": {
+        "never_think": 0.0,
+        "always_think": 0.5714285714285714,
+        "oracle": 0.5714285714285714
+      },
+      "by_difficulty": {
+        "easy": {
+          "n": 91,
+          "base_rate": 0.5604395604395604,
+          "auroc": 0.49558823529411766,
+          "auroc_bootstrap": {
+            "ci": [
+              0.3725317888783421,
+              0.6138755397839699
+            ],
+            "n_boot": 2000
+          }
+        },
+        "hard": {
+          "n": 31,
+          "base_rate": 0.5161290322580645,
+          "auroc": 0.725,
+          "auroc_bootstrap": {
+            "ci": [
+              0.5170868347338936,
+              0.8904831932773108
+            ],
+            "n_boot": 2000
+          }
+        },
+        "medium": {
+          "n": 53,
+          "base_rate": 0.6226415094339622,
+          "auroc": 0.7098484848484848,
+          "auroc_bootstrap": {
+            "ci": [
+              0.5617657067364151,
+              0.8434805900621118
+            ],
+            "n_boot": 2000
+          }
+        }
+      },
+      "cost_curve": [
+        {
+          "fraction_routed": 0.0,
+          "accuracy": 0.0
+        },
+        {
+          "fraction_routed": 0.05142857142857143,
+          "accuracy": 0.045714285714285714
+        },
+        {
+          "fraction_routed": 0.10285714285714286,
+          "accuracy": 0.09142857142857143
+        },
+        {
+          "fraction_routed": 0.14857142857142858,
+          "accuracy": 0.12571428571428572
+        },
+        {
+          "fraction_routed": 0.2,
+          "accuracy": 0.1657142857142857
+        },
+        {
+          "fraction_routed": 0.25142857142857145,
+          "accuracy": 0.19428571428571428
+        },
+        {
+          "fraction_routed": 0.29714285714285715,
+          "accuracy": 0.22285714285714286
+        },
+        {
+          "fraction_routed": 0.3485714285714286,
+          "accuracy": 0.24571428571428572
+        },
+        {
+          "fraction_routed": 0.4,
+          "accuracy": 0.28
+        },
+        {
+          "fraction_routed": 0.4514285714285714,
+          "accuracy": 0.30857142857142855
+        },
+        {
+          "fraction_routed": 0.5028571428571429,
+          "accuracy": 0.32571428571428573
+        },
+        {
+          "fraction_routed": 0.5485714285714286,
+          "accuracy": 0.3657142857142857
+        },
+        {
+          "fraction_routed": 0.6,
+          "accuracy": 0.38285714285714284
+        },
+        {
+          "fraction_routed": 0.6514285714285715,
+          "accuracy": 0.4057142857142857
+        },
+        {
+          "fraction_routed": 0.6971428571428572,
+          "accuracy": 0.41714285714285715
+        },
+        {
+          "fraction_routed": 0.7485714285714286,
+          "accuracy": 0.44571428571428573
+        },
+        {
+          "fraction_routed": 0.8,
+          "accuracy": 0.46285714285714286
+        },
+        {
+          "fraction_routed": 0.8514285714285714,
+          "accuracy": 0.49714285714285716
+        },
+        {
+          "fraction_routed": 0.9028571428571428,
+          "accuracy": 0.5371428571428571
+        },
+        {
+          "fraction_routed": 0.9485714285714286,
+          "accuracy": 0.5485714285714286
+        },
+        {
+          "fraction_routed": 1.0,
+          "accuracy": 0.5714285714285714
+        }
+      ],
+      "min_routed_for_always_think_accuracy": 1.0,
+      "seed": 4,
+      "target_objective": "rescued",
+      "probe": "output/qwen3v3/probe_mmlu_pro_rescued/seed_4/checkpoint.json"
+    }
+  ],
+  "source_task": "mmlu_pro",
+  "source_test_auroc": 0.48948194662480377,
+  "auroc_drop_pp": -6.093138670852954,
+  "verdict": "undefined \u2014 source probe was at chance"
+}

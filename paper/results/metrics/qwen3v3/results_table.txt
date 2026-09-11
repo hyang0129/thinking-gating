@@ -1,0 +1,54 @@
+task            target               n   base  AUROC [95% CI]        worst stratum           never  always  oracle  routed  waste
+---------------------------------------------------------------------------------------------------------------------------------
+bbh             helped             540   0.19  0.734 [0.706,0.762]   hard:0.643              0.689   0.833   0.874   0.830   0.15
+bbh             needs_thinking     540   0.32  0.820 [0.795,0.845]   easy:0.791              0.676   0.824   0.872   0.822   0.29
+bbh             rescued            175   0.57  0.738 [0.684,0.792]   easy:0.684              0.000   0.571   0.571   0.571   0.11
+gsm8k           helped            1319   0.04  0.688 [0.631,0.745]   medium:0.630            0.941   0.948   0.975   0.949   0.84
+gsm8k           needs_thinking    1319   0.07  0.687 [0.652,0.721]   hard:0.636              0.932   0.934   0.968   0.933   0.90
+gsm8k           rescued             89   0.54  0.597 [0.458,0.737]   easy:0.000              0.000   0.529   0.529   0.529   0.13
+math500         helped             500   0.08  0.626 [0.582,0.671]   easy:0.304              0.732   0.750   0.812   0.754   0.60
+math500         needs_thinking     500   0.24  0.699 [0.634,0.765]   medium:0.646            0.770   0.770   0.836   0.774   0.89
+math500         rescued            118   0.33  0.559 [0.441,0.678]   easy:0.333              0.000   0.333   0.333   0.333   0.14
+mmlu_pro        helped            1000   0.13  0.516 [0.484,0.548]   hard:0.472              0.633   0.697   0.763   0.692   0.04
+mmlu_pro        needs_thinking    1000   0.38  0.659 [0.630,0.687]   easy:0.640              0.625   0.690   0.756   0.690   0.44
+mmlu_pro        rescued            376   0.35  0.489 [0.463,0.516]   easy:0.475              0.000   0.347   0.347   0.347   0.00
+
+Transfer (no retraining: source scaler and threshold reused)
+source            target            objective        src AUROC  transfer AUROC          drop pp  verdict
+--------------------------------------------------------------------------------------------------------
+bbh               gsm8k             helped               0.734  0.519 [0.448,0.591]        21.4  no transfer — target at chance
+bbh               gsm8k             needs_thinking       0.820  0.611 [0.591,0.630]        20.9  weak transfer — above chance but large drop
+bbh               gsm8k             rescued              0.738  0.423 [0.369,0.478]        31.5  no transfer — target at chance
+bbh               math500           helped               0.734  0.498 [0.419,0.577]        23.6  no transfer — target at chance
+bbh               math500           needs_thinking       0.820  0.598 [0.575,0.621]        22.2  weak transfer — above chance but large drop
+bbh               math500           rescued              0.738  0.498 [0.474,0.522]        24.0  no transfer — target at chance
+bbh               mmlu_pro          helped               0.734  0.541 [0.506,0.576]        19.3  weak transfer — above chance but large drop
+bbh               mmlu_pro          needs_thinking       0.820  0.576 [0.572,0.581]        24.3  weak transfer — above chance but large drop
+bbh               mmlu_pro          rescued              0.738  0.495 [0.459,0.530]        24.3  no transfer — target at chance
+gsm8k             bbh               helped               0.688  0.507 [0.486,0.529]        18.1  no transfer — target at chance
+gsm8k             bbh               needs_thinking       0.687  0.559 [0.501,0.617]        12.8  partial transfer
+gsm8k             bbh               rescued              0.597  0.575 [0.542,0.609]         2.2  strong transfer
+gsm8k             math500           helped               0.688  0.630 [0.567,0.693]         5.8  partial transfer
+gsm8k             math500           needs_thinking       0.687  0.652 [0.603,0.700]         3.5  strong transfer
+gsm8k             math500           rescued              0.597  0.480 [0.451,0.510]        11.7  no transfer — target at chance
+gsm8k             mmlu_pro          helped               0.688  0.498 [0.450,0.546]        19.0  no transfer — target at chance
+gsm8k             mmlu_pro          needs_thinking       0.687  0.550 [0.535,0.566]        13.6  partial transfer
+gsm8k             mmlu_pro          rescued              0.597  0.513 [0.483,0.543]         8.4  no transfer — target at chance
+math500           bbh               helped               0.626  0.567 [0.543,0.591]         5.9  partial transfer
+math500           bbh               needs_thinking       0.699  0.431 [0.397,0.464]        26.8  no transfer — target at chance
+math500           bbh               rescued              0.559  0.587 [0.561,0.613]        -2.8  strong transfer
+math500           gsm8k             helped               0.626  0.564 [0.540,0.589]         6.2  partial transfer
+math500           gsm8k             needs_thinking       0.699  0.555 [0.531,0.578]        14.4  partial transfer
+math500           gsm8k             rescued              0.559  0.492 [0.408,0.576]         6.7  no transfer — target at chance
+math500           mmlu_pro          helped               0.626  0.532 [0.491,0.572]         9.4  no transfer — target at chance
+math500           mmlu_pro          needs_thinking       0.699  0.507 [0.486,0.529]        19.2  no transfer — target at chance
+math500           mmlu_pro          rescued              0.559  0.491 [0.447,0.535]         6.8  no transfer — target at chance
+mmlu_pro          bbh               helped               0.516  0.560 [0.499,0.621]        -4.4  undefined — source probe was at chance
+mmlu_pro          bbh               needs_thinking       0.659  0.556 [0.518,0.594]        10.2  partial transfer
+mmlu_pro          bbh               rescued              0.489  0.550 [0.463,0.638]        -6.1  undefined — source probe was at chance
+mmlu_pro          gsm8k             helped               0.516  0.465 [0.413,0.517]         5.1  undefined — source probe was at chance
+mmlu_pro          gsm8k             needs_thinking       0.659  0.478 [0.408,0.549]        18.1  no transfer — target at chance
+mmlu_pro          gsm8k             rescued              0.489  0.422 [0.367,0.478]         6.7  undefined — source probe was at chance
+mmlu_pro          math500           helped               0.516  0.511 [0.448,0.573]         0.5  undefined — source probe was at chance
+mmlu_pro          math500           needs_thinking       0.659  0.692 [0.659,0.726]        -3.4  strong transfer
+mmlu_pro          math500           rescued              0.489  0.522 [0.501,0.542]        -3.2  undefined — source probe was at chance

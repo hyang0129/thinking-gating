@@ -1,9 +1,11 @@
 # Thinking-Mode Gating Experiment — Agent Handoff
 
-**Date:** 2026-08-31
-**Status:** Pipeline complete and exercised across 5 models / 5 benchmarks. All
-pre-08-30 probe results retracted (truncation confound). V3 re-captures queued
-on Empire AI, blocked on GPU allocation.
+**Date:** 2026-09-11
+**Status:** V3 (truncation-corrected) captures ran 2026-09-04/05; 8 of 10
+published. The corrected result on Qwen3-8B is **negative**: the prefill probe
+beats no text or confidence baseline, `rescued` is at chance off BBH, and BBH
+is a subtask detector. Redo captures for the 5 failed task×model pairs are
+queued with a watcher; two Jupyter allocations pending.
 **Owner:** Hong Yang
 
 ---
@@ -55,95 +57,74 @@ Still unwritten: `scripts/template_ablation.py` (optional, low priority).
 
 ---
 
-## The blocker: the truncation confound (2026-08-30)
+## Where things stand (2026-09-11)
 
-**Every `needs_thinking` and `rescued` number produced before 2026-08-30 is
-confounded and must not be quoted.** Full writeup:
-`paper/results/metrics/truncation/README.md`.
+Full numbers and caveats: `paper/results/metrics/qwen3v3/README.md` and
+`paper/results/metrics/nemotronv3/README.md`. The short version is in
+`CLAUDE.md` → "Current State". Do not quote anything from
+`paper/results/metrics/*.json` at the top level or from `truncation/`,
+`baselines/`, `decomposition/`, `tuning/` — those are the retracted pre-v3
+runs, kept as the record of the confound.
 
-The thinking-OFF pass ran at `--max-response-len 320`. Qwen3 writes chain-of-
-thought even with thinking off, so long answers were cut off and graded wrong
-for running long rather than for being unable.
+### What the v3 pass produced
 
-| task | off truncated | correct_off when truncated | when not |
+| capture | rows | off-trunc | status |
 |---|---|---|---|
-| MATH-500 | 75.2% | 0.037 | 0.944 |
-| MMLU-Pro | 49.3% | 0.061 | 0.700 |
-| GSM8K | 11.6% | 0.196 | 0.943 |
+| qwen3v3 gsm8k / math500 / mmlu_pro / bbh | 1319 / 500 / 1000 / 540 | 0.2 / 8.4 / 8.4 / 3.1% | analysed |
+| nemotronv3 bbh / lsat | 540 / 230 | 1.5 / 5.7% | analysed |
+| qwen3v3 lsat | — | 76–84% at 1024 | quarantined → redo @4096 |
+| nemotronv3 gsm8k | — | 24–28% at 1024 | quarantined → redo @2048 |
+| nemotronv3 math500 | 375/500 | 16.5–21.6% at 2048 | one shard quarantined → whole task redo @4096 |
+| nemotronv3 mmlu_pro | 250/1000 | 6.8% | 3 shards co-tenant OOM → whole task redo @2048, batch 8 |
 
-Decisive test — train the identical probe to predict `truncated_off` instead of
-the label:
+Local copies of the eight published captures are in `shared/icr_capture/`;
+the superseded partials are under `shared/icr_capture/_superseded/` here and
+on the cluster.
 
-| task | probe → truncation | probe → needs_thinking |
-|---|---|---|
-| MATH-500 | **0.922** | 0.879 |
-| MMLU-Pro | **0.872** | 0.782 |
-| GSM8K | **0.811** | 0.702 |
+### The corrected result
 
-It predicts truncation better than the label on every task, and reported AUROC
-ranks the tasks exactly by truncation rate. All three model families shared the
-cap, so the cross-family replication reproduced the artifact — a design confound
-is invariant to the model.
+- `needs_thinking`: probe 0.69 / 0.70 / 0.66 / 0.82 (gsm8k / math500 /
+  mmlu_pro / bbh). A no-model baseline sits inside every interval; on
+  math500 the thinking-off confidence regression is better (0.814 vs 0.699).
+- `rescued`: 0.60 / 0.56 / 0.49 on gsm8k / math500 / mmlu_pro, n = 89 / 118
+  / 376. Chance. BBH's 0.74 is 0.51 within-subtask.
+- Transfer for `rescued`: 0.42–0.59 on every ordered pair.
+- Nemotron LSAT `rescued` 0.689 [0.50, 0.86] is the only above-chance number
+  on a non-category task; unreplicated, 20% thinking-on truncation.
+- Nemotron LSAT thinking-off accuracy is 0.243 at 5.7% truncation — the v2
+  "degenerate labels" verdict was correct, not a truncation artifact.
 
-No salvage: dropping truncated rows leaves MATH-500 with 124 rows of which 7 are
-wrong. Re-capture is required. The capture script warned on thinking-ON
-truncation and was silent on thinking-OFF (the more damaging of the two, since
-`correct_off` defines both objectives); it now logs at ERROR level above 20%.
-It still exits 0, so a dispatched cell will not fail on it — the log must be
-read.
+### Cluster state
 
----
+- Queues `shared/dispatch/capture_nemotronv3_redo` (12 pending) and
+  `capture_qwen3v3_redo` (4 pending), expanded from the `*_redo.json`
+  manifests at commit 9e9692c or later.
+- SLURM 81777 / 81778 = `jupyter_empire_8882` / `8883`, PENDING (Priority).
+- `scripts/watch_and_dispatch.py` running detached (log:
+  `shared/logs/watch_dispatch.log`, stop: `touch shared/dispatch/STOP_WATCH`).
+  It dispatches one worker per root as allocations land. It will **not**
+  dispatch while the cluster checkout is behind `origin/main`, so `git pull`
+  there after every push.
+- `shared/gpu_jobs.json`: 17 finished, 8 unknown (workers whose nodes are
+  gone). Nothing running.
+- Original v3 queues: failed cells moved to `<root>/retired/` with a
+  `RETIRED.md`; re-expanding the original v3 manifests would recreate them.
 
-## Next: the v3 re-capture
+### To finish the re-capture
 
-`configs/dispatch/capture_qwen3v3.json`, `configs/dispatch/capture_nemotronv3.json`
-— 2 models × 5 benchmarks × 4 shards. Off-budgets 320 → 1024 (2048 for MATH-500),
-sized from v2 data (complete off-responses were censored at the old cap, max
-observed 311/320/319; MATH-500 answers reach ~720 words at p99). Thinking-on
-budgets unchanged so the on-side stays comparable. LSAT is back in — its
-"degenerate labels" diagnosis (off-accuracy below the guess floor) is itself a
-plausible truncation artifact.
-
-### Cluster state, checked 2026-08-31
-
-- `shared/dispatch/capture_qwen3v3` and `capture_nemotronv3` are **already
-  expanded**: 20 cells each, **all pending, none ever claimed, 0% done**.
-- `squeue --me`: six `jupyter_empire_*` allocations, **all PENDING on
-  `(Priority)`**. Nothing is running; no GPU node is held.
-- `gpu_jobs.json`: 17 `finished`, 5 stale `unknown` (Aug 27–28 workers whose
-  nodes went away without the manifest updating).
-- **Three v2-era queues were retired on 2026-08-31** so no worker resumes them:
-  `bench_crossmodel` (9 cells), `capture_gptoss20b` (4), `capture_qwen3_14b` (1).
-  Their pending cells hard-code `--max-response-len 320` (or train on captures
-  that do), so finishing them would regenerate the confound. Cells moved to
-  `<root>/retired/`, with a `RETIRED.md` in each; `done/` and logs untouched.
-  **`queue.py expand` de-duplicates against `pending`/`done`/`failed` only, not
-  `retired`** — re-expanding `configs/dispatch/bench_crossmodel.json`,
-  `capture_gptoss20b.json` or `capture_qwen3_14b.json` will recreate them.
-  Every other queue is 100% done with nothing failed; the only live work is the
-  40 v3 cells.
-- Cluster checkout is at `f252f87`, same as local, with
-  `paper/results/metrics/gsm8k_full__helped.json` showing as deleted in the
-  working tree there.
-
-### To restart
-
-1. Cancel the redundant pending Jupyter jobs so they stop competing, keep one.
-2. When a node lands, dispatch one worker per node:
-   `python scripts/gpu_dispatch.py run .venv/bin/python scripts/dispatch/worker.py --root shared/dispatch/capture_qwen3v3`
-   (re-expanding is idempotent; finished cells are skipped).
-3. Watch: `python scripts/dispatch/queue.py status --root shared/dispatch/capture_qwen3v3`
-4. `scp` the captures back (data is gitignored; the no-`scp` rule is about code
-   going the *other* way).
-5. Re-run labels → probes → decomposition → baselines.
-
-**Consider folding into the same capture, since it requires re-running anyway:**
-mean-pooled prompt-token activations (only the last token was ever saved;
-token pooling is usually a large gain in probing work), and ~3k rows from the
-full MATH corpus (would take `rescued` from 369 rows to ~2200 — the cheapest
-large win available).
-
----
+1. Confirm the watcher dispatched (`queue.py status --root shared/dispatch/capture_*_redo`),
+   then grep each cell log for the thinking-OFF truncation line; the gate
+   quarantines above 20% but 8% is still not "near zero".
+2. `scp`/tar the five new capture dirs back into `shared/icr_capture/`.
+3. `CAPTURE_SLUG=nemotronv3 bash scripts/run_full_analysis.sh` and
+   `CAPTURE_SLUG=qwen3v3 TASKS=lsat bash scripts/run_full_analysis.sh`
+   (idempotent; finished steps are skipped). Then
+   `scripts/compare_baselines.py --metrics-dir paper/results/metrics/<slug>`
+   and update the two READMEs.
+4. The decision point: does Qwen3 LSAT `rescued` replicate Nemotron's 0.689
+   above its text and confidence baselines? If not, write the negative
+   result. If yes, the next capture changes thinking-on budgets, adds
+   mean-pooled prompt tokens, and adds ~3k MATH rows — together, once.
 
 ## Findings that survive the confound
 
@@ -171,13 +152,14 @@ forward:
 
 ## Open work beyond the re-capture
 
-1. **Thinking-off confidence / answer entropy baseline** — the strongest
-   remaining competitor to the probe, and cheap. Should exist before any
-   writeup.
-2. A small fine-tuned text encoder (MiniLM/DeBERTa) on the same labels.
+1. ~~Thinking-off confidence baseline~~ — `scripts/baseline_confidence.py`,
+   run as part of `run_full_analysis.sh`. On v3 it beats the probe on
+   math500 `needs_thinking`.
+2. A small fine-tuned text encoder (MiniLM/DeBERTa) on the same labels —
+   only worth it if some probe number survives that TF-IDF does not match.
 3. `template_ablation.py` — minimal-pair format-robustness check, still optional.
-4. Transfer eval re-run once v3 labels exist (the LSAT verdict is currently
-   untrustworthy for the same truncation reason).
+4. Mean-pooled prompt-token activations and larger thinking-on budgets — a
+   capture-script change, folded into whatever capture comes after the redo.
 
 ---
 
@@ -194,7 +176,7 @@ forward:
   `decomposition/`, `tuning/`) before quoting anything — the caveats are the
   load-bearing part.
 - `output/` — working metrics, promoted to `paper/results/` when citable
-- `shared/icr_capture/` — captures (v1/v2 only; no v3 yet)
+- `shared/icr_capture/` — captures; v3 published dirs are `{task}_thinking_{qwen3v3,nemotronv3}`, superseded partials under `_superseded/`
 
 **Never edit a `.bib` file directly.** Cite in prose with enough context for a
 human to verify, and get explicit approval before any bibliography insertion.
