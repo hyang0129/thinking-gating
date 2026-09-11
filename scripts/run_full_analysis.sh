@@ -24,11 +24,10 @@ export OMP_NUM_THREADS="${OMP_NUM_THREADS:-8}"
 export MKL_NUM_THREADS="${MKL_NUM_THREADS:-8}"
 
 TASKS="${TASKS:-gsm8k lsat math500 mmlu_pro bbh}"
-TARGETS="${TARGETS:-needs_thinking helped}"
+TARGETS="${TARGETS:-rescued needs_thinking helped}"
 LAYER="${LAYER:-18}"          # a priori middle layer; never swept, to avoid selection effects
 METHOD="${METHOD:-logreg}"
 SEEDS="${SEEDS:-42 1 2 3 4}"
-METRICS_DIR="paper/results/metrics"
 
 # task -> capture directory. Captures are named {task}_thinking_{CAPTURE_SLUG}
 # with {task} the task module name exactly, so this is one substitution rather
@@ -44,6 +43,13 @@ METRICS_DIR="paper/results/metrics"
 # so they are history to read, not a convention to extend. Do not add to this
 # branch; name new captures after the task.
 CAPTURE_SLUG="${CAPTURE_SLUG:-qwen3}"
+
+# Every derived artifact is qualified by the capture slug. Two models' label
+# files, probe dirs, transfer results and metrics would otherwise land on the
+# same paths and the second run would silently overwrite -- or, worse, resume
+# from -- the first. The retracted pre-v3 metrics stay where they were, in
+# paper/results/metrics/ itself; nothing new is written there.
+METRICS_DIR="${METRICS_DIR:-paper/results/metrics/${CAPTURE_SLUG}}"
 
 # The alias is consulted BEFORE the plain name, and the order is load-bearing:
 # shared/icr_capture/gsm8k_thinking_qwen3 also exists and is a 500-row pilot,
@@ -61,12 +67,12 @@ capture_dir() {
   local dir="shared/icr_capture/${task}_thinking_${CAPTURE_SLUG}"
   if [ -d "$dir" ]; then echo "$dir"; else echo ""; fi
 }
-labels_file() { echo "shared/${1}_labels.jsonl"; }
-probe_dir()   { echo "output/probe_${1}_${2}"; }
+labels_file() { echo "shared/labels/${CAPTURE_SLUG}/${1}_labels.jsonl"; }
+probe_dir()   { echo "output/${CAPTURE_SLUG}/probe_${1}_${2}"; }
 
 log() { echo "[$(date -u +%H:%M:%S)] $*"; }
 
-mkdir -p "$METRICS_DIR" paper/results/labels
+mkdir -p "$METRICS_DIR" "$METRICS_DIR/labels" "$METRICS_DIR/baselines" "shared/labels/${CAPTURE_SLUG}" "output/${CAPTURE_SLUG}"
 
 # --- 1. labels -------------------------------------------------------------
 AVAILABLE=""
@@ -85,7 +91,7 @@ for task in $TASKS; do
     "$PY" scripts/generate_labels.py --capture-dir "$cap" --out-file "$lab" \
       2>&1 | grep -E "base rate|accuracy :|truncated" | sed "s/^/    /"
   fi
-  cp -f "${lab%.jsonl}.summary.json" "paper/results/labels/${task}.json" 2>/dev/null
+  cp -f "${lab%.jsonl}.summary.json" "$METRICS_DIR/labels/${task}.json" 2>/dev/null
 done
 
 log "tasks with captures:${AVAILABLE:- none}"
@@ -109,6 +115,29 @@ for task in $AVAILABLE; do
   done
 done
 
+# --- 2b. baselines on the identical splits ---------------------------------
+# An 8B forward pass has to beat TF-IDF on the raw question, and it has to be
+# compared against the model's own thinking-off confidence. Both run on the
+# same splits/seeds/target as the probe so the numbers sit in one table.
+# baseline_confidence needs --capture-logprobs captures (all of v3).
+for task in $AVAILABLE; do
+  for target in $TARGETS; do
+    [ "$target" = "helped" ] && continue
+    for kind in text confidence; do
+      out="$METRICS_DIR/baselines/${kind}__${task}__${target}.json"
+      if [ -s "$out" ] && [ -z "${FORCE:-}" ]; then
+        log "baseline $kind $task/$target — already present"
+      else
+        log "baseline $kind $task/$target"
+        "$PY" "scripts/baseline_${kind}.py" \
+          --capture-dir "$(capture_dir "$task")" --labels "$(labels_file "$task")" \
+          --target "$target" --seeds $SEEDS --out-file "$out" \
+          2>&1 | grep -E "AUROC" | sed "s/^/    /"
+      fi
+    done
+  done
+done
+
 # --- 3. every ordered cross-task pair, no retraining -----------------------
 for target in $TARGETS; do
   for src in $AVAILABLE; do
@@ -120,7 +149,7 @@ for target in $TARGETS; do
     [ -z "$ckpts" ] && { log "SKIP transfer from $src/$target — no checkpoints"; continue; }
     for tgt in $AVAILABLE; do
       [ "$src" = "$tgt" ] && continue
-      out="output/transfer_${src}_to_${tgt}_${target}.json"
+      out="output/${CAPTURE_SLUG}/transfer_${src}_to_${tgt}_${target}.json"
       if [ -s "$out" ] && [ -z "${FORCE:-}" ]; then
         log "transfer $src -> $tgt ($target) — already present"
       else
@@ -138,8 +167,8 @@ done
 # --- 4. table --------------------------------------------------------------
 log "rendering results table"
 "$PY" scripts/results_table.py --metrics-dir "$METRICS_DIR" \
-  --out paper/results/results_table.txt
+  --out "$METRICS_DIR/results_table.txt"
 "$PY" scripts/results_table.py --metrics-dir "$METRICS_DIR" \
-  --format csv --out paper/results/results_table.csv
+  --format csv --out "$METRICS_DIR/results_table.csv"
 echo
-cat paper/results/results_table.txt
+cat "$METRICS_DIR/results_table.txt"

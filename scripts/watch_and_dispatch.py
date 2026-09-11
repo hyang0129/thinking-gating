@@ -141,9 +141,15 @@ def running_allocations() -> list[dict]:
 
 def dispatch(root: Path, node: str) -> bool:
     """One worker onto one node. Quoted per agent.md: `run` takes nargs='+'."""
+    # The "--" is load-bearing: `run` takes the command as nargs="+", so
+    # without it argparse reads the worker's own --root/--wait as unknown
+    # gpu_dispatch options and the dispatch dies before submitting anything
+    # (that is how the 2026-09-03 watcher fired on a landed node and did
+    # nothing). "--" ends option parsing; everything after it is the command.
     cmd = [str(VENV_PY), "scripts/gpu_dispatch.py", "run",
            "--node", node,
-           "--desc", f"v3 capture worker ({root.name}) [watch_and_dispatch]",
+           "--desc", f"capture worker ({root.name}) [watch_and_dispatch]",
+           "--",
            ".venv/bin/python", "scripts/dispatch/worker.py",
            "--root", str(root.relative_to(REPO)), "--wait", "900"]
     logger.info("dispatching: %s", " ".join(cmd))
