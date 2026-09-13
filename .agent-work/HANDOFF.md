@@ -1,11 +1,12 @@
 # Thinking-Mode Gating Experiment — Agent Handoff
 
-**Date:** 2026-09-11
-**Status:** V3 (truncation-corrected) captures ran 2026-09-04/05; 8 of 10
-published. The corrected result on Qwen3-8B is **negative**: the prefill probe
-beats no text or confidence baseline, `rescued` is at chance off BBH, and BBH
-is a subtask detector. Redo captures for the 5 failed task×model pairs are
-queued with a watcher; two Jupyter allocations pending.
+**Date:** 2026-09-12
+**Status:** **Closed as a negative result** — `paper/negative_result.md`.
+V3 (truncation-corrected) captures ran 2026-09-04/05; on them the prefill
+probe beats no text or confidence baseline, `rescued` is at chance off BBH,
+and BBH is a subtask detector. Redo captures for the 5 failed task×model
+pairs are still queued with a watcher (two Jupyter allocations pending);
+they complete the second-family table in the writeup and nothing else.
 **Owner:** Hong Yang
 
 ---

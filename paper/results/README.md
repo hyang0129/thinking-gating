@@ -1,5 +1,23 @@
 # Results
 
+**Writeup: `../negative_result.md`.** The project's conclusion is negative;
+that document is the one place the argument is made end to end, and every
+number in it points back to a file here.
+
+## Which directories are current
+
+- `metrics/qwen3v3/`, `metrics/nemotronv3/` — the **v3 (truncation-corrected)
+  runs**, 2026-09-11. These are the only probe/transfer/baseline numbers
+  that may be quoted. Each has a README with the caveats.
+- `metrics/truncation/` — the diagnosis of the confound; quotable *as the
+  diagnosis*.
+- `metrics/tuning/`, `metrics/decomposition/`, `metrics/baselines/` — run on
+  confounded data. The **estimator** findings in their READMEs (bootstrap vs
+  seed-spread CI, layer-sweep selection effect, sample size) carry forward;
+  the AUROCs do not.
+- `metrics/*.json` at the top level, `labels/`, `retracted-2026-08-26/` —
+  pre-v3, confounded, not quotable.
+
 Metrics JSON copied verbatim from cluster runs. **Numbers quoted in the paper
 come from these files, never retyped from a log.** Each file is the exact
 output of the script named below, so a claim can always be traced to the run
@@ -25,13 +43,20 @@ kept because it is one half of the comparison that diagnosed the confound; see
 
 - `helped` — thinking flipped the answer wrong → right (the original framing)
 - `needs_thinking` — the model is wrong *without* thinking. This is what a
-  router actually decides, it is better balanced, and unlike `helped` it does
-  not depend on the thinking token budget, so truncated generations cannot
-  corrupt it.
+  router actually decides and it is better balanced than `helped`. It does
+  not depend on the thinking-ON budget — but it depends entirely on the
+  thinking-OFF budget, which is how the confound got in (see
+  `metrics/truncation/`).
+- `rescued` — `correct_on` restricted to rows with `correct_off == False`.
+  Difficulty is held fixed by construction; this is the objective the novel
+  claim rested on, and it is at chance on the corrected data.
 
 ## Reading the numbers
 
-- `aggregate.test_auroc` — mean ± 95% CI over 5 seeds, on held-out test splits.
+- `aggregate.test_auroc.mean` — mean over 5 seeds on held-out test splits.
+  **Quote `aggregate.test_auroc_bootstrap.ci` for the interval**, never
+  `test_auroc.ci` — the latter is seed-to-seed spread on a fixed sample and
+  is 1.6–8.8× too narrow.
 - `aggregate.test_auroc_by_difficulty` — **the confound check**. The helped
   rate rises steeply with difficulty, so a probe that only detects hard
   questions scores well overall. Signal is only credible where the
@@ -46,6 +71,8 @@ kept because it is one half of the comparison that diagnosed the confound; see
 
 ## Provenance
 
-Model: Qwen/Qwen3-8B, greedy decoding, bf16, prefill state taken at layer 18
-(chosen a priori as the middle layer, not swept, to avoid selection effects).
-Captures were run on Empire AI H100/H200 nodes via `scripts/dispatch/`.
+Models: Qwen/Qwen3-8B and nvidia/Llama-3.1-Nemotron-Nano-8B-v1, greedy
+decoding, bf16, prefill state taken at layer 18 (chosen a priori as the
+middle layer, not swept, to avoid selection effects). Captures were run on
+Empire AI via `scripts/dispatch/`; v3 manifests are
+`configs/dispatch/capture_{qwen3,nemotron}v3.json`.
