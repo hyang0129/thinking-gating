@@ -43,6 +43,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import time
@@ -135,7 +136,18 @@ def running_allocations() -> list[dict]:
             continue
         name, state, node = (p.strip() for p in parts)
         if state == "RUNNING" and name.startswith("jupyter") and node:
-            allocs.append({"name": name, "node": node})
+            # gpu_dispatch keys nodes as "<hostname>-<port>" (what
+            # sync-jupyter writes to nodes.json), and `run --node` wants that
+            # key, not the bare hostname. The port is the trailing digits of
+            # the job name once the allocation has renamed itself. Passing
+            # the hostname alone gets "node 'alphagpuNN' not found in config"
+            # -- the 2026-09-12 failure -- so an allocation still carrying
+            # the PORT placeholder is skipped rather than guessed at.
+            m = re.search(r"(\d+)$", name)
+            if not m:
+                logger.warning("allocation %s on %s has no port yet — skipping", name, node)
+                continue
+            allocs.append({"name": name, "node": f"{node}-{m.group(1)}"})
     return allocs
 
 
