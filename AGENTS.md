@@ -1,175 +1,129 @@
-# Agent Instructions — Thinking-Mode Gating Experiment
+# Agent Instructions — thinking-gating
 
-This document guides agents (Claude Code, subagents) working on the thinking-gating repo. For human handoff context, see `.agent-work/HANDOFF.md`.
+This file guides coding agents (Claude Code reads it through the `CLAUDE.md`
+shim; Codex reads it directly). Human handoff context is in
+`.agent-work/HANDOFF.md`; cluster procedure in `.agent-work/EMPIRE_AI_SETUP.md`.
 
-## Project Overview
+**Self-containment (non-negotiable):** this repo owns everything it runs — its
+task modules (`tasks/`), its dispatch tooling (`scripts/gpu_dispatch.py`,
+`scripts/launch_jupyter.py`, `utils/jupyter_exec.py`), and its own virtualenv
+(`.venv/`, built by `scripts/setup_env.sh`). Do not symlink, `sys.path`-inject,
+or import from a sibling checkout, and do not install into a shared or system
+interpreter. If a script needs something new, add it here and list it in
+`requirements.txt`.
 
-**Goal:** Build and evaluate a probe that predicts whether thinking mode (extended reasoning) will improve query outcome, using only the prefill hidden state (last-prompt-token activation).
+## Current State (2026-10-04)
 
-**Paper context:** Pathway 1 of the prefill-applications line of work. Named gap in HRBench: no evaluated method uses target-model prefill state for thinking-mode routing.
+**One line:** the repo is pivoting to **System One decision models** — can a
+single-pass decision model estimate the value of computation it cannot perform,
+better than its own confidence? Plan: GitHub issue #1
+(`gh issue view 1 -R hyang0129/thinking-gating --comments`) and
+`paper/proposal_system_one_gating.md`. The old prefill-probe line is **closed
+as a negative result** (`paper/negative_result.md`), with an
+"Errata (2026-10-04)" section at its top listing the bugs found in the
+cleanup audit and what they change.
 
-**Self-containment (non-negotiable):** this repo owns everything it runs — its task modules (`tasks/`), its dispatch tooling (`scripts/gpu_dispatch.py`, `scripts/launch_jupyter.py`, `utils/jupyter_exec.py`), and its own virtualenv (`.venv/`, built by `scripts/setup_env.sh`). Do not symlink, `sys.path`-inject, or import from a sibling checkout, and do not install into a shared or system interpreter. If a script needs something new, add it here and list it in `requirements.txt`.
+Do not reuse the old framing that "no evaluated method uses target-model
+prefill state for thinking-mode routing": it is false (Self-Route, arXiv
+2505.20664, routes think/no-think from hidden states).
 
-## Current State (2026-09-11)
+### What carries over, and where
 
-**One line:** written up as a negative result (`paper/negative_result.md`,
-2026-09-12). On truncation-corrected labels the prefill probe beats no cheap
-baseline on any objective and `rescued` is at chance. The Nemotron / Qwen3-LSAT
-redo captures are still queued on the cluster and only complete the
-second-family table; they do not change the conclusion.
+| piece | where | status |
+|---|---|---|
+| Paired thinking-off/on capture | `scripts/capture_inference_thinking.py` | Fixed in cleanup: B1 confidence padding (rows now carry `confidence_version: 2`), B3 `--max-response-len` is **required**, B4 over-long prompts are trimmed from the front of the user content and flagged `prompt_truncated` (never right-truncated past the assistant header), B5 per-shard `config.shardNN.json`, B6 `dataset_index_global`, B7 an unclosed `<think>` is graded wrong and flagged `unclosed_think_on`, B7b `has_reasoning_on` per row with a WARNING below 80%. |
+| Truncation gate | same script | Above 20% thinking-OFF truncation a shard's meta is renamed `meta.shardNN.jsonl.quarantined`, `TRUNCATION_FAILURE.shardNN.json` is written, and the script **exits 1**. |
+| Task modules + graders | `tasks/{gsm8k,math500,mmlu_pro,bbh,lsat}.py` | Graders fixed (B2 bbh, B16 math500, B17 mmlu_pro, B18 gsm8k); lsat audited clean. Regression cases in `tests/test_graders.py`. |
+| Labels | `scripts/generate_labels.py` | `--regrade` recomputes `correct_off`/`correct_on` from the stored responses with the current grader (no GPU), keeps `*_stored`, records `grader_version`. |
+| Statistics | `utils/metrics.py` | AUROC + percentile bootstrap, paired bootstrap of a difference (AUROC, nAUC), exact routed-accuracy curve + nAUC, pooled within-group AUROC, CEL(d) / signed overconfidence / reliability bins. Scripts import from here; do not re-implement. |
+| Baselines | `scripts/baseline_text.py`, `scripts/baseline_confidence.py`, `scripts/compare_baselines.py` | Best baseline is now selected on **validation**, with a paired-bootstrap probe − baseline difference on identical test rows. |
+| Within-group control | `scripts/within_group_auroc.py --group-key <field>\|sample_id:middle` | Key is explicit and required; refuses unless ≥ 2 groups hold both classes (B8). `sample_id:middle` is right for BBH only. |
+| Probe / transfer | `scripts/run_experiment.py`, `scripts/eval_transfer.py` | The prefill probe becomes one baseline. Transfer verdicts now use the bootstrap interval over target rows (B9). |
+| Full analysis | `scripts/run_full_analysis.sh` | Fail-fast; writes only `output/<slug>/`; regrades labels by default (`REGRADE=0` to keep stored grades); `PROMOTE=1` copies into `paper/results/metrics/<slug>/` and refuses to change existing files unless `FORCE=1`; `LAYER` defaults to the middle layer from the activation shape (18 for Qwen3-8B, 16 for Nemotron-8B). |
+| Dispatch | `scripts/dispatch/`, `scripts/gpu_dispatch.py`, `scripts/launch_jupyter.py`, `scripts/watch_and_dispatch.py` | Fixed D1–D4, D6, D7; see **Cell + Worker Dispatch**. |
+| Per-group AUROC (archival) | `scripts/stratify_check.py` | Kept only because `paper/results/metrics/decomposition/README.md` reproduces through `configs/dispatch/stratify_rescued.json`. Use `within_group_auroc.py` for new work. |
 
-### ✅ Built and working
+Not built yet (proposal §6 and the issue list the pieces): synthetic
+generators with length controls, decision-model readout (LLM2Jev / Kev), the
+Jev client, typed-question LoRA flag training, the wall-clock harness. That
+work needs Qwen3.5 / Kev / vLLM / peft and a newer `transformers` than the
+`<5` pin here, so it gets a **separate environment** (`requirements-s1.txt`
+and its own venv — not created yet). Do not upgrade `.venv` in place: the
+cluster redo captures run in it.
 
-- **Capture** — `scripts/capture_inference_thinking.py`: paired
-  thinking-off/on inference, prefill from a dedicated forward pass, batching,
-  sharding, per-task budgets, thinking-off confidence (`--capture-logprobs`),
-  and a **truncation gate**: above 20% thinking-OFF truncation it quarantines
-  the shard's meta file (`meta.shardNN.jsonl.quarantined` +
-  `TRUNCATION_FAILURE.shardNN.json`) and exits 1, so the cell stays failed.
-- **Pipeline** — `generate_labels.py`, `run_experiment.py` (MLP/logreg, 5
-  seeds, AUROC ± bootstrap CI, by difficulty, routed accuracy),
-  `eval_transfer.py`, `utils/capture_io.py`, `scripts/run_full_analysis.sh`
-  (captures in → results table out; every derived path is qualified by
-  `CAPTURE_SLUG`, metrics land in `paper/results/metrics/<slug>/`).
-- **Baselines** — `baseline_text.py` (length, TF-IDF) and
-  `baseline_confidence.py` (thinking-off log-prob / entropy / answer length),
-  both on the probe's exact splits; `compare_baselines.py` renders them
-  beside the probe with bootstrap CIs.
-- **Controls** — `stratify_check.py` (per-group AUROC),
-  `within_group_auroc.py` (pooled within-group AUROC — the statistic that
-  actually settles "is it a category detector"), `validate_bench.py`,
-  `tests/test_pipeline.py`, `tests/test_dispatch.py` (24 tests).
-- **Dispatch** — `scripts/dispatch/` cell queue + generic worker;
-  `watch_and_dispatch.py` puts a worker on each queued root when an
-  allocation lands (its 2026-09-03 argparse bug is fixed).
-- **Tasks** — gsm8k, lsat, math500, mmlu_pro, bbh.
+### Cluster state (checked 2026-10-04)
 
-### 📊 v3 results (Qwen3-8B; read `paper/results/metrics/qwen3v3/README.md`)
+- **No SLURM jobs.** The watcher died 2026-09-12 on
+  `node 'alphagpu52' not found in config` (bare hostname instead of the
+  `<host>-<port>` key; fixed in c878020).
+- Both redo queues are **0% done — never started**:
+  `shared/dispatch/capture_nemotronv3_redo` (12 cells: gsm8k @2048,
+  math500 @4096, mmlu_pro @2048 batch 8) and `shared/dispatch/capture_qwen3v3_redo`
+  (4 cells: lsat @4096). Their manifests are frozen; the cell argv is tested
+  to still parse (`tests/test_capture.py`).
+- They will run on the **fixed** capture code when next launched — the
+  cluster checkout must `git pull` this branch once it is merged. Relaunching
+  means a Jupyter allocation (`launch_jupyter.py`, autonomous) plus the watcher
+  or a worker dispatch (**needs approval**).
+- The failed cells of the original v3 queues sit in `<root>/retired/`;
+  `queue.py expand` no longer resurrects them (see below).
 
-| task | needs_thinking probe | best non-probe baseline | rescued probe (n) |
-|---|---|---|---|
-| gsm8k | 0.687 [0.56, 0.80] | n_tokens_off 0.690 | 0.597 [0.31, 0.86] (89) |
-| math500 | 0.699 [0.56, 0.82] | confidence_lr **0.814** | 0.559 [0.32, 0.79] (118) |
-| mmlu_pro | 0.659 [0.58, 0.74] | confidence_lr 0.646 | 0.489 [0.35, 0.63] (376) |
-| bbh | 0.820 [0.73, 0.90] | tfidf_char 0.846 | 0.738 — within-subtask **0.506** |
-
-The pre-08-30 story is gone: math500 `needs_thinking` fell 0.879 → 0.699
-once thinking-off accuracy went from 0.25 to 0.76. BBH is a subtask
-detector both times (within-subtask AUROC 0.494 / 0.506). `rescued`
-transfer is chance on every ordered pair. Nemotron (bbh + lsat only so far):
-BBH loses to TF-IDF; LSAT thinking-off accuracy is 0.243, below the guess
-floor, at 5.7% truncation — so that was never a truncation artifact; LSAT
-`rescued` 0.689 [0.50, 0.86] is the one lead, unreplicated.
-
-Caveats that bound all of it: thinking-ON truncation is still 16–20% on
-math500 / mmlu_pro / lsat (on-budgets were held at v2 values), thinking-OFF
-truncation is 8.4% on math500 / mmlu_pro, and `rescued` has 89–376 rows.
-
-### ⏳ In flight on the cluster
-
-- `shared/dispatch/capture_nemotronv3_redo` (12 cells: gsm8k @2048,
-  math500 @4096, mmlu_pro @2048 batch 8) and `capture_qwen3v3_redo`
-  (4 cells: lsat @4096). Superseded partial captures are in
-  `shared/icr_capture/_superseded/`; the redo writes into the canonical
-  `{task}_thinking_{slug}` dirs.
-- SLURM jobs 81777 / 81778 (`jupyter_empire_8882` / `_8883`) PENDING on
-  Priority; `watch_and_dispatch.py` (pid in `shared/logs/watch_dispatch.log`,
-  120 h deadline) dispatches one worker per root when they land. **It refuses
-  while the cluster checkout is behind upstream — `git pull` there after
-  every push.**
-- The failed cells of the original v3 queues are in `<root>/retired/` so
-  `retry --all` cannot resurrect them at the old budgets.
-
-### 📋 Methodology findings that hold
+### Methodology rules that hold
 
 - **Quote the bootstrap CI** (`test_auroc_bootstrap.ci`); the seed-spread CI
   is 1.6–8.8× too narrow.
-- **Text and confidence baselines are mandatory** and, on v3, they win.
-- **Per-group AUROCs are underpowered; use the pooled within-group AUROC**
-  (`within_group_auroc.py`). BBH looks like 0.82 and is 0.49.
+- **Text and own-confidence baselines are mandatory**, selected on validation,
+  compared paired on identical rows.
+- **Use the pooled within-group AUROC** for multi-category benchmarks;
+  per-group AUROCs are underpowered. BBH looked like 0.82 and was 0.49.
+- **Check the truncation rate of the pass that defines the label**, and the
+  rate of thinking-on rows that actually contain a reasoning trace.
 - **Sample size binds.** `rescued` at n≈100 has a ±0.25 interval.
 
-### Decision (2026-09-12): written up as a negative result
+## Data layout
 
-`paper/negative_result.md` is the writeup. The project is closed as a
-negative at this scale and design; no further probe experiments on the
-present captures are planned.
-
-Still in flight, and worth finishing only because the data completes §3.4 of
-the writeup: the Nemotron redo (gsm8k / math500 / mmlu_pro) and the Qwen3
-LSAT redo. When they land: tar them back, run the two `run_full_analysis.sh`
-invocations from the handoff, re-render `compare_baselines.py`, and add the
-rows to the writeup. The conclusion changes only if Qwen3 LSAT `rescued`
-clears its text and confidence baselines with non-overlapping intervals.
-If nobody is going to do that, `touch shared/dispatch/STOP_WATCH` on the
-cluster stops the watcher; the pending allocations expire on their own.
-
-## Architecture & Key Decisions
-
-### Data Flow
 ```
-Raw dataset (GSM8K) 
-  ↓ capture_inference_thinking.py
-shared/icr_capture/gsm8k_thinking_qwen3/
-  ├── config.json
-  ├── meta.jsonl (correctness_off, correctness_on per query)
-  ├── activations_thinking_off.npz (N, num_layers, hidden_dim)
-  └── activations_thinking_on.npz (N, num_layers, hidden_dim)
-  ↓ generate_labels.py
-shared/gsm8k_thinking_labels.jsonl
-  ├── label: "helped" | "not_helped"
-  ├── difficulty: "easy" | "medium" | "hard"
-  └── (graded: "hurt" for analysis only)
-  ↓ run_experiment.py
-output/gsm8k_probe/
-  ├── seed_42/ (checkpoint, metrics)
-  ├── seed_1/, seed_2/, seed_3/, seed_4/
-  └── aggregate_metrics.json (mean ± CI)
-  ↓ eval_transfer.py
-output/gsm8k_to_lsat_transfer.json (AUROC + drop analysis)
+shared/icr_capture/{task}_thinking_{slug}/        # one capture, N shards
+  config.json                    # first shard's args (legacy, kept)
+  config.shardNN.json            # per-shard args, git commit, versions, end status
+  meta.shardNN.jsonl             # one row per query: sample_id, question, answer,
+                                 #   response_off/on, answer_off/on, correct_off/on,
+                                 #   truncated_off/on, n_tokens_off/on, difficulty,
+                                 #   confidence_off (with --capture-logprobs); new
+                                 #   captures add has_reasoning_on, unclosed_think_on,
+                                 #   dataset_index_global, confidence_version
+  activations_thinking_off.shardNN.npz   # prefill states, (n, layers+1, hidden)
+  activations_thinking_on.shardNN.npz
+  TRUNCATION_FAILURE.shardNN.json        # present only if the gate quarantined the shard
+    ↓ generate_labels.py [--regrade]
+shared/labels/{slug}/{task}_labels.jsonl  (+ .summary.json)
+    ↓ run_experiment.py / baseline_*.py / within_group_auroc.py / eval_transfer.py
+output/{slug}/...                         # working results
+    ↓ run_full_analysis.sh PROMOTE=1
+paper/results/metrics/{slug}/             # provenance record
 ```
 
-### Probe Design
-- **Input:** prefill hidden state (last prompt token), shape (num_layers, hidden_dim) = (32, 4096) for Qwen3-8B
-- **Output:** binary classification ("helped" vs "not_helped")
-- **Candidate architectures:**
-  - MLP (simple baseline): (hidden_dim) → [256, 64] → (1)
-  - Contrastive (optional): embed to (128,) then classify
-- **Training:** Adam, early stopping on validation loss, 5-fold CV with 5 seeds each
+`utils/capture_io.py` loads and aligns shards; never read `meta.jsonl` by hand.
 
-### Label Schema
-```json
-{
-  "idx": 0,
-  "prompt_hash": "abc123...",
-  "label": "helped",          // "helped" | "not_helped"
-  "correct_off": true,        // thinking-off correctness
-  "correct_on": false,        // thinking-on correctness
-  "difficulty": "hard",       // stratification variable
-  "graded_label": "helped"    // optional: "helped" | "hurt" | "no_change"
-}
-```
+**Labels.** `needs_thinking = ~correct_off`; `helped = ~correct_off & correct_on`;
+`rescued = correct_on` on rows with `correct_off == False`; `graded_label` also
+keeps `hurt` (right → wrong). Train on the thinking-**off** prefill only
+(`--prefill-mode off`, the default); thinking-on prefill is for analysis.
 
-**Label construction (binary):**
-- `"helped"` iff correct_off == False AND correct_on == True
-- `"not_helped"` iff (both correct, both wrong, or right→wrong flip)
+**Capture dir names** are `{task}_thinking_{model-slug}` with `{task}` the task
+module name exactly (`gsm8k`, `math500`, `mmlu_pro`, `bbh`, `lsat`). Vary the
+model slug, never the task name. Pre-v3 dirs spelled tasks differently
+(`gsm8k_full`, `mmlupro`, `lsat_long`) and same-named dirs can differ
+(`gsm8k_thinking_qwen3` is a 500-row pilot) — resolve legacy dirs through the
+alias table in `run_full_analysis.sh`, never by guessing.
 
-**Why difficulty matters:** Prevent probe from learning "hard queries benefit from thinking" instead of query-specific signals. Always evaluate AUROC stratified by difficulty.
+Large artifacts on Empire AI live in `/raid0/think-gating/`; `scp` **data**
+back after long runs (data is gitignored; the no-`scp` rule is about code).
 
-### Experiment Design (Anti-Confound)
-1. **Same-dataset train/val/test:** 60/20/20 split, 5 independent seeds → report AUROC ± 95% CI
-2. **Cross-task transfer:** Train on GSM8K, zero-shot eval on LSAT (no retraining). <5pp drop = good.
-3. **Minimal-pair template test:** Render same query under 2 templates, check if probe predictions drift aligns with correctness label drift.
-4. **Baselines:** "Always think", "Never think", oracle accuracy to contextualize probe performance.
-
-### Task Modules
-Local to this repo, one contract (see `tasks/__init__.py`):
-
-- `load_<task>(split) -> list[dict]` with keys `question`, `answer`, `key`, `difficulty`
-- `format_prompt(question) -> str` — raw prompt, before any chat template
-- `is_correct(generation, answer) -> bool`
-
-Shipped: `tasks/gsm8k.py` (`openai/gsm8k`, primary) and `tasks/lsat.py` (`hails/agieval-lsat-ar`, transfer-only). `_TASK_REGISTRY` in the capture script must only list tasks with a matching module here — adding a task means writing the module, not pointing elsewhere.
+**Task contract** (`tasks/__init__.py`): `load_<task>(split) -> list[dict]`
+with `question`, `answer`, `key`, `difficulty`; `format_prompt(question)`;
+`is_correct(generation, answer[, question=])`. `_TASK_REGISTRY` in the capture
+script lists only tasks with a module here.
 
 ## Environment & Dispatch
 
@@ -221,6 +175,7 @@ guarded exception below. Ask in a concrete form and wait for an answer:
 
 Requires approval every time:
 - `gpu_dispatch.py run` — any capture, training, or eval dispatch
+- Starting `watch_and_dispatch.py` — it calls `gpu_dispatch.py run` for you
 - Raw `sbatch` / `srun` — always, no exceptions (it bypasses the guarded launcher's caps)
 
 **Forbidden outright** — never do these, approval or not, unless the user
@@ -250,16 +205,16 @@ it, do not route around it. **Give every node a distinct port** (8882, 8883,
 launch on a port that is still PENDING slips through and collides.
 
 ### Empire AI: dispatch hygiene
-- **`sync-jupyter` first, every time.** `configs/nodes.json` goes stale as allocations come and go; `python scripts/gpu_dispatch.py sync-jupyter` rebuilds it from live `squeue`. Dispatch reaches only nodes with a live Jupyter allocation registered there.
+- **`sync-jupyter` first, every time.** `configs/nodes.json` goes stale as allocations come and go; `python scripts/gpu_dispatch.py sync-jupyter` rebuilds it from live `squeue`. Dispatch reaches only nodes with a live Jupyter allocation registered there. Nodes are keyed `<hostname>-<port>` (e.g. `alphagpu52-8882`); `run --node` wants that key, not the bare hostname.
 - **Run `gpu_dispatch.py` itself with `.venv/bin/python`.** Its Jupyter transport imports `requests`/`websocket-client`; under the login node's system 3.9 the import fails and every node reports `unreachable`, which reads like a cluster outage but is not.
 - **Quote a dispatched command containing flags** — `run` takes `nargs="+"`, so a bare `--root` after the command is parsed as gpu_dispatch's own argument.
 - **Set `OMP_NUM_THREADS` for CPU work run directly on the login node** (192 cores, torch grabs them all: 315s vs 22s on the same tests). Dispatched cells already get this.
 - **Name `.venv/bin/python` in the dispatched command.** `gpu_dispatch.py run` passes the command through verbatim, so a bare `python` silently picks up the node default and you get `ModuleNotFoundError` — or worse, a different transformers version.
-- **Commit before dispatching.** A run whose code is not in a commit is not reproducible.
-- **A timed-out dispatch may have launched anyway.** Before re-dispatching anything, run `gpu_dispatch.py jobs --all` and wait ≥ 2 minutes. Duplicate captures silently double-append to `meta.jsonl`.
+- **Commit before dispatching.** A run whose code is not in a commit is not reproducible. Each attempt records `git_commit`/`git_dirty` in its result and log header.
+- **A timed-out dispatch may have launched anyway.** Before re-dispatching anything, run `gpu_dispatch.py jobs --all` and wait ≥ 2 minutes. Duplicate captures silently double-append to the shard's meta file.
 - **Job manifest:** `shared/gpu_jobs.json` (relative to `project_root`). Job logs: `shared/logs/<job_id>.log`.
 - **Fan-out work goes through the cell queue, not many `gpu_dispatch.py run` calls.** See **Cell + Worker Dispatch** below. A single `run` is right for a one-off; a sweep is a manifest plus N workers.
-- **Don't guess whether data exists — check.** `wc -l <capture-dir>/meta.jsonl` and the NPZ shapes tell you what a capture actually produced; a job that appeared to finish may have OOM'd mid-run.
+- **Don't guess whether data exists — check.** `wc -l <capture-dir>/meta.shard*.jsonl`, the NPZ shapes, `config.shardNN.json`'s end status, and any `TRUNCATION_FAILURE.*.json` tell you what a capture actually produced; a job that appeared to finish may have OOM'd mid-run.
 
 ### Cell + Worker Dispatch (sweeps, batches, anything that fans out)
 
@@ -280,7 +235,7 @@ editing `worker.py`. Four cell kinds cover everything:
 Workflow:
 
 ```bash
-# 1. write a manifest (see configs/dispatch/example_probe_sweep.json), then preview
+# 1. write a manifest (copy configs/dispatch/example_probe_sweep.json), then preview
 python scripts/dispatch/queue.py expand configs/dispatch/my_sweep.json --dry-run
 
 # 2. queue it (idempotent — re-expanding never re-runs finished cells)
@@ -288,7 +243,7 @@ python scripts/dispatch/queue.py expand configs/dispatch/my_sweep.json
 
 # 3. dispatch N workers onto N nodes (job submission — needs approval)
 python scripts/gpu_dispatch.py run --desc "my_sweep worker" \
-    .venv/bin/python scripts/dispatch/worker.py --root shared/dispatch/my_sweep
+    ".venv/bin/python scripts/dispatch/worker.py --root shared/dispatch/my_sweep"
 
 # 4. watch, then triage
 python scripts/dispatch/queue.py status --root shared/dispatch/my_sweep
@@ -302,26 +257,35 @@ A manifest expands by `grid` (cartesian product), `zip` (lockstep), and
 ```json
 {
   "name": "gsm8k_probe", "kind": "python_script",
-  "script": "scripts/run_experiment.py",
+  "script": "scripts/run_experiment.py", "cell_id_hash": true,
   "constants": {"out": "output/{name}/{method}_seed{seed}"},
-  "grid": {"method": ["mlp", "contrastive"], "seed": [42, 1, 2, 3, 4]},
-  "args": ["--method", "{method}", "--seeds", "{seed}", "--out-dir", "{out}"],
-  "output_check": ["{out}/metrics.json"],
+  "grid": {"method": ["mlp", "logreg"], "seed": [42, 1, 2, 3, 4]},
+  "args": ["--capture-dir", "shared/icr_capture/gsm8k_thinking_qwen3v3",
+           "--labels", "shared/labels/qwen3v3/gsm8k_labels.jsonl",
+           "--method", "{method}", "--seeds", "{seed}", "--out-dir", "{out}"],
+  "output_check": ["{out}/aggregate_metrics.json"],
   "timeout_s": 7200, "max_attempts": 2
 }
 ```
 
 Semantics worth relying on:
 - **`output_check` is the resume mechanism.** Present before the run → cell is skipped. Missing after exit 0 → cell is **failed**, not quietly completed. Always set it; a script that exits 0 having written nothing is the failure mode this catches.
-- **Isolation.** Each cell is a subprocess in its own process group; a segfault or OOM kills the cell, not the worker.
+- **Isolation.** Each cell is a subprocess in its own process group; a segfault or OOM kills the cell, not the worker. `gpu_dispatch.py kill` signals the whole process group.
 - **Resumable and re-entrant.** Re-launching workers over a partly-drained queue is the normal recovery path. Cells from a crashed worker return to pending once its heartbeat goes stale (5 min); `queue.py gc` forces it.
-- **`max_attempts > 1`** re-queues on failure so another node can try.
-- **Shutdown is clean.** SIGTERM releases the in-flight cell back to pending immediately.
+- **`max_attempts > 1`** re-queues on failure so another node can try — **except** a terminal failure: if the attempt leaves a `terminal_markers` file (default `TRUNCATION_FAILURE.*.json`, the capture gate's marker) for its own shard next to an `output_check` path, the cell fails for good. Re-running a quarantined shard at the same budget only burns GPU; raise the budget in a new manifest.
+- **Cell identity.** Ids come from the template/grid, not the args. Re-expanding an *edited* manifest is refused before anything is written (`--replace` overrides). New manifests should set `"cell_id_hash": true`, which appends an args fingerprint so an edit yields new ids. Existing manifests do not, so their ids never move.
+- **Retired cells stay retired.** `expand` also scans `<root>/retired/` and will not recreate a retired cell (`--allow-resurrect` overrides). Re-expanding `capture_qwen3v3.json` / `capture_nemotronv3.json` is therefore safe but pointless — those manifests are archival.
+- **Shutdown is clean.** SIGTERM releases the in-flight cell back to pending immediately. A worker that loses its claim to GC kills its copy and exits 3; cells must be idempotent because a double run is still possible.
 
-Write cells that are idempotent — a cell may run more than once.
+**The watcher** (`scripts/watch_and_dispatch.py --roots <root> ...`) polls until
+every root with work has a live worker or is drained, so a second allocation
+that lands later gets its own worker; liveness comes from heartbeats, so a dead
+worker's stale claim no longer blocks a root. It `git fetch`es and refuses to
+dispatch while the checkout is behind upstream. Stop it with
+`touch shared/dispatch/STOP_WATCH`. Starting it needs approval (above).
 
 Run the tests after touching anything under `scripts/dispatch/`:
-`python3 tests/test_dispatch.py` (stdlib only, no GPU, ~15s).
+`python3 tests/test_dispatch.py` (stdlib only, no GPU, 45 tests).
 
 ### Empire AI: reaching a GPU node interactively
 For quick verification (is CUDA visible? did the checkpoint land?), use a
@@ -360,7 +324,7 @@ Correlate three sources, then report:
 ```bash
 ssh empire-ai 'squeue --me --format="%.18i %.9P %.30j %.8T %.10M %R %N"'   # allocations (name = jupyter_empire_<port>)
 ssh empire-ai 'cat ~/LLM_research/thinking-gating/shared/gpu_jobs.json'    # our dispatched jobs (filter status=="running")
-ssh empire-ai 'cd ~/LLM_research/thinking-gating && python scripts/gpu_dispatch.py status'  # live GPU util + VRAM
+ssh empire-ai 'cd ~/LLM_research/thinking-gating && .venv/bin/python scripts/gpu_dispatch.py status'  # live GPU util + VRAM
 ```
 
 A `gpu_jobs.json` entry maps to an allocation by `node_name` (`alphagpuNN-PPPP`),
@@ -368,178 +332,124 @@ whose port matches the `jupyter_empire_<port>` SLURM job name. An allocation wit
 no running manifest entry is an **idle Jupyter node** — say so rather than
 implying work is in flight.
 
-### Data Paths
-- Relative paths: `shared/icr_capture/`, `shared/`, `output/` (relative to repo root, on local or cluster alike)
-- **Capture dirs are `{task}_thinking_{model-slug}`, where `{task}` is the task
-  module name exactly** — `gsm8k`, `math500`, `mmlu_pro`, `bbh`, `lsat`. No
-  qualifiers. Earlier rounds spelled one task three ways (`gsm8k_full`,
-  `gsm8kfull`, `gsm8k`) plus `lsat_long`/`lsat` and `mmlupro`/`mmlu_pro`,
-  because the suffix encoded a capture parameter that varied at the time: full
-  1319 rows against a 500-row pilot, an 8192 thinking budget against 3072.
-  Those distinctions are gone — v3 captures each task once, gsm8k at full size
-  and lsat at the long budget — so the qualifiers now name nothing. Vary the
-  **model slug**, never the task name. The divergence has already cost
-  coverage: `bench_crossmodel` dropped Qwen3-8B outright rather than reconcile
-  `gsm8k_full_` against `gsm8kfull_`.
-- Two same-named captures can differ in ways the name does not show.
-  `gsm8k_thinking_qwen3` is the 500-row pilot and `gsm8k_full_thinking_qwen3`
-  is all 1319 — so **resolve legacy dirs through the alias table in
-  `run_full_analysis.sh`, never by probing for a plausible directory name.**
-- Absolute paths: `/raid0/think-gating/` on Empire AI for large artifacts; `scp` **data** back after long runs (data is gitignored, never committed — the no-`scp` rule is about code going the other way)
+## Script reference (real CLIs)
 
-## Writing New Scripts
+```bash
+# capture (GPU node only; --max-response-len is required — size it so
+# thinking-OFF truncation is near zero; known-good budgets are in
+# configs/dispatch/capture_qwen3v3.json and the *_redo.json manifests)
+.venv/bin/python scripts/capture_inference_thinking.py --task math500 \
+    --model Qwen/Qwen3-8B --chat-template --max-response-len 2048 \
+    --max-response-len-thinking 4096 --capture-logprobs \
+    --out-dir /raid0/think-gating/math500_thinking_qwen3v3 \
+    [--max-samples N] [--shard-index i --shard-count k] [--batch-size 8]
 
-### Template: Label Generation (`generate_labels.py`)
-```python
-"""
-generate_labels.py — Convert paired thinking-off/on correctness into binary labels.
+# labels (CPU); --regrade re-applies the current grader to stored responses
+.venv/bin/python scripts/generate_labels.py --regrade \
+    --capture-dir shared/icr_capture/math500_thinking_qwen3v3 \
+    --out-file shared/labels/qwen3v3/math500_labels.jsonl [--drop-truncated]
 
-Input: meta.jsonl with correct_off, correct_on per sample
-Output: labels.jsonl with label, difficulty, graded_label
+# probe (CPU); writes aggregate_metrics.json, predictions.json, seed_<N>/{metrics,checkpoint}.json
+.venv/bin/python scripts/run_experiment.py \
+    --capture-dir shared/icr_capture/math500_thinking_qwen3v3 \
+    --labels shared/labels/qwen3v3/math500_labels.jsonl \
+    --target {rescued|needs_thinking|helped} --method {logreg|mlp} \
+    --seeds 42 1 2 3 4 --out-dir output/qwen3v3/probe_math500_rescued [--layer L]
 
-Usage:
-    python scripts/generate_labels.py \\
-        --meta-file shared/icr_capture/gsm8k_thinking_qwen3/meta.jsonl \\
-        --activations-dir shared/icr_capture/gsm8k_thinking_qwen3 \\
-        --task gsm8k \\
-        --out-file shared/gsm8k_thinking_labels.jsonl
-"""
+# baselines on the identical splits, then the comparison table (M = output/<slug>/metrics)
+.venv/bin/python scripts/baseline_text.py       --capture-dir ... --labels ... --target rescued --out-file M/baselines/text__math500__rescued.json
+.venv/bin/python scripts/baseline_confidence.py --capture-dir ... --labels ... --target rescued --out-file M/baselines/confidence__math500__rescued.json
+.venv/bin/python scripts/compare_baselines.py --metrics-dir M --out M/baseline_comparison.txt
+
+# controls
+.venv/bin/python scripts/within_group_auroc.py --capture-dir ... --labels ... \
+    --group-key sample_id:middle --target rescued --out-file M/within_group__bbh__rescued.json
+.venv/bin/python scripts/eval_transfer.py --probe output/.../seed_*/checkpoint.json \
+    --capture-dir <target capture> --labels <target labels> \
+    --source-metrics output/.../aggregate_metrics.json --out-file M/transfer__src_to_tgt__rescued.json
+
+# all of the above for one model slug
+CAPTURE_SLUG=qwen3v3 TASKS="gsm8k math500 mmlu_pro bbh" bash scripts/run_full_analysis.sh
 ```
 
-**Steps:**
-1. Parse meta.jsonl line-by-line
-2. For each row, extract correct_off, correct_on
-3. Compute label: "helped" if correct_off=False AND correct_on=True, else "not_helped"
-4. Read `difficulty` straight from the meta row (the capture script carries it through from the task module); fall back to re-loading the dataset only for captures written before that field existed
-5. Optionally compute graded label (hurt, helped, no_change)
-6. Write to JSONL
-7. Report base rates (% "helped", % "hurt", etc.)
-
-### Template: Training (`run_experiment.py`)
-```python
-"""
-run_experiment.py — Train and evaluate thinking-mode probes.
-
-Input: activations NPZ, labels JSONL
-Output: trained probes, metrics JSON
-
-Usage:
-    python scripts/run_experiment.py \\
-        --activations shared/icr_capture/gsm8k_thinking_qwen3/activations_thinking_off.npz \\
-        --labels shared/gsm8k_thinking_labels.jsonl \\
-        --method mlp \\
-        --seeds 42 1 2 3 4 \\
-        --out-dir output/gsm8k_probe
-"""
-```
-
-**Steps:**
-1. Load activations + labels
-2. For each seed: split into 60/20/20 train/val/test
-3. Instantiate probe (MLP or contrastive)
-4. Train with early stopping on val loss
-5. Evaluate on test (AUROC, stratified by difficulty)
-6. Save checkpoint + metrics
-7. Aggregate across seeds: mean AUROC ± 95% CI
-8. Compare to baselines
-
-### Template: Transfer Evaluation (`eval_transfer.py`)
-```python
-"""
-eval_transfer.py — Zero-shot cross-task transfer of trained probes.
-
-Usage:
-    python scripts/eval_transfer.py \\
-        --probe output/gsm8k_probe/seed_42/checkpoint.pt \\
-        --test-activations shared/icr_capture/lsat_thinking_qwen3/activations_thinking_off.npz \\
-        --test-labels shared/lsat_thinking_labels.jsonl \\
-        --out-file output/gsm8k_to_lsat_transfer.json
-"""
-```
-
-**Steps:**
-1. Load trained probe (from GSM8K)
-2. Load test activations + labels (LSAT)
-3. Forward pass, compute AUROC
-4. Compare to GSM8K test AUROC, report drop
-5. Output results
-
-## Common Pitfalls
-
-### ❌ Don't
-- Reach outside this repo for code, data loaders, or a Python environment — it is self-contained by design
-- Submit or kill cluster jobs without approval, or run compute on the login node — see **Environment & Dispatch** above for the full rules; they are not optional
-- Leak test labels during training (stratified eval must happen on held-out test set)
-- Train a single probe on mixed GSM8K + LSAT data (defeats transfer test purpose)
-- Ignore difficulty stratification (hard queries naturally benefit from thinking more)
-- Use thinking-on activations for training the "thinking helps" predictor (logical circularity — train on thinking-off prefill only)
-
-### ✅ Do
-- Commit before dispatching, and dispatch `.venv/bin/python` — an uncommitted or wrong-interpreter run is a wasted GPU hour
-- Always report confidence intervals (5-fold × 5 seeds = 25 runs)
-- Stratify evaluation by difficulty even if not training on it
-- Save probe checkpoints + hyperparams for reproducibility
-- Log base rates (% "helped" in training data) to contextualize AUROCs
-- Test on held-out test split first, then transfer to LSAT
+The probe is logistic regression (or a small MLP) on one layer's prefill
+state; 60/20/20 stratified splits per seed, 5 seeds, early stopping on
+validation loss. There is no contrastive probe and no k-fold CV.
 
 ## Testing & Validation
 
-### Smoke Test
-Env first, once per machine: `bash scripts/setup_env.sh && source .venv/bin/activate`.
-
-**Step 1 needs a GPU node** — dispatch it, don't run it locally or on the login
-node (and get approval for the dispatch first):
-
 ```bash
-ssh empire-ai 'cd ~/LLM_research/thinking-gating && python scripts/gpu_dispatch.py sync-jupyter && \
-  python scripts/gpu_dispatch.py run --desc "gsm8k smoke" \
-    .venv/bin/python scripts/capture_inference_thinking.py \
-        --task gsm8k --max-samples 100 \
-        --model Qwen/Qwen3-8B --out-dir /raid0/think-gating/gsm8k_smoke --chat-template'
-
-# then confirm it actually produced rows before moving on
-ssh empire-ai 'wc -l /raid0/think-gating/gsm8k_smoke/meta.jsonl'
+OMP_NUM_THREADS=4 .venv/bin/python -m pytest tests -q   # needs numpy, scikit-learn, torch, transformers
+python3 tests/test_dispatch.py                          # stdlib only
 ```
 
-Steps 2–3 are CPU-only and run anywhere (locally, after `scp`-ing the capture
-back):
+`test_confidence.py` / `test_capture.py` run a tiny random Llama on CPU (and
+gpt2 when cached). The math-verify oracle cases skip unless `math_verify` is
+installed.
+
+**Smoke test.** Step 1 needs a GPU node — dispatch it with approval, never run
+it locally or on the login node:
 
 ```bash
-python scripts/generate_labels.py \
-    --meta-file /tmp/gsm8k_smoke/meta.jsonl \
-    --out-file /tmp/gsm8k_smoke_labels.jsonl
+ssh empire-ai 'cd ~/LLM_research/thinking-gating && .venv/bin/python scripts/gpu_dispatch.py sync-jupyter && \
+  .venv/bin/python scripts/gpu_dispatch.py run --desc "gsm8k smoke" \
+    ".venv/bin/python scripts/capture_inference_thinking.py \
+        --task gsm8k --max-samples 100 --max-response-len 1024 \
+        --model Qwen/Qwen3-8B --out-dir /raid0/think-gating/gsm8k_smoke --chat-template"'
 
-python scripts/run_experiment.py \
-    --activations /tmp/gsm8k_smoke/activations_thinking_off.npz \
-    --labels /tmp/gsm8k_smoke_labels.jsonl \
-    --seeds 42 \
-    --max-epochs 5 \
+# then confirm it actually produced rows and was not quarantined
+ssh empire-ai 'wc -l /raid0/think-gating/gsm8k_smoke/meta.shard*.jsonl; ls /raid0/think-gating/gsm8k_smoke/'
+```
+
+Steps 2–3 are CPU-only (after copying the capture back):
+
+```bash
+.venv/bin/python scripts/generate_labels.py --regrade \
+    --capture-dir /tmp/gsm8k_smoke --out-file /tmp/gsm8k_smoke_labels.jsonl
+.venv/bin/python scripts/run_experiment.py --capture-dir /tmp/gsm8k_smoke \
+    --labels /tmp/gsm8k_smoke_labels.jsonl --seeds 42 --max-epochs 5 \
     --out-dir /tmp/gsm8k_probe_smoke
 ```
 
-### Validation Checks
-- **Truncation first.** Off-pass truncation must be near zero (the capture
-  script logs ERROR above 20%, but exits 0 — read the log). A high rate invalidates `correct_off`, and with it both
-  objectives — this is how the pre-08-30 results were lost.
-- Probe AUROC >0.50 (better than random), and <oracle AUROC (ceiling check).
-- Run `validate_bench.py` — a result trained on a partial capture is silent
-  otherwise.
-- Compare against the **text baselines** on identical splits/seeds/target. An
-  8B forward pass that cannot beat TF-IDF on the raw question is not a result.
-- Stratify (`stratify_check.py`). If AUROC only holds across strata and
-  collapses within them, the probe is a difficulty/subtask detector.
-- Quote `test_auroc_bootstrap.ci`, never `test_auroc.ci` — see
-  `paper/results/metrics/decomposition/README.md`.
+**Before believing any number:**
+- **Truncation first.** Thinking-OFF truncation must be near zero (the gate
+  quarantines and exits 1 above 20%, but 8% still contaminates labels); also
+  check thinking-ON truncation, `unclosed_think_on`, and the
+  `has_reasoning_on` rate — a "thinking" run that does not think compares two
+  non-thinking runs.
+- **Regrade** with the current graders and record `grader_version`.
+- AUROC above 0.5 and below oracle; quote `test_auroc_bootstrap.ci`, never
+  `test_auroc.ci`.
+- Beat the **text and confidence baselines** on identical rows (paired
+  difference from `compare_baselines.py`). An 8B forward pass that cannot beat
+  TF-IDF on the raw question is not a result.
+- For multi-category data, the **pooled within-group AUROC** with an explicit
+  `--group-key`; if signal holds only across groups, it is a category detector.
+
+## Common Pitfalls
+
+- Don't reach outside this repo for code, data loaders, or a Python environment.
+- Don't submit or kill cluster jobs without approval, or run compute on the login node.
+- Don't leak test labels into training; evaluate on held-out splits only.
+- Don't train one probe on mixed tasks and call it transfer.
+- Don't use thinking-on outputs or activations as features for predicting the
+  value of thinking (circular).
+- Don't quote a confidence-baseline number from a capture without
+  `confidence_version: 2` (B1).
+- Do commit before dispatching, and dispatch `.venv/bin/python`.
+- Do log base rates and n beside every AUROC.
 
 ## Paper / Results
 
 `paper/results/` exists and is the provenance record: metrics JSON copied
 verbatim from cluster runs, one file per run, plus a README per group
 explaining how to read it (`baselines/`, `decomposition/`, `tuning/`,
-`truncation/`). **A number in the paper must trace to a file there.** Working
-metrics land in `output/` first; promote to `paper/results/` when a run is
-one you would cite, and write the README entry at the same time — the READMEs
-are where the caveats live, and the caveats are the load-bearing part.
+`truncation/`, `qwen3v3/`, `nemotronv3/`). **A number in the paper must trace
+to a file there.** Working metrics land in `output/` first; promote to
+`paper/results/` when a run is one you would cite (`run_full_analysis.sh
+PROMOTE=1`), and write the README entry at the same time — the READMEs are
+where the caveats live, and the caveats are the load-bearing part. Never
+overwrite a promoted file to "fix" it; add a new run and an erratum.
 
 **Never edit a `.bib` file directly.** Agents hallucinate references. Add a
 citation in the section text with enough context (title, authors, venue, year)
@@ -549,5 +459,5 @@ insertion. Numbers quoted in the paper come from the saved metrics JSON/CSV in
 
 ---
 
-**Last updated:** 2026-09-12 (Hong Yang)  
-**Questions/blockers?** See `.agent-work/HANDOFF.md` for contact info and next steps.
+**Last updated:** 2026-10-04 (cleanup for the System One pivot)
+**Questions/blockers?** See `.agent-work/HANDOFF.md`.

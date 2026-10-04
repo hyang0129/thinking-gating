@@ -1,5 +1,15 @@
 # Empire AI Setup & Dispatch Conventions
 
+> **Note (2026-10-04).** The project is pivoting to System One decision models
+> (GitHub issue #1, `paper/proposal_system_one_gating.md`); the procedure below
+> carries over unchanged. Cluster state on 2026-10-04: no SLURM jobs; both redo
+> queues (`shared/dispatch/capture_nemotronv3_redo`, 12 cells, and
+> `capture_qwen3v3_redo`, 4 cells) are 0% done — the watcher died 2026-09-12 on
+> `node 'alphagpu52' not found in config`. They run on the fixed capture code
+> once the cluster checkout pulls the cleanup branch. Commands below were
+> updated for the current CLIs (`--max-response-len` is now required;
+> `run_experiment.py` takes `--capture-dir`). Agent rules: `AGENTS.md`.
+
 This repo is **self-contained**. It ships its own task modules (`tasks/`), its own
 dispatch tooling (`scripts/gpu_dispatch.py`, `scripts/launch_jupyter.py`,
 `utils/jupyter_exec.py`), and it runs out of **its own virtualenv**. Nothing is
@@ -156,15 +166,16 @@ whatever the node's default interpreter happens to be.
 
 ### Capture (Example)
 ```bash
-ssh empire-ai 'cd ~/LLM_research/thinking-gating && python scripts/gpu_dispatch.py run \
+ssh empire-ai 'cd ~/LLM_research/thinking-gating && .venv/bin/python scripts/gpu_dispatch.py run \
     --min-vram 20 \
     --desc "gsm8k thinking capture" \
-    .venv/bin/python scripts/capture_inference_thinking.py \
+    ".venv/bin/python scripts/capture_inference_thinking.py \
         --task gsm8k \
         --model Qwen/Qwen3-8B \
         --max-samples 500 \
+        --max-response-len 2048 \
         --out-dir /raid0/think-gating/gsm8k_thinking_qwen3 \
-        --chat-template'
+        --chat-template"'
 
 # Monitor:
 ssh empire-ai 'cd ~/LLM_research/thinking-gating && python scripts/gpu_dispatch.py jobs --all'
@@ -172,14 +183,14 @@ ssh empire-ai 'cd ~/LLM_research/thinking-gating && python scripts/gpu_dispatch.
 
 ### Training (Example)
 ```bash
-ssh empire-ai 'cd ~/LLM_research/thinking-gating && python scripts/gpu_dispatch.py run \
+ssh empire-ai 'cd ~/LLM_research/thinking-gating && .venv/bin/python scripts/gpu_dispatch.py run \
     --desc "gsm8k mlp probe, 5 seeds" \
-    .venv/bin/python scripts/run_experiment.py \
-        --activations /raid0/think-gating/gsm8k_thinking_qwen3/activations_thinking_off.npz \
+    ".venv/bin/python scripts/run_experiment.py \
+        --capture-dir /raid0/think-gating/gsm8k_thinking_qwen3 \
         --labels /raid0/think-gating/gsm8k_thinking_labels.jsonl \
-        --method mlp \
+        --target rescued --method mlp \
         --seeds 42 1 2 3 4 \
-        --out-dir /raid0/think-gating/probes/gsm8k_mlp'
+        --out-dir /raid0/think-gating/probes/gsm8k_mlp"'
 ```
 
 ## Data Paths
@@ -291,8 +302,8 @@ ssh empire-ai 'cd ~/LLM_research/thinking-gating && git pull --ff-only && \
 
 for node in alphagpu04-8882 alphagpu07-8883; do
   ssh empire-ai "cd ~/LLM_research/thinking-gating && \
-    python scripts/gpu_dispatch.py run --node $node --desc 'my_sweep worker' \
-      .venv/bin/python scripts/dispatch/worker.py --root shared/dispatch/my_sweep"
+    .venv/bin/python scripts/gpu_dispatch.py run --node $node --desc 'my_sweep worker' \
+      '.venv/bin/python scripts/dispatch/worker.py --root shared/dispatch/my_sweep'"
 done
 
 # 4. Monitor and triage

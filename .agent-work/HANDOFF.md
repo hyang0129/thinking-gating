@@ -1,5 +1,20 @@
 # Thinking-Mode Gating Experiment — Agent Handoff
 
+> **Update (2026-10-04).** The repo is pivoting to System One decision models:
+> GitHub issue #1 and `paper/proposal_system_one_gating.md`; current agent
+> state is in `AGENTS.md`. The 2026-10-04 cleanup audit fixed capture, grader,
+> analysis and dispatch bugs, and `paper/negative_result.md` now opens with an
+> errata section (the confidence-baseline numbers, including math500's 0.814,
+> are invalid pending a GPU re-score; BBH, MATH-500, MMLU-Pro and LSAT labels
+> shift under the fixed graders). The "named gap in HRBench" framing below is
+> false: Self-Route (arXiv 2505.20664) routes think/no-think from hidden states.
+> **Cluster, checked 2026-10-04:** no SLURM jobs; both redo queues are 0% done
+> (never started); the watcher died 2026-09-12 on
+> `node 'alphagpu52' not found in config`. SLURM 81777/81778 and the running
+> watcher described below are gone. The redo runs on fixed code once the
+> cluster checkout pulls the cleanup branch. The rest of this file is the
+> 2026-09-12 handoff, with only failing commands corrected.
+
 **Date:** 2026-09-12
 **Status:** **Closed as a negative result** — `paper/negative_result.md`.
 V3 (truncation-corrected) captures ran 2026-09-04/05; on them the prefill
@@ -46,7 +61,7 @@ operating rules (which machine may do what, dispatch hygiene, pitfalls).
   AUROC ± bootstrap CI, by-difficulty, routed accuracy vs never/always/oracle)
   → `eval_transfer.py`. `utils/capture_io.py` loads shards; `run_full_analysis.sh`
   goes captures-in → results-table-out.
-- **Controls:** `stratify_check.py`, `validate_bench.py`, `tests/test_pipeline.py`
+- **Controls:** `stratify_check.py`, `within_group_auroc.py`, `tests/test_pipeline.py`
   (synthetic end-to-end + signal-free negative control), `tests/test_dispatch.py`.
 - **Dispatch:** `scripts/dispatch/` — manifest-driven cell queue, one generic
   worker, atomic claims, resume/retry/timeout/stale recovery.
@@ -119,9 +134,12 @@ on the cluster.
 2. `scp`/tar the five new capture dirs back into `shared/icr_capture/`.
 3. `CAPTURE_SLUG=nemotronv3 bash scripts/run_full_analysis.sh` and
    `CAPTURE_SLUG=qwen3v3 TASKS=lsat bash scripts/run_full_analysis.sh`
-   (idempotent; finished steps are skipped). Then
-   `scripts/compare_baselines.py --metrics-dir paper/results/metrics/<slug>`
-   and update the two READMEs.
+   (incremental; labels are regraded by default). Results land in
+   `output/<slug>/metrics/` (with `baseline_comparison.txt` rendered);
+   re-run with `PROMOTE=1` to copy them into `paper/results/metrics/<slug>/`
+   (it refuses to change existing files unless `FORCE=1`), and update the two
+   READMEs. Nemotron now defaults to its middle layer 16; `LAYER=18`
+   reproduces the published layer.
 4. The decision point: does Qwen3 LSAT `rescued` replicate Nemotron's 0.689
    above its text and confidence baselines? If not, write the negative
    result. If yes, the next capture changes thinking-on budgets, adds

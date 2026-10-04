@@ -238,14 +238,28 @@ last project.
 - dispatch queue;
 - bootstrap-CI discipline.
 
-**Fix first:** `tasks/bbh.py` exact-matches without stripping the letter or
-parentheses.
-- Verified: `(B) No` vs gold `No` and `(Yes)` vs gold `Yes` are graded wrong.
-- On Qwen3, 71 of 120 thinking-off rows with a binary gold answer are graded
-  wrong, partly because of this.
-- The prompt itself asks for `(X)` letters.
-- This affects the BBH numbers in `negative_result.md` and both models' BBH
-  labels.
+**Fixed in cleanup (2026-10-04, branch `cleanup/system-one-carryover`):**
+- `tasks/bbh.py` exact-matched without stripping the letter or parentheses
+  (`(B) No` vs gold `No` and `(Yes)` vs gold `Yes` graded wrong; the prompt
+  asked for `(X)` letters on non-lettered subtasks). Fixed with the MATH-500,
+  MMLU-Pro and GSM8K grader bugs in 7e224b8; bbh graders receive the question
+  (f2eabef); `generate_labels.py --regrade` re-applies the current grader to
+  stored responses (9e24091) and `run_full_analysis.sh` regrades by default
+  (8de124f). On Qwen3 BBH, thinking-off accuracy moves 0.676 -> 0.761.
+- Capture: confidence scored with left padding attended to (B1, invalidates
+  every published confidence baseline), required `--max-response-len`,
+  prompt truncation, per-shard config, unclosed `<think>` graded wrong,
+  reasoning-trace rate logged (8404347).
+- Analysis: statistics hoisted into `utils/metrics.py` with paired bootstrap,
+  exact routed curve and nAUC, explicit within-group keys, bootstrap transfer
+  verdicts, val-selected baselines (d0fa2de); `run_full_analysis.sh` fails
+  fast and promotes into `paper/results/` only on request (52fa811); tests
+  (2134d8b).
+- Dispatch: continuous watcher, heartbeat liveness, no resurrection of
+  retired cells, terminal truncation failures, commit recorded per attempt
+  (a437072).
+- The corrections to `negative_result.md` are in its "Errata (2026-10-04)"
+  section.
 
 **New code:**
 - generators with length controls;
@@ -272,4 +286,5 @@ parentheses.
 routing" is false. Self-Route (2505.20664 ✓, May 2025) routes think/no-think
 from hidden states, and pre-generation correctness probes exist (2602.09924,
 2603.20895; unverified). Drop that framing from `negative_result.md` and
-`CLAUDE.md`.
+`CLAUDE.md`. (Done 2026-10-04: errata in `negative_result.md`; the agent
+instructions now live in `AGENTS.md` and omit it.)

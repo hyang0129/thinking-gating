@@ -36,10 +36,10 @@ reasoning, so it has no final answer. It is graded wrong and flagged
 The stored grades are kept alongside as `correct_off_stored` /
 `correct_on_stored`, and every row records the `grader_version` (a hash of the
 task module's source) that produced it. Without `--regrade` the stored grades
-are used as-is and `grader_version` is null. Regrading is opt-in so that
-existing callers keep getting exactly the labels they got before; that includes
-run_full_analysis.sh and the synthetic captures in tests/test_pipeline.py,
-whose responses are placeholders. The task module comes from --task, else
+are used as-is and `grader_version` is null. Regrading is opt-in here so that
+existing callers keep getting exactly the labels they got before (the
+synthetic captures in tests/test_pipeline.py have placeholder responses);
+run_full_analysis.sh passes --regrade by default (REGRADE=0 opts out). The task module comes from --task, else
 config.json's `task`, else the capture-dir prefix.
 """
 
