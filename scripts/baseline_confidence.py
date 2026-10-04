@@ -34,6 +34,13 @@ the same as baseline_text.py's.
 Requires captures made with --capture-logprobs (every v3 capture). Fails
 loudly, rather than silently scoring zeros, if the field is missing.
 
+Which confidence: captures without `confidence_version: 2` were scored with
+their left padding attended (B1) and are invalid. `--confidence-source auto`
+(the default) uses the re-scored `confidence_off_v2.shard*.jsonl` sidecar
+written by scripts/rescore_confidence.py whenever the capture has one, and
+records the source in the output JSON (`confidence_source`); `stored` forces
+the values written at capture time.
+
 Usage:
     python scripts/baseline_confidence.py \\
         --capture-dir shared/icr_capture/math500_thinking_qwen3v3 \\
@@ -53,19 +60,26 @@ from baseline_text import (build_target, predictions_path, score_scalar,  # noqa
                            seed_record, summarize, write_results)
 from run_experiment import stratified_split                           # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from utils.capture_io import align_labels, load_labels, load_meta    # noqa: E402
+from utils.capture_io import (CONFIDENCE_SOURCES, align_labels,      # noqa: E402
+                              load_labels, load_meta, resolve_confidence)
 
 logger = logging.getLogger("baseline_confidence")
 
 SCALARS = ("mean_logprob", "min_logprob", "mean_entropy", "n_tokens_off")
 
 
-def confidence_features(meta_rows: list[dict]) -> np.ndarray:
-    """(N, 4) array of the thinking-off confidence scalars, in SCALARS order."""
+def confidence_features(meta_rows: list[dict],
+                        confidences: list[dict | None] | None = None) -> np.ndarray:
+    """(N, 4) array of the thinking-off confidence scalars, in SCALARS order.
+
+    `confidences` (one dict per row, from utils.capture_io.resolve_confidence)
+    overrides the rows' stored `confidence_off`; n_tokens_off always comes
+    from the meta row."""
     feats = np.full((len(meta_rows), len(SCALARS)), np.nan, dtype=np.float64)
     missing = 0
     for i, row in enumerate(meta_rows):
-        conf = row.get("confidence_off") or {}
+        conf = (confidences[i] if confidences is not None
+                else row.get("confidence_off")) or {}
         for j, name in enumerate(SCALARS[:3]):
             val = conf.get(name)
             if val is None:
@@ -76,8 +90,10 @@ def confidence_features(meta_rows: list[dict]) -> np.ndarray:
         feats[i, 3] = float(n_tok) if n_tok is not None else np.nan
     if missing:
         raise SystemExit(
-            f"{missing} confidence value(s) missing — this capture was not made "
-            "with --capture-logprobs, so this baseline cannot be run on it")
+            f"{missing} confidence value(s) missing — the capture was not made "
+            "with --capture-logprobs, or a re-scored row could not be rebuilt "
+            "(prompt_hash_mismatch in the sidecar); this baseline cannot be "
+            "run on it")
     bad = np.isnan(feats).any(axis=1)
     if bad.any():
         raise SystemExit(f"{int(bad.sum())} row(s) have NaN confidence features")
@@ -109,21 +125,34 @@ def main(argv=None):
                    choices=["helped", "needs_thinking", "rescued"])
     p.add_argument("--seeds", type=int, nargs="+", default=[42, 1, 2, 3, 4])
     p.add_argument("--out-file", default=None)
+    p.add_argument("--confidence-source", default="auto", choices=CONFIDENCE_SOURCES,
+                   help="auto (default): the re-scored confidence_off_v2 sidecar "
+                        "when a capture has one, else the stored values. v2: "
+                        "require the sidecar. stored: force the values written "
+                        "at capture time (v1 rows are B1-corrupted).")
     p.add_argument("--log-level", default="INFO")
     args = p.parse_args(argv)
     logging.basicConfig(level=getattr(logging, args.log_level),
                         format="%(asctime)s %(levelname)s %(message)s")
 
-    labels, rows = [], []
+    labels, rows, confs, sources = [], [], [], []
     for cap, lab in zip(args.capture_dir, args.labels):
         meta = load_meta(Path(cap))
+        conf, info = resolve_confidence(meta, Path(cap), args.confidence_source)
+        sources.append(info)
+        stale = int(info.get("confidence_version_counts", {}).get("1", 0))
+        (logger.warning if stale else logger.info)(
+            "%s: confidence from %s%s", cap, info["source"],
+            f" -- {stale} row(s) are confidence v1 (B1: scored with pad tokens "
+            "attended); run scripts/rescore_confidence.py" if stale else "")
         li = load_labels(Path(lab))
         idx = align_labels(meta, li)
         labels.extend(li)
         rows.extend(meta[i] for i in idx)
+        confs.extend(conf[i] for i in idx)
 
     y, keep = build_target(labels, args.target)
-    X = confidence_features([rows[i] for i in keep])
+    X = confidence_features([rows[i] for i in keep], [confs[i] for i in keep])
     logger.info("target=%s  n=%d  base rate %.3f", args.target, len(y), y.mean())
 
     results = {}
@@ -141,6 +170,7 @@ def main(argv=None):
            "base_rate": float(y.mean()), "seeds": args.seeds,
            "capture_dirs": args.capture_dir, "features": list(SCALARS),
            "sees_thinking_off_generation": True,
+           "confidence_source": sources,
            "baselines": results}
     if args.out_file:
         write_results(args.out_file, out, scored, [labels[i] for i in keep], y,

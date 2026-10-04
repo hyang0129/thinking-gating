@@ -32,11 +32,12 @@ prefill state for thinking-mode routing": it is false (Self-Route, arXiv
 | piece | where | status |
 |---|---|---|
 | Paired thinking-off/on capture | `scripts/capture_inference_thinking.py` | Fixed in cleanup: B1 confidence padding (rows now carry `confidence_version: 2`), B3 `--max-response-len` is **required**, B4 over-long prompts are trimmed from the front of the user content and flagged `prompt_truncated` (never right-truncated past the assistant header), B5 per-shard `config.shardNN.json`, B6 `dataset_index_global`, B7 an unclosed `<think>` is graded wrong and flagged `unclosed_think_on`, B7b `has_reasoning_on` per row with a WARNING below 80%. |
+| Confidence re-score (B1) | `scripts/rescore_confidence.py`, manifest `configs/dispatch/rescore_confidence_qwen3v3.json` | Re-scores stored thinking-off responses one unpadded row at a time with the capture's own prompt builder and scorer (GPU, no generation). Rebuilds each prompt by `prompt_hash` (BBH v3 used `PROMPT_TEMPLATE_V1`), checks prompt and answer token counts, and writes a `confidence_off_v2.shardNN.jsonl` sidecar plus `confidence_off_v2.summary.json`. Meta shards are never rewritten. `--check-only` runs the integrity checks on CPU with the tokenizer alone. |
 | Truncation gate | same script | Above 20% thinking-OFF truncation a shard's meta is renamed `meta.shardNN.jsonl.quarantined`, `TRUNCATION_FAILURE.shardNN.json` is written, and the script **exits 1**. |
 | Task modules + graders | `tasks/{gsm8k,math500,mmlu_pro,bbh,lsat}.py` | Graders fixed (B2 bbh, B16 math500, B17 mmlu_pro, B18 gsm8k); lsat audited clean. Regression cases in `tests/test_graders.py`. |
 | Labels | `scripts/generate_labels.py` | `--regrade` recomputes `correct_off`/`correct_on` from the stored responses with the current grader (no GPU), keeps `*_stored`, records `grader_version`. |
 | Statistics | `utils/metrics.py` | AUROC + percentile bootstrap, paired bootstrap of a difference (AUROC, nAUC), exact routed-accuracy curve + nAUC, pooled within-group AUROC, CEL(d) / signed overconfidence / reliability bins. Scripts import from here; do not re-implement. |
-| Baselines | `scripts/baseline_text.py`, `scripts/baseline_confidence.py`, `scripts/compare_baselines.py` | Best baseline is now selected on **validation**, with a paired-bootstrap probe − baseline difference on identical test rows. |
+| Baselines | `scripts/baseline_text.py`, `scripts/baseline_confidence.py`, `scripts/compare_baselines.py` | Best baseline is now selected on **validation**, with a paired-bootstrap probe − baseline difference on identical test rows. `baseline_confidence.py --confidence-source auto` (default) reads the re-scored sidecar when present (`utils.capture_io.resolve_confidence`) and records the source in its output; `stored` forces capture-time values. |
 | Within-group control | `scripts/within_group_auroc.py --group-key <field>\|sample_id:middle` | Key is explicit and required; refuses unless ≥ 2 groups hold both classes (B8). `sample_id:middle` is right for BBH only. |
 | Probe / transfer | `scripts/run_experiment.py`, `scripts/eval_transfer.py` | The prefill probe becomes one baseline. Transfer verdicts now use the bootstrap interval over target rows (B9). |
 | Full analysis | `scripts/run_full_analysis.sh` | Fail-fast; writes only `output/<slug>/`; regrades labels by default (`REGRADE=0` to keep stored grades); `PROMOTE=1` copies into `paper/results/metrics/<slug>/` and refuses to change existing files unless `FORCE=1`; `LAYER` defaults to the middle layer from the activation shape (18 for Qwen3-8B, 16 for Nemotron-8B). |
@@ -95,6 +96,8 @@ shared/icr_capture/{task}_thinking_{slug}/        # one capture, N shards
   activations_thinking_off.shardNN.npz   # prefill states, (n, layers+1, hidden)
   activations_thinking_on.shardNN.npz
   TRUNCATION_FAILURE.shardNN.json        # present only if the gate quarantined the shard
+  confidence_off_v2.shardNN.jsonl        # re-scored thinking-off confidence (B1),
+  confidence_off_v2.summary.json         #   from scripts/rescore_confidence.py
     ↓ generate_labels.py [--regrade]
 shared/labels/{slug}/{task}_labels.jsonl  (+ .summary.json)
     ↓ run_experiment.py / baseline_*.py / within_group_auroc.py / eval_transfer.py
@@ -435,7 +438,8 @@ Steps 2–3 are CPU-only (after copying the capture back):
 - Don't use thinking-on outputs or activations as features for predicting the
   value of thinking (circular).
 - Don't quote a confidence-baseline number from a capture without
-  `confidence_version: 2` (B1).
+  `confidence_version: 2` (B1) or a complete `confidence_off_v2` sidecar;
+  check `confidence_source` in the baseline's output JSON.
 - Do commit before dispatching, and dispatch `.venv/bin/python`.
 - Do log base rates and n beside every AUROC.
 

@@ -202,19 +202,34 @@ done
 # An 8B forward pass has to beat TF-IDF on the raw question, and it has to be
 # compared against the model's own thinking-off confidence. Both run on the
 # same splits/seeds/target as the probe so the numbers sit in one table.
-# baseline_confidence needs --capture-logprobs captures (all of v3).
+# baseline_confidence needs --capture-logprobs captures (all of v3), and uses
+# the confidence_off_v2 sidecar from scripts/rescore_confidence.py when present
+# (CONFIDENCE_SOURCE=stored forces the capture-time values, which are B1-invalid
+# on every capture without confidence_version 2).
+CONFIDENCE_SOURCE="${CONFIDENCE_SOURCE:-auto}"
 for task in $AVAILABLE; do
   lab="$(labels_file "$task")"
   for target in $TARGETS; do
     if [ "$target" = "helped" ]; then continue; fi
     for kind in text confidence; do
       out="$METRICS_DIR/baselines/${kind}__${task}__${target}.json"
-      if stale "$out" "$lab"; then
+      # The confidence baseline also reads the re-scored sidecar (B1) when the
+      # capture has one, so a rescore that lands later re-runs it.
+      deps=("$lab")
+      CONF_ARGS=()
+      if [ "$kind" = "confidence" ]; then
+        CONF_ARGS=(--confidence-source "$CONFIDENCE_SOURCE")
+        for f in "$(capture_dir "$task")"/confidence_off_v2.shard*.jsonl; do
+          if [ -e "$f" ]; then deps+=("$f"); fi
+        done
+      fi
+      if stale "$out" "${deps[@]}"; then
         log "baseline $kind $task/$target"
         run_step "baseline_${kind}_${task}_${target}" "AUROC" \
           "$PY" "scripts/baseline_${kind}.py" \
             --capture-dir "$(capture_dir "$task")" --labels "$lab" \
-            --target "$target" --seeds $SEEDS --out-file "$out"
+            --target "$target" --seeds $SEEDS --out-file "$out" \
+            ${CONF_ARGS[@]+"${CONF_ARGS[@]}"}
       else
         log "baseline $kind $task/$target — up to date"
       fi
