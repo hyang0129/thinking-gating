@@ -10,114 +10,99 @@ This document guides agents (Claude Code, subagents) working on the thinking-gat
 
 **Self-containment (non-negotiable):** this repo owns everything it runs — its task modules (`tasks/`), its dispatch tooling (`scripts/gpu_dispatch.py`, `scripts/launch_jupyter.py`, `utils/jupyter_exec.py`), and its own virtualenv (`.venv/`, built by `scripts/setup_env.sh`). Do not symlink, `sys.path`-inject, or import from a sibling checkout, and do not install into a shared or system interpreter. If a script needs something new, add it here and list it in `requirements.txt`.
 
-## Current State (2026-08-31)
+## Current State (2026-09-11)
 
-**One line:** the pipeline is built and has produced results across 3 model
-families and 5 benchmarks — but **every `needs_thinking` and `rescued` number
-produced before 2026-08-30 is invalidated by a thinking-OFF truncation
-confound.** V3 re-captures are queued on Empire AI and untouched; everything
-downstream waits on a GPU allocation.
+**One line:** written up as a negative result (`paper/negative_result.md`,
+2026-09-12). On truncation-corrected labels the prefill probe beats no cheap
+baseline on any objective and `rescued` is at chance. The Nemotron / Qwen3-LSAT
+redo captures are still queued on the cluster and only complete the
+second-family table; they do not change the conclusion.
 
 ### ✅ Built and working
 
-- **Capture** — `scripts/capture_inference_thinking.py`: paired thinking-off/on
-  inference, prefill extraction from a dedicated forward pass, batching,
-  sharding, per-task token budgets. Toggle detection reads the chat template
-  (not a name whitelist); supports `enable_thinking`, system-prompt toggles,
-  graded reasoning levels, and harmony-format answer extraction.
-- **Pipeline** — `generate_labels.py`, `run_experiment.py` (MLP/logreg, 5 seeds,
-  AUROC ± bootstrap CI, AUROC by difficulty, routed accuracy vs
-  never/always/oracle), `eval_transfer.py`, `utils/capture_io.py` (shard-aware),
-  `scripts/run_full_analysis.sh` (captures in → results table out).
-- **Controls** — `stratify_check.py` (caught the BBH subtask-detector artifact),
-  `validate_bench.py` (catches results trained on partial captures),
-  `tests/test_pipeline.py` (synthetic end-to-end + signal-free negative control),
-  `tests/test_dispatch.py` (23 tests, stdlib only).
-- **Dispatch** — `scripts/dispatch/` cell queue + generic worker, driven by
-  manifests in `configs/dispatch/`. The worker never changes.
+- **Capture** — `scripts/capture_inference_thinking.py`: paired
+  thinking-off/on inference, prefill from a dedicated forward pass, batching,
+  sharding, per-task budgets, thinking-off confidence (`--capture-logprobs`),
+  and a **truncation gate**: above 20% thinking-OFF truncation it quarantines
+  the shard's meta file (`meta.shardNN.jsonl.quarantined` +
+  `TRUNCATION_FAILURE.shardNN.json`) and exits 1, so the cell stays failed.
+- **Pipeline** — `generate_labels.py`, `run_experiment.py` (MLP/logreg, 5
+  seeds, AUROC ± bootstrap CI, by difficulty, routed accuracy),
+  `eval_transfer.py`, `utils/capture_io.py`, `scripts/run_full_analysis.sh`
+  (captures in → results table out; every derived path is qualified by
+  `CAPTURE_SLUG`, metrics land in `paper/results/metrics/<slug>/`).
+- **Baselines** — `baseline_text.py` (length, TF-IDF) and
+  `baseline_confidence.py` (thinking-off log-prob / entropy / answer length),
+  both on the probe's exact splits; `compare_baselines.py` renders them
+  beside the probe with bootstrap CIs.
+- **Controls** — `stratify_check.py` (per-group AUROC),
+  `within_group_auroc.py` (pooled within-group AUROC — the statistic that
+  actually settles "is it a category detector"), `validate_bench.py`,
+  `tests/test_pipeline.py`, `tests/test_dispatch.py` (24 tests).
+- **Dispatch** — `scripts/dispatch/` cell queue + generic worker;
+  `watch_and_dispatch.py` puts a worker on each queued root when an
+  allocation lands (its 2026-09-03 argparse bug is fixed).
 - **Tasks** — gsm8k, lsat, math500, mmlu_pro, bbh.
-- **Models exercised** — Qwen3-8B (anchor), Qwen3-14B, Nemotron-Nano-8B,
-  Granite-3.3, gpt-oss-20b.
 
-### ⚠️ The truncation confound (found 2026-08-30) — read this first
+### 📊 v3 results (Qwen3-8B; read `paper/results/metrics/qwen3v3/README.md`)
 
-`--max-response-len 320` on the thinking-OFF pass cut off 75% of MATH-500's
-off-responses (49% MMLU-Pro, 12% GSM8K). Qwen3 writes chain-of-thought even
-with thinking off, so those rows were graded wrong for running long, not for
-being unable. `correct_off` became near-deterministic in truncation (0.037
-correct when capped vs 0.944 when not), so `needs_thinking` ≈ "did the answer
-exceed 320 tokens" and `rescued` conditions on that same subset.
+| task | needs_thinking probe | best non-probe baseline | rescued probe (n) |
+|---|---|---|---|
+| gsm8k | 0.687 [0.56, 0.80] | n_tokens_off 0.690 | 0.597 [0.31, 0.86] (89) |
+| math500 | 0.699 [0.56, 0.82] | confidence_lr **0.814** | 0.559 [0.32, 0.79] (118) |
+| mmlu_pro | 0.659 [0.58, 0.74] | confidence_lr 0.646 | 0.489 [0.35, 0.63] (376) |
+| bbh | 0.820 [0.73, 0.90] | tfidf_char 0.846 | 0.738 — within-subtask **0.506** |
 
-The decisive test: the identical probe predicts `truncated_off` **better** than
-it predicts the label on all three tasks (0.922/0.872/0.811 vs
-0.879/0.782/0.702), and reported AUROC ranks the tasks exactly by truncation
-rate. All three model families shared the cap, so the cross-family replication
-reproduced the artifact rather than confirming the result.
+The pre-08-30 story is gone: math500 `needs_thinking` fell 0.879 → 0.699
+once thinking-off accuracy went from 0.25 to 0.76. BBH is a subtask
+detector both times (within-subtask AUROC 0.494 / 0.506). `rescued`
+transfer is chance on every ordered pair. Nemotron (bbh + lsat only so far):
+BBH loses to TF-IDF; LSAT thinking-off accuracy is 0.243, below the guess
+floor, at 5.7% truncation — so that was never a truncation artifact; LSAT
+`rescued` 0.689 [0.50, 0.86] is the one lead, unreplicated.
 
-Full writeup and the numbers: `paper/results/metrics/truncation/README.md`.
-No salvage from existing data — dropping truncated rows leaves MATH-500 with
-124 rows of which 7 are wrong. The capture script now logs at ERROR level above 20% off-truncation — note it
-still exits 0, so this has to be *read* in the log, not relied on to fail a
-dispatched run.
+Caveats that bound all of it: thinking-ON truncation is still 16–20% on
+math500 / mmlu_pro / lsat (on-budgets were held at v2 values), thinking-OFF
+truncation is 8.4% on math500 / mmlu_pro, and `rescued` has 89–376 rows.
 
-### ⏳ Blocked: the v3 re-capture
+### ⏳ In flight on the cluster
 
-`configs/dispatch/capture_qwen3v3.json` and `capture_nemotronv3.json` — 2 models
-× 5 benchmarks × 4 shards. Off-budgets raised 320 → 1024 (2048 for MATH-500),
-sized from the v2 data rather than guessed; thinking-on budgets unchanged so the
-on-side stays comparable. LSAT is back in: its "degenerate labels" diagnosis
-(thinking-off accuracy below the guess floor) is itself a plausible truncation
-artifact.
+- `shared/dispatch/capture_nemotronv3_redo` (12 cells: gsm8k @2048,
+  math500 @4096, mmlu_pro @2048 batch 8) and `capture_qwen3v3_redo`
+  (4 cells: lsat @4096). Superseded partial captures are in
+  `shared/icr_capture/_superseded/`; the redo writes into the canonical
+  `{task}_thinking_{slug}` dirs.
+- SLURM jobs 81777 / 81778 (`jupyter_empire_8882` / `_8883`) PENDING on
+  Priority; `watch_and_dispatch.py` (pid in `shared/logs/watch_dispatch.log`,
+  120 h deadline) dispatches one worker per root when they land. **It refuses
+  while the cluster checkout is behind upstream — `git pull` there after
+  every push.**
+- The failed cells of the original v3 queues are in `<root>/retired/` so
+  `retry --all` cannot resurrect them at the old budgets.
 
-**Cluster status as of 2026-08-31:** both queues are already expanded at
-`shared/dispatch/capture_qwen3v3` and `capture_nemotronv3` — 20 cells each,
-**all pending, none ever claimed**. `squeue --me` shows six `jupyter_empire_*`
-allocations, all PENDING on `(Priority)`; nothing is running. `gpu_jobs.json`
-holds 17 `finished` and 5 stale `unknown` entries from the Aug 27–28 workers.
-Re-expanding a queue is idempotent, so the staged cells just need a worker.
+### 📋 Methodology findings that hold
 
-### 📋 What survives the confound
+- **Quote the bootstrap CI** (`test_auroc_bootstrap.ci`); the seed-spread CI
+  is 1.6–8.8× too narrow.
+- **Text and confidence baselines are mandatory** and, on v3, they win.
+- **Per-group AUROCs are underpowered; use the pooled within-group AUROC**
+  (`within_group_auroc.py`). BBH looks like 0.82 and is 0.49.
+- **Sample size binds.** `rescued` at n≈100 has a ±0.25 interval.
 
-The methodology findings hold — they are about the estimator, not the labels:
+### Decision (2026-09-12): written up as a negative result
 
-- **Quote the bootstrap CI, not the seed-spread CI.** Seeds re-split a *fixed*
-  sample, so `test_auroc.ci` measures split-to-split spread, and is 1.6–8.8×
-  too narrow. An earlier "12/14 MMLU-Pro categories above chance" became 5/14
-  under the bootstrap interval.
-- **Sample size is the binding constraint, not model capacity.** Every tuning
-  gain came from more rows (pooling 3 tasks); every loss came from spending
-  capacity the row count could not support. A 37-layer sweep selected on
-  validation *lowered* test AUROC — the a-priori middle layer is as good as
-  anything.
-- **Text baselines are mandatory.** An 8B forward pass must beat TF-IDF on the
-  raw question. Pooled `needs_thinking` is confounded by task identity (base
-  rates 0.144/0.738/0.615), so it is not evidence of query-level signal.
-- **Stratification catches hardness detectors** — the BBH result was a subtask
-  detector.
+`paper/negative_result.md` is the writeup. The project is closed as a
+negative at this scale and design; no further probe experiments on the
+present captures are planned.
 
-The substantive AUROCs themselves all need re-running on v3 captures.
-
-### 📌 Not yet written / run
-
-- `scripts/template_ablation.py` — still optional, still unwritten.
-- **Thinking-off confidence / answer entropy baseline** — the strongest
-  remaining competitor to the probe, and cheap. Should exist before any writeup.
-- A small fine-tuned text encoder (MiniLM/DeBERTa) on the same labels.
-- **Token pooling** — only the last prompt token was ever saved; mean-pooling
-  over prompt tokens is usually a large gain in probing work and needs a
-  re-capture (fold it into v3 if you touch the capture script).
-- **More MATH data** — MATH-500 is a 500-row eval subset; capturing 3k from the
-  full ~12.5k corpus would take `rescued` from 369 rows to ~2200. Cheapest
-  large win available.
-
-### Next actions, in order
-
-1. Get a GPU allocation (cancel the redundant pending Jupyter jobs first).
-2. Dispatch workers onto `shared/dispatch/capture_qwen3v3` and
-   `capture_nemotronv3`, then grep the logs for the off-truncation line — the
-   script reports it at ERROR level but does not fail the run on it.
-3. Re-run labels → probes → decomposition → baselines on v3 captures.
-4. Add the thinking-off confidence baseline before writing anything up.
+Still in flight, and worth finishing only because the data completes §3.4 of
+the writeup: the Nemotron redo (gsm8k / math500 / mmlu_pro) and the Qwen3
+LSAT redo. When they land: tar them back, run the two `run_full_analysis.sh`
+invocations from the handoff, re-render `compare_baselines.py`, and add the
+rows to the writeup. The conclusion changes only if Qwen3 LSAT `rescued`
+clears its text and confidence baselines with non-overlapping intervals.
+If nobody is going to do that, `touch shared/dispatch/STOP_WATCH` on the
+cluster stops the watcher; the pending allocations expire on their own.
 
 ## Architecture & Key Decisions
 
@@ -564,5 +549,5 @@ insertion. Numbers quoted in the paper come from the saved metrics JSON/CSV in
 
 ---
 
-**Last updated:** 2026-08-31 (Hong Yang)  
+**Last updated:** 2026-09-12 (Hong Yang)  
 **Questions/blockers?** See `.agent-work/HANDOFF.md` for contact info and next steps.
