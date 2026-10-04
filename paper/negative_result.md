@@ -201,7 +201,7 @@ unverified). Read §1 and the abstract without any novelty claim.
 3. §3.4's Nemotron BBH comparison does not test thinking at all.
 4. The novelty framing is gone.
 
-The confound story in §2 and the controls in §5.3 are unaffected.
+The confound story in §2 and the controls in §5 (point 3) are unaffected.
 
 ## Abstract
 
