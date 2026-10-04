@@ -3,6 +3,206 @@
 Hong Yang — 2026-09-12. Every number traces to a file under `paper/results/`;
 the path is given in the table captions.
 
+## Errata (2026-10-04)
+
+A cleanup audit on 2026-10-04 found bugs in the capture, the graders and the
+analysis code. They are fixed on branch `cleanup/system-one-carryover`
+(commits 8404347, 7e224b8, f2eabef, 9e24091, d0fa2de, 52fa811, 8de124f). The
+text below the errata is the 2026-09-12 writeup, unchanged; read its numbers
+through this section.
+
+**Where the corrected numbers come from.** "Published" numbers are in
+`paper/results/metrics/{qwen3v3,nemotronv3}/`. Corrected numbers are
+**working numbers** from the audit's scratch directory
+(`/private/tmp/claude-501/-Users-hong-Documents-code-projects-thinking-gating/f4da22a3-8ae9-47b8-aec9-90da43277d56/scratchpad/`,
+abbreviated `scratch/` below; it is not durable). They have not been promoted.
+They reach `paper/results/` only by re-running `scripts/run_full_analysis.sh`
+(which now regrades labels) with `PROMOTE=1`.
+
+**What has and has not been re-run.** The analysis was re-run with the fixed
+code on the **published (pre-regrade) labels**
+(`scratch/rerun_metrics/`, `rerun.py`; diff against the published files in
+`scratch/rerun_metrics/diff_published.out`). At the published layer, every
+probe AUROC, bootstrap interval, baseline test AUROC and within-group AUROC
+reproduces exactly. **No probe or baseline AUROC has been computed on the
+regraded labels yet.** The label shifts below are therefore shifts in the
+*targets*. Their effect on the AUROCs is unknown.
+
+### B1 — confidence baselines invalid (critical)
+
+The capture re-scored each thinking-off answer from a left-padded batch with
+no attention mask, so the model attended to pad tokens. About 93% of Qwen3 v3
+rows are padded. Spearman(pad count, mean log-prob) is −0.72 to −0.88 across
+the four tasks. On unpadded rows only, mean-log-prob AUROC for
+`needs_thinking` is 0.70 / 0.76 / 0.70 / 0.80 (n = 86 / 65 / 64 / 39), against
+0.58 / 0.65 / 0.56 / 0.53 on all rows (`scratch/cleanup_inventory.md`, B1).
+
+- **Invalid:** every `mean_logprob`, `min_logprob`, `mean_entropy` and
+  `confidence_lr` number, in both models' `baselines/confidence__*.json` and
+  in §3.1, §3.2 and §3.4. That includes the abstract's
+  "0.814 vs 0.699" on math500, mmlu_pro's 0.646, gsm8k `rescued`'s 0.578, and
+  Nemotron's 0.666 / 0.538 / 0.619.
+- **Clean:** `n_tokens_off`. Even so, a column chosen as "best confidence
+  baseline" was chosen against corrupted competitors.
+- **Likely direction:** the bug *understates* the confidence baseline.
+- **Not yet done:** re-scoring from the stored responses needs a GPU but no
+  regeneration.
+
+### Graders (B2, B16, B17, B18) and unfinished reasoning (B7)
+
+Each capture was regraded from its stored responses with the fixed graders
+(`scratch/regraded/TABLE.md`). An independent audit grader agrees to within
+0–2 rows per capture.
+
+- **B2, BBH:** the prompt asked for "(letter)" on non-lettered subtasks, and
+  non-letter golds were exact-matched.
+- **B16, MATH-500:** gold shorthand, units, prefixes and lists were not
+  normalised.
+- **B17, MMLU-Pro:** `\boxed{J}` was missed, and letters were read from prose.
+- **B7:** a thinking-on response whose `<think>` never closed was graded on the
+  unfinished trace. It is now graded wrong.
+- **B18 (GSM8K)** fires on no current row.
+
+| capture | acc_off | acc_on | `needs_thinking` rate | `rescued` n (pos.) | hurt | driven by |
+|---|---|---|---|---|---|---|
+| Qwen3 gsm8k | 0.933 → 0.933 | 0.940 → 0.923 | 0.067 → 0.067 | 89 (48) → 89 (42) | 38 → 54 | B7 (22 on-pass rows) |
+| Qwen3 math500 | 0.764 → 0.824 | 0.782 → 0.820 | 0.236 → 0.176 | 118 (39) → 88 (33) | 30 → 35 | B16 (30 off, 23 on), B7 (4) |
+| Qwen3 mmlu_pro | 0.624 → 0.617 | 0.693 → 0.648 | 0.376 → 0.383 | 376 (131) → 383 (102) | 62 → 71 | B7 (53), B17 (7 off, 8 on) |
+| Qwen3 bbh | 0.676 → 0.761 | 0.822 → 0.843 | 0.324 → 0.239 | 175 (100) → 129 (69) | 21 → 25 | B2 (46 off, 16 on), B7 (5) |
+| Nemotron bbh | 0.331 → 0.431 | 0.317 → 0.406 | 0.669 → 0.569 | 361 (36) → 307 (36) | 44 → 50 | B2 (55/−1 off, 48 on) |
+| Nemotron lsat | 0.243 → 0.243 | 0.500 → 0.435 | 0.757 → 0.757 | 174 (68) → 174 (59) | 9 → 15 | B7 (15) |
+
+Under the fixed graders, always-think is no better than never-think on gsm8k,
+math500 and Nemotron BBH. Every target, base rate and n in §3 changes for
+math500, mmlu_pro and BBH. The `rescued` positives fall on every task except
+Nemotron BBH.
+
+### B7b — Nemotron's "thinking on" mostly did not think
+
+On BBH, 7 of 540 thinking-on responses contain `<think>`, 118 are
+byte-identical to the thinking-off response, and the median thinking-on length
+is 20 tokens. On LSAT, 77 of 230 have no `<think>`
+(`scratch/b7b/nemotron_think.out`). §3.4's BBH rows therefore compare two
+non-thinking runs, and a third of its LSAT rows do too. The capture now logs a
+reasoning-trace rate and warns below 80%.
+
+### Nemotron layer, and the LSAT "lead"
+
+§1's "layer 18, the a-priori middle layer of 36" is right for Qwen3-8B. For
+Nemotron-Nano-8B, which has 33 hidden states, the a-priori middle layer is 16.
+At layer 16, on the published labels (`scratch/rerun_metrics/nemotronv3/metrics/`):
+
+| task | target | published (layer 18) | layer 16 |
+|---|---|---|---|
+| bbh | needs_thinking | 0.755 [0.650, 0.848] | 0.744 [0.639, 0.839] |
+| bbh | rescued | 0.756 [0.547, 0.932] | 0.776 [0.568, 0.950] |
+| lsat | needs_thinking | 0.562 [0.353, 0.761] | 0.553 [0.344, 0.753] |
+| lsat | rescued | 0.689 [0.497, 0.861] | **0.620 [0.420, 0.809]** |
+
+The one lead in §3.4 moves 0.07 across two layers. At the a-priori layer it
+sits below its text baseline: paired difference vs tfidf_word is −0.020
+[−0.254, +0.217] (`scratch/rerun_metrics/nemotronv3/metrics/baseline_comparison.txt`).
+Its labels also change under B7 (68 → 59 positives), and on those labels it
+has not been re-run. **It is not a lead.**
+
+### Transfer verdicts (B9)
+
+The verdict's "above chance" test used the seed-spread interval. Re-applying
+the fixed rule (the bootstrap interval over target rows) to the per-probe
+intervals stored in the published transfer files turns 7 of 42 verdicts into
+"no transfer — target at chance". The AUROCs are unchanged
+(`scratch/transfer_verdicts/reverdict.out`; no retraining). The seven:
+
+- **Qwen3:**
+  - gsm8k→bbh `rescued` (was "strong")
+  - math500→bbh `rescued` (was "strong")
+  - bbh→mmlu_pro `helped` (was "weak")
+  - math500→gsm8k `helped` and `needs_thinking` (were "partial")
+- **Nemotron:**
+  - lsat→bbh `needs_thinking` (was "strong")
+  - lsat→bbh `rescued` (was "partial")
+
+No `rescued` pair is labelled as transferring any more. §3.2's remark about
+the "strong transfer" pairs is moot.
+
+### Baseline selection (B10) and paired comparisons
+
+The "best baseline" columns were picked by **test** AUROC. Picked on
+validation (`scratch/rerun_metrics/diff_published.out`), these change:
+
+- §3.1 gsm8k text: tfidf_word 0.634 → length_words 0.604 [0.452, 0.749].
+- §3.2 math500 confidence: n_tokens_off 0.524 → min_logprob 0.505 (B1-invalid).
+- Qwen3 bbh `rescued` text: tfidf_word 0.723 → tfidf_char 0.717.
+- §3.4 Nemotron bbh `rescued` confidence: confidence_lr 0.538 → n_tokens_off 0.521.
+- §3.4 Nemotron lsat `rescued` confidence: mean_entropy 0.619 → min_logprob 0.550 (B1-invalid).
+
+The tables also compared overlapping intervals. The fixed
+`compare_baselines.py` reports a paired-bootstrap probe − best-baseline
+difference on identical test rows. On the published labels, **no paired
+difference excludes zero** for any Qwen3 or Nemotron (layer 16) task and
+target. Where the best baseline is a B1-affected confidence column, that
+comparison waits on the re-score.
+
+### Routed accuracy and the "waste" column (B11, B12, B14)
+
+`min_routed_for_always_think_accuracy` was read off a 21-point grid with
+unstable tie-breaking. On the exact curve it is lower or equal everywhere, so the `waste` column of
+`results_table.txt` (1 − that fraction) rises. Qwen3 changes by 0–5 points:
+
+- bbh 0.15 / 0.29 / 0.11 → 0.17 / 0.33 / 0.13 (helped / needs_thinking / rescued)
+- gsm8k helped 0.84 → 0.88
+- math500 helped 0.60 → 0.62
+- mmlu_pro helped 0.04 → 0.07
+- mmlu_pro needs_thinking 0.44 → 0.49
+
+For Nemotron at layer 18 the change is at most 2.2 points (`diff_published.out`).
+
+`results_table.txt` also labelled the seed-spread interval "AUROC [95% CI]"
+(B14). The intervals quoted in this writeup were the bootstrap ones and are
+unaffected.
+
+### Within-group AUROC (B8)
+
+`within_group_auroc.py` silently collapsed non-BBH tasks into a single group.
+The published within-group numbers are BBH only and reproduce exactly:
+0.494 [0.230, 0.765] with 20 of 27 subtasks informative, and 0.506
+[0.009, 1.000] with 13 of 22. They are on pre-regrade labels.
+
+### Novelty framing
+
+The project's motivation stated that no evaluated method uses target-model
+prefill state for thinking-mode routing (a "named gap in HRBench"). The
+abstract calls `rescued` "the objective that would have been novel". The
+first claim is false: Self-Route (arXiv 2505.20664, May 2025) routes
+think/no-think from hidden states, and pre-generation correctness probes exist
+(see `paper/proposal_system_one_gating.md` §8; those two citations are
+unverified). Read §1 and the abstract without any novelty claim.
+
+### What the errata change, and what they do not
+
+**They do not change the conclusion in §5.** On the published labels:
+
+- The prefill probe still never beats a **text** baseline. Text baselines are
+  untouched by B1.
+- No paired probe − baseline difference excludes zero.
+- `rescued` is at chance on gsm8k, math500 and mmlu_pro.
+- BBH is a subtask detector.
+- Transfer is now uniformly at chance for `rescued`.
+- The only above-chance non-category lead, Nemotron LSAT `rescued`, does not
+  survive the a-priori layer.
+
+**They do change:**
+
+1. The claim that thinking-off confidence *beats* the probe (math500 0.814)
+   is withdrawn pending the GPU re-score. Because the bug likely understates
+   confidence, it is expected to hold or strengthen, but it is unmeasured.
+2. Every §3 target shifts under the fixed graders, and the probe AUROCs on
+   the corrected labels have not been computed.
+3. §3.4's Nemotron BBH comparison does not test thinking at all.
+4. The novelty framing is gone.
+
+The confound story in §2 and the controls in §5.3 are unaffected.
+
 ## Abstract
 
 We asked whether a small probe on a language model's prefill hidden state
