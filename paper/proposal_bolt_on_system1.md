@@ -143,15 +143,31 @@ architecture. Qwen3.5's Gated-DeltaNet layers may complicate cache reuse.
 | Phase 0 | True/False math verify (GSM8K-Verify, MATH500-verify, with controlled perturbations); BBH binary subtasks (graders fixed); ProntoQA/boolean nesting with depth control |
 | Phase 2 | When2Call, BFCL `miss_*`, τ²-bench, for answer / think / ask |
 
-**Thinking must actually help on the chosen benchmarks.** On the regraded
-Qwen3-8B v3 labels, gsm8k + math500 + mmlu_pro give 0.801 without thinking
-and 0.807 with it (PR #2, issue #1). Thinking-on truncation was 16–20% at the
-old budgets, which depresses the "with" number. A Pareto curve on a mix where
-System 2 adds 0.6 pp says nothing, so Phase 0 must:
-- measure the off/on gap per family *first*, at a thinking budget with <2%
-  truncation;
-- keep only families where the gap is large (depth-controlled, perturbed,
-  harder MATH levels).
+**The gap that matters is System 1 (decision readout) vs System 2, and it is
+unmeasured.**
+
+Our existing captures compare thinking-off *generation* with thinking-on
+generation: 0.801 vs 0.807 on regraded Qwen3-8B gsm8k + math500 + mmlu_pro.
+Qwen3 thinking-off still writes visible chain-of-thought, so both are
+generative, and that 0.6 pp is not the S1-vs-S2 gap. A single-pass readout
+should sit well below both on derived answers (Jev 68.4% vs GPT-6 95.9% on
+JudgeBench reasoning ✓). The larger that gap, the more the routing decision
+is the contribution.
+
+**Phase 0 step 1 is to measure it.** Run a training-free D0 readout on the
+items that already have thinking labels:
+- mmlu_pro, BBH and LSAT natively, since they are already typed choices;
+- gsm8k and math500 via a verify format ("is the answer X?").
+
+This costs one forward pass per item and gives the per-family S1 / no-think /
+think accuracy table that the rest of the evaluation is built on.
+
+**Three tiers, one model.** From the same KV cache, escalation can go to:
+1. non-thinking generation (visible CoT, hundreds of tokens);
+2. full thinking (thousands of tokens).
+
+So the router chooses among decision pass → no-think generation → thinking.
+Our existing captures already label the no-think vs think pair.
 
 **Controls carried over from v2:**
 - length-matched depth;
