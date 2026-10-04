@@ -551,6 +551,642 @@ def test_shipped_example_manifest_expands():
     assert all(c["output_check"] for c in cells)
 
 
+def _argparse_spec(script: Path) -> dict:
+    """Option strings, choices, and required flags of a script's argparse,
+    read statically with ast so the test needs none of its dependencies."""
+    import ast
+    flags, choices, required = set(), {}, set()
+    for node in ast.walk(ast.parse(script.read_text(encoding="utf-8"))):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "add_argument"):
+            continue
+        names = [a.value for a in node.args
+                 if isinstance(a, ast.Constant) and isinstance(a.value, str)]
+        opts = [n for n in names if n.startswith("--")]
+        flags.update(opts)
+        for kw in node.keywords:
+            if kw.arg == "choices" and isinstance(kw.value, (ast.List, ast.Tuple)):
+                for o in opts:
+                    choices[o] = [e.value for e in kw.value.elts
+                                  if isinstance(e, ast.Constant)]
+            if (kw.arg == "required" and isinstance(kw.value, ast.Constant)
+                    and kw.value.value is True):
+                required.update(opts)
+    return {"flags": flags, "choices": choices, "required": required}
+
+
+def test_example_manifest_matches_run_experiment_cli():
+    """Every example cell must be runnable: real flags, valid choices, and an
+    output_check naming files run_experiment.py actually writes."""
+    script = _PROJECT_ROOT / "scripts" / "run_experiment.py"
+    spec = _argparse_spec(script)
+    source = script.read_text(encoding="utf-8")
+    cells = cells_mod.expand_manifest(cells_mod.load_manifest(
+        _PROJECT_ROOT / "configs" / "dispatch" / "example_probe_sweep.json"))
+    for cell in cells:
+        assert cell["script"] == "scripts/run_experiment.py"
+        args = [str(a) for a in cell["args"]]
+        used = [a for a in args if a.startswith("--")]
+        unknown = [a for a in used if a not in spec["flags"]]
+        assert not unknown, f"{cell['cell_id']}: unknown flags {unknown}"
+        missing = spec["required"] - set(used)
+        assert not missing, f"{cell['cell_id']}: missing required {missing}"
+        for flag, allowed in spec["choices"].items():
+            if flag in args:
+                value = args[args.index(flag) + 1]
+                assert value in allowed, f"{cell['cell_id']}: {flag} {value} not in {allowed}"
+        for check in cell["output_check"]:
+            name = Path(check).name
+            assert f'"{name}"' in source, f"run_experiment.py never writes {name}"
+
+
+# ---------------------------------------------------------------------------
+# D6: cell identity, retired/, and edited manifests
+# ---------------------------------------------------------------------------
+
+def test_existing_manifest_ids_are_unchanged():
+    """Ids of cells already on the cluster must not move. Only manifests that
+    opt in with cell_id_hash get the fingerprint suffix."""
+    load = lambda n: cells_mod.expand_manifest(cells_mod.load_manifest(  # noqa: E731
+        _PROJECT_ROOT / "configs" / "dispatch" / f"{n}.json"))
+    assert [c["cell_id"] for c in load("capture_qwen3v3_redo")] == [
+        f"capture-qwen3v3-lsat-shard{s:02d}" for s in range(4)]
+    assert [c["cell_id"] for c in load("capture_nemotronv3_redo")] == [
+        f"capture-nemotronv3-{t}-shard{s:02d}"
+        for s in range(4) for t in ("gsm8k", "math500", "mmlu_pro")]
+    for path in sorted((_PROJECT_ROOT / "configs" / "dispatch").glob("*.json")):
+        manifest = cells_mod.load_manifest(path)
+        if manifest.get("cell_id_hash"):
+            continue
+        for cell in cells_mod.expand_manifest(manifest):
+            assert "__h" not in cell["cell_id"], (path.name, cell["cell_id"])
+
+
+def test_cell_id_hash_is_opt_in_and_tracks_args():
+    base = {"name": "h", "kind": "shell", "command": "echo {x} {budget}",
+            "constants": {"budget": "1024"}, "grid": {"x": [1, 2]}}
+    plain = [c["cell_id"] for c in cells_mod.expand_manifest(base)]
+    assert plain == ["h__x-1", "h__x-2"], plain
+    hashed = [c["cell_id"] for c in cells_mod.expand_manifest({**base, "cell_id_hash": True})]
+    assert all(h.startswith(p + "__h") and len(h) == len(p) + 13
+               for p, h in zip(plain, hashed)), hashed
+    edited = {**base, "cell_id_hash": True, "constants": {"budget": "4096"}}
+    assert [c["cell_id"] for c in cells_mod.expand_manifest(edited)] != hashed
+    cell = cells_mod.expand_manifest({**base, "cell_id_hash": True})[0]
+    assert "cell_id_hash" not in cell
+
+
+def test_expand_refuses_retired_cells_unless_allowed():
+    """Re-expanding capture_qwen3v3.json must not resurrect its retired
+    1024-token LSAT shards (they share ids and output dirs with the redo)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp) / "capture_qwen3v3"
+        claim.init_dispatch_dirs(root)
+        manifest = _PROJECT_ROOT / "configs" / "dispatch" / "capture_qwen3v3.json"
+        cells = cells_mod.expand_manifest(cells_mod.load_manifest(manifest))
+        lsat = [c for c in cells if "-lsat-" in c["cell_id"]]
+        assert len(lsat) == 4
+        (root / "retired").mkdir()
+        (root / "retired" / "RETIRED.md").write_text("retired at 1024\n")
+        for c in lsat:   # how the operator retired them: failed/ -> retired/
+            claim.write_cell_atomic(root / "retired" / claim.cell_filename(c),
+                                    {**c, "result": {"status": "failed"}})
+
+        out = _queue_cli("expand", str(manifest), "--root", str(root))
+        assert out.returncode == 0, out.stdout + out.stderr
+        assert "added 16" in out.stdout and "refused 4 retired" in out.stdout, out.stdout
+        pending = _states(root)["pending"]
+        assert len(pending) == 16 and not any("-lsat-" in p for p in pending), pending
+
+        dry = _queue_cli("expand", str(manifest), "--root", str(root), "--dry-run")
+        assert dry.stdout.count("RETIRED") == 4, dry.stdout
+
+        again = _queue_cli("expand", str(manifest), "--root", str(root), "--allow-resurrect")
+        assert "added 4" in again.stdout, again.stdout
+        assert len(_states(root)["pending"]) == 20
+
+
+def test_expand_refuses_an_edited_manifest_instead_of_skipping_it():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        root = tmp_path / "dispatch"
+        manifest = tmp_path / "m.json"
+        spec = {"name": "edit", "kind": "shell", "command": "run --budget {b}",
+                "constants": {"b": "1024"}, "grid": {"s": [0, 1]}}
+        manifest.write_text(json.dumps(spec))
+        assert "added 2" in _queue_cli("expand", str(manifest), "--root", str(root)).stdout
+        path = claim.claim_next_cell(root, "w1")
+        claim.complete_cell(root, path, {"status": "ok"})
+
+        # Cosmetic edits (tags, comments, priority) are not conflicts.
+        manifest.write_text(json.dumps({**spec, "tags": ["x"], "_comment": "hi"}))
+        same = _queue_cli("expand", str(manifest), "--root", str(root))
+        assert same.returncode == 0 and "skipped 2" in same.stdout, same.stdout + same.stderr
+
+        manifest.write_text(json.dumps({**spec, "constants": {"b": "4096"}}))
+        refused = _queue_cli("expand", str(manifest), "--root", str(root))
+        assert refused.returncode == 3, refused.stdout + refused.stderr
+        assert "DIFFERENT" in refused.stderr and "edit__s-0" in refused.stderr
+        assert "nothing written" in refused.stderr
+        cells_now = {c["cell_id"]: c for s in ("pending", "done")
+                     for _, c in claim.iter_cells(root, s)}
+        assert all("1024" in c["command"] for c in cells_now.values()), cells_now
+
+        replaced = _queue_cli("expand", str(manifest), "--root", str(root), "--replace")
+        assert "replaced 2" in replaced.stdout, replaced.stdout
+        assert all("4096" in c["command"] for _, c in claim.iter_cells(root, "pending"))
+
+
+# ---------------------------------------------------------------------------
+# D3: a reclaimed claim must not be finished, and its worker must exit cleanly
+# ---------------------------------------------------------------------------
+
+def test_finishing_a_reclaimed_claim_writes_nothing():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = _tmp_root(tmp)
+        claim.add_cell(root, _cell("re"))
+        path = claim.claim_next_cell(root, "slow")
+        hb = claim.touch_heartbeat(root, "slow")
+        old = time.time() - 10_000
+        os.utime(hb, (old, old))
+        assert len(claim.gc_stale_claims(root)) == 1
+
+        for move in (claim.complete_cell, claim.fail_cell,
+                     claim.release_cell, claim.retry_cell):
+            try:
+                move(root, path, {"status": "ok"})
+            except claim.ClaimLost:
+                continue
+            raise AssertionError(f"{move.__name__} finished a claim it no longer holds")
+        assert _states(root) == {"pending": ["re"], "claimed": [], "done": [], "failed": []}
+        assert not list(root.rglob("*.finishing")) and not path.exists()
+
+
+def test_gc_recovers_a_cell_stranded_mid_finish():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = _tmp_root(tmp)
+        claim.add_cell(root, _cell("mid"))
+        path = claim.claim_next_cell(root, "crashed")
+        os.rename(path, path.with_name(path.name + claim.FINISHING_SUFFIX))
+        hb = claim.touch_heartbeat(root, "crashed")
+        old = time.time() - 10_000
+        os.utime(hb, (old, old))
+        assert claim.count_status(root)["total"] == 0  # invisible to scans
+        assert len(claim.gc_stale_claims(root)) == 1
+        assert _states(root)["pending"] == ["mid"]
+
+
+def _wait_for(pred, timeout: float = 30.0, step: float = 0.1) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if pred():
+            return True
+        time.sleep(step)
+    return False
+
+
+def test_worker_exits_cleanly_when_its_claim_is_reclaimed_mid_run():
+    """Reproduces the audit's expA: A's heartbeat looked stale, B reclaimed and
+    re-ran the cell. A used to crash with FileNotFoundError at complete time."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        root = _tmp_root(tmp)
+        claim.add_cell(root, {"cell_id": "contested", "kind": "python_code",
+                              "code": "import time\ntime.sleep(60)\n",
+                              "output_check": ["never.txt"], "max_attempts": 3})
+        started = time.monotonic()
+        proc = subprocess.Popen(
+            [sys.executable, str(WORKER), "--root", str(root),
+             "--project-root", str(tmp_path), "--worker-id", "nodeA-8882_1",
+             "--heartbeat-interval", "0.3"],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        mine = root / "claimed" / "nodeA-8882_1"
+        assert _wait_for(lambda: list(mine.glob("*__contested.json"))), "never claimed"
+        time.sleep(0.5)  # let the cell subprocess start
+        # What GC + a second worker do: claimed/A -> pending -> claimed/B.
+        claimed_file = next(mine.glob("*__contested.json"))
+        os.rename(claimed_file, root / "pending" / claimed_file.name)
+        assert claim.claim_next_cell(root, "nodeB-8883_2") is not None
+
+        out, _ = proc.communicate(timeout=60)
+        assert proc.returncode == worker_mod.EXIT_CLAIM_LOST, out
+        assert time.monotonic() - started < 30, "lost claim not noticed promptly"
+        assert "Traceback" not in out, out
+        assert "LOST CLAIM" in out, out
+        # B's claim is untouched; A wrote no outcome anywhere.
+        assert _states(root) == {"pending": [], "claimed": ["contested"],
+                                 "done": [], "failed": []}, _states(root)
+        assert (root / "claimed" / "nodeB-8883_2" / claimed_file.name).exists()
+        assert claim.load_cell(root / "claimed" / "nodeB-8883_2"
+                               / claimed_file.name).get("attempts", 0) == 0
+
+
+def test_worker_exits_cleanly_when_claim_vanishes_before_it_finishes():
+    """The cell completes, but its claim was reclaimed in the meantime: the
+    worker must neither crash nor file the cell as done."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        root = _tmp_root(tmp)
+        claim.add_cell(root, {
+            "cell_id": "yanked", "kind": "python_code",
+            "code": ("import os, pathlib\n"
+                     "root = pathlib.Path(os.environ['DISPATCH_ROOT'])\n"
+                     "mine = root / 'claimed' / os.environ['DISPATCH_WORKER_ID']\n"
+                     "for p in mine.glob('*__yanked.json'):\n"
+                     "    p.rename(root / 'pending' / p.name)\n")})
+        claim.add_cell(root, _cell("after", priority=200))
+        proc = _run_worker(root, tmp_path, "--worker-id", "nodeA-8882_1")
+        out = proc.stdout + proc.stderr
+        assert proc.returncode == worker_mod.EXIT_CLAIM_LOST, out
+        assert "Traceback" not in out, out
+        # The reclaimed cell is back in pending exactly once; the worker
+        # stopped instead of draining more of the queue.
+        states = _states(root)
+        assert sorted(states["pending"]) == ["after", "yanked"], states
+        assert states["claimed"] == states["done"] == states["failed"] == [], states
+
+
+def test_rerun_of_same_attempt_does_not_clobber_the_earlier_log():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        root = _tmp_root(tmp)
+        claim.add_cell(root, _cell("again", code="print('second run')\n"))
+        (root / "logs" / "again.attempt1.log").write_text("EARLIER RUN\n")
+        old = time.time() - 100
+        os.utime(root / "logs" / "again.attempt1.log", (old, old))
+        _run_worker(root, tmp_path)
+        assert (root / "logs" / "again.attempt1.log").read_text() == "EARLIER RUN\n"
+        _, cell = next(claim.iter_cells(root, "done"))
+        assert cell["result"]["log"] == "logs/again.attempt1.r1.log", cell["result"]
+        shown = _queue_cli("logs", "--root", str(root), "--cell", "again")
+        assert "second run" in shown.stdout, shown.stdout
+
+
+# ---------------------------------------------------------------------------
+# D4: a deterministic (truncation) failure is not retried
+# ---------------------------------------------------------------------------
+
+_TRUNCATING_CAPTURE = (
+    "import json, pathlib, sys\n"
+    "out = pathlib.Path('cap')\n"
+    "out.mkdir(exist_ok=True)\n"
+    "(out / 'meta.shard00.jsonl.quarantined').write_text('{}\\n')\n"
+    "(out / 'TRUNCATION_FAILURE.shard00.json').write_text(json.dumps(\n"
+    "    {'reason': 'thinking-OFF truncation above limit',\n"
+    "     'off_truncation_rate': 0.8, 'max_response_len': 1024}))\n"
+    "sys.exit(1)\n"
+)
+_SHARD00_OUTPUTS = ["cap/meta.shard00.jsonl", "cap/activations_thinking_off.shard00.npz"]
+
+
+def test_truncation_marker_fails_the_cell_terminally():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        root = _tmp_root(tmp)
+        claim.add_cell(root, {"cell_id": "trunc", "kind": "python_code",
+                              "code": _TRUNCATING_CAPTURE,
+                              "output_check": _SHARD00_OUTPUTS, "max_attempts": 3})
+        proc = _run_worker(root, tmp_path)
+        assert proc.returncode == 1, proc.stdout + proc.stderr
+        states = _states(root)
+        assert states["failed"] == ["trunc"] and not states["pending"], states
+        _, cell = next(claim.iter_cells(root, "failed"))
+        result = cell["result"]
+        assert result["terminal"] is True and cell.get("attempts", 0) == 0, cell
+        assert "TERMINAL FAILURE" in result["error"]
+        assert "off_truncation_rate" in result["error"]   # the marker's content
+        assert "TRUNCATION_FAILURE.shard00.json" in result["terminal_markers"][0]
+        assert len(list((root / "logs").glob("trunc.attempt*.log"))) == 1
+
+
+def test_markers_for_other_shards_or_older_runs_do_not_block_retries():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        root = _tmp_root(tmp)
+        cap = tmp_path / "cap"
+        cap.mkdir()
+        (cap / "TRUNCATION_FAILURE.shard01.json").write_text("{}")   # another shard
+        stale = cap / "TRUNCATION_FAILURE.shard00.json"              # an older capture
+        stale.write_text("{}")
+        old = time.time() - 86_400
+        os.utime(stale, (old, old))
+        claim.add_cell(root, {"cell_id": "flaky0", "kind": "python_code",
+                              "code": "raise SystemExit(1)\n",
+                              "output_check": _SHARD00_OUTPUTS, "max_attempts": 2})
+        _run_worker(root, tmp_path)
+        _, cell = next(claim.iter_cells(root, "failed"))
+        assert not cell["result"].get("terminal"), cell["result"]
+        assert len(list((root / "logs").glob("flaky0.attempt*.log"))) == 2
+
+
+def test_cell_requeued_by_an_old_worker_after_truncation_is_not_rerun():
+    """The in-flight case: an old worker ran attempt 1, saw exit 1, and
+    re-queued the cell (max_attempts 2). The new worker must not spend a
+    second run at the same budget."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        root = _tmp_root(tmp)
+        cap = tmp_path / "cap"
+        cap.mkdir()
+        started = worker_mod._now_iso()
+        time.sleep(0.01)
+        (cap / "TRUNCATION_FAILURE.shard00.json").write_text('{"max_response_len": 1024}')
+        # Exactly what old retry_cell leaves in pending/.
+        claim.add_cell(root, {
+            "cell_id": "redo", "kind": "python_code",
+            "code": "open('RAN', 'w').write('x')\n",
+            "output_check": _SHARD00_OUTPUTS, "max_attempts": 2, "attempts": 1,
+            "result": {"status": "failed", "exit_code": 1, "attempt": 1,
+                       "started_at": started, "worker_id": "old_1"}})
+        _run_worker(root, tmp_path)
+        assert not (tmp_path / "RAN").exists(), "re-ran a deterministic failure"
+        _, cell = next(claim.iter_cells(root, "failed"))
+        assert cell["result"]["terminal"] is True
+        assert cell["result"]["previous_result"]["worker_id"] == "old_1"
+
+
+# ---------------------------------------------------------------------------
+# D7: provenance
+# ---------------------------------------------------------------------------
+
+def test_worker_records_the_git_commit_of_each_cell():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = Path(tmp) / "repo"
+        repo.mkdir()
+        git = lambda *a: subprocess.run(  # noqa: E731
+            ["git", "-C", str(repo), *a], check=True, capture_output=True, text=True)
+        git("init", "-q")
+        git("config", "user.email", "t@example.com")
+        git("config", "user.name", "t")
+        (repo / "f.txt").write_text("v1\n")
+        git("add", "f.txt")
+        git("commit", "-q", "-m", "one")
+        head = git("rev-parse", "HEAD").stdout.strip()
+
+        root = claim.init_dispatch_dirs(Path(tmp) / "dispatch")
+        claim.add_cell(root, _cell("prov"))
+        _run_worker(root, repo)
+        _, cell = next(claim.iter_cells(root, "done"))
+        assert cell["result"]["git_commit"] == head, cell["result"]
+        assert cell["result"]["git_dirty"] is False
+        log = (root / cell["result"]["log"]).read_text()
+        assert f"# commit   {head}" in log, log
+
+        (repo / "f.txt").write_text("v2\n")   # tracked edit -> dirty
+        claim.add_cell(root, _cell("prov2"))
+        _run_worker(root, repo)
+        cell2 = next(c for _, c in claim.iter_cells(root, "done") if c["cell_id"] == "prov2")
+        assert cell2["result"]["git_dirty"] is True
+
+
+def test_worker_runs_outside_a_git_checkout():
+    with tempfile.TemporaryDirectory() as tmp:
+        state = worker_mod.git_state(Path(tmp))
+        assert set(state) == {"git_commit", "git_dirty"}
+
+
+# ---------------------------------------------------------------------------
+# watcher (D1, D2, D7)
+# ---------------------------------------------------------------------------
+
+class _FakeClock:
+    """Stands in for the watcher's `time` module: sleep advances the clock,
+    and every heartbeat in `alive` is touched at the new time, the way a
+    running worker's heartbeat thread would."""
+
+    def __init__(self) -> None:
+        self.offset = 0.0
+        self.alive: list[Path] = []
+
+    def monotonic(self) -> float:
+        return self.offset
+
+    def time(self) -> float:
+        return _real_time() + self.offset
+
+    def sleep(self, seconds: float) -> None:
+        self.offset += seconds
+        now = self.time()
+        for hb in self.alive:
+            os.utime(hb, (now, now))
+
+
+def _real_time() -> float:
+    return time.time()
+
+
+def _run_watcher(repo: Path, roots: list[str], alloc_schedule, *,
+                 dispatch_ok=lambda n: True, max_hours: float = 2.0,
+                 clean=(True, "abc12345"), keep_alive=()):
+    """Run watch_and_dispatch.main() against a fake cluster.
+
+    alloc_schedule(poll_number) -> list of allocation node keys. A successful
+    fake dispatch starts a "worker": a fresh heartbeat dir named
+    `<node>_<pid>` in the root, as a real worker's DISPATCH_NODE id would be.
+    """
+    import contextlib
+    import io
+    from scripts import watch_and_dispatch as wd
+
+    clock = _FakeClock()
+    clock.alive.extend(keep_alive)
+    calls: list[tuple[str, str]] = []
+    polls = {"n": 0}
+
+    def fake_allocs():
+        polls["n"] += 1
+        return [{"name": f"jupyter_empire_{n[-4:]}", "node": n}
+                for n in alloc_schedule(polls["n"])]
+
+    def fake_dispatch(root: Path, node: str) -> bool:
+        calls.append((root.name, node))
+        if not dispatch_ok(len(calls)):
+            return False
+        hb_dir = root / "claimed" / f"{node}_{1000 + len(calls)}"
+        hb_dir.mkdir(parents=True, exist_ok=True)
+        (hb_dir / "heartbeat").touch()
+        now = clock.time()
+        os.utime(hb_dir / "heartbeat", (now, now))
+        clock.alive.append(hb_dir / "heartbeat")
+        return True
+
+    saved = {k: getattr(wd, k) for k in
+             ("REPO", "STOP_FILE", "running_allocations", "checkout_is_clean",
+              "sh", "dispatch", "time")}
+    try:
+        wd.REPO = repo
+        wd.STOP_FILE = repo / "shared" / "dispatch" / "STOP_WATCH"
+        wd.running_allocations = fake_allocs
+        wd.checkout_is_clean = lambda: clean
+        wd.sh = lambda cmd, timeout=300: (0, "synced")
+        wd.dispatch = fake_dispatch
+        wd.time = clock
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = wd.main(["--roots", *roots, "--max-hours", str(max_hours),
+                          "--log-file", "shared/logs/w.log"])
+    finally:
+        for k, v in saved.items():
+            setattr(wd, k, v)
+    return rc, calls, buf.getvalue()
+
+
+def _watch_repo(tmp: str, *names: str) -> Path:
+    repo = Path(tmp) / "repo"
+    for name in names:
+        claim.init_dispatch_dirs(repo / "shared" / "dispatch" / name)
+    return repo
+
+
+def test_watcher_serves_a_second_allocation_that_lands_later():
+    """D1: two allocations landing at different polls both get a worker. The
+    old watcher dispatched once and exited, stranding the second root."""
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _watch_repo(tmp, "rootA", "rootB")
+        for name, n in (("rootA", 2), ("rootB", 3)):
+            for i in range(n):
+                claim.add_cell(repo / "shared" / "dispatch" / name, _cell(f"{name}{i}"))
+        schedule = lambda poll: (["alphagpu01-8882"] if poll <= 2  # noqa: E731
+                                 else ["alphagpu01-8882", "alphagpu02-8883"])
+        rc, calls, out = _run_watcher(
+            repo, ["shared/dispatch/rootA", "shared/dispatch/rootB"], schedule)
+        assert rc == 0, out
+        # The first node is never reused for the second root.
+        assert calls == [("rootA", "alphagpu01-8882"),
+                         ("rootB", "alphagpu02-8883")], calls
+
+
+def test_watcher_treats_a_dead_workers_claim_as_unserved():
+    """D2: a stale claim used to make the watcher skip the root forever."""
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _watch_repo(tmp, "rootA")
+        root = repo / "shared" / "dispatch" / "rootA"
+        claim.add_cell(root, _cell("held"))
+        claim.claim_next_cell(root, "alphagpu09-8889_4242")
+        hb = claim.touch_heartbeat(root, "alphagpu09-8889_4242")
+        old = time.time() - 10_000
+        os.utime(hb, (old, old))
+        assert claim.count_status(root)["pending"] == 0
+
+        rc, calls, out = _run_watcher(repo, ["shared/dispatch/rootA"],
+                                      lambda poll: ["alphagpu01-8882"])
+        assert rc == 0, out
+        assert calls == [("rootA", "alphagpu01-8882")], (calls, out)
+
+
+def test_watcher_keeps_going_after_a_failed_dispatch_and_respects_live_workers():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _watch_repo(tmp, "busy", "idle")
+        busy = repo / "shared" / "dispatch" / "busy"
+        idle = repo / "shared" / "dispatch" / "idle"
+        claim.add_cell(busy, _cell("b0"))
+        claim.add_cell(busy, _cell("b1"))
+        claim.add_cell(idle, _cell("i0"))
+        # A live worker already serves `busy` from alphagpu01-8882.
+        claim.claim_next_cell(busy, "alphagpu01-8882_77")
+        hb = claim.touch_heartbeat(busy, "alphagpu01-8882_77")
+
+        rc, calls, out = _run_watcher(
+            repo, ["shared/dispatch/busy", "shared/dispatch/idle"],
+            lambda poll: ["alphagpu01-8882", "alphagpu02-8883"],
+            dispatch_ok=lambda n: n > 1,   # the first dispatch fails
+            keep_alive=[hb])
+        assert rc == 0, out
+        assert calls == [("idle", "alphagpu02-8883"), ("idle", "alphagpu02-8883")], calls
+
+
+def test_watcher_waits_out_a_dirty_checkout_and_gives_up_at_the_deadline():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _watch_repo(tmp, "rootA")
+        claim.add_cell(repo / "shared" / "dispatch" / "rootA", _cell("x"))
+        rc, calls, out = _run_watcher(repo, ["shared/dispatch/rootA"],
+                                      lambda poll: ["alphagpu01-8882"],
+                                      clean=(False, "HEAD != upstream"), max_hours=0.2)
+        assert rc == 5 and calls == [], (rc, calls)
+        assert "HEAD != upstream" in out
+
+
+def test_checkout_check_fetches_before_comparing_with_upstream():
+    """D7: comparing HEAD to a never-refreshed @{u} missed every push."""
+    from scripts import watch_and_dispatch as wd
+    seen: list[list[str]] = []
+
+    def fake_sh(cmd, timeout=300):
+        seen.append(cmd)
+        if cmd[:2] == ["git", "status"]:
+            return 0, ""
+        if cmd[:2] == ["git", "fetch"]:
+            return 0, ""
+        if cmd == ["git", "rev-parse", "HEAD"]:
+            return 0, "a" * 40
+        if cmd == ["git", "rev-parse", "@{u}"]:
+            return 0, "b" * 40
+        raise AssertionError(cmd)
+
+    saved, was_disabled = wd.sh, wd.logger.disabled
+    try:
+        wd.sh = fake_sh
+        wd.logger.disabled = True
+        ok, detail = wd.checkout_is_clean()
+        assert not ok and "upstream bbbbbbbb" in detail, detail
+        order = [c[:2] for c in seen]
+        assert order.index(["git", "fetch"]) < order.index(["git", "rev-parse"]), order
+
+        # A failed fetch is not fatal; it is reported.
+        seen.clear()
+        wd.sh = lambda cmd, timeout=300: ((1, "no network") if cmd[:2] == ["git", "fetch"]
+                                          else fake_sh(cmd, timeout))
+        ok, detail = wd.checkout_is_clean()
+        assert "git fetch failed" in detail, detail
+    finally:
+        wd.sh, wd.logger.disabled = saved, was_disabled
+
+
+# ---------------------------------------------------------------------------
+# gpu_dispatch kill
+# ---------------------------------------------------------------------------
+
+def test_gpu_dispatch_kill_signals_the_whole_process_group():
+    """The recorded pid is the `bash -c "cd ... && cmd"` wrapper. Killing only
+    it orphaned the worker; the kill code must reach the whole group."""
+    from scripts import gpu_dispatch as gd
+    with tempfile.TemporaryDirectory() as tmp:
+        pidfile = Path(tmp) / "child.pid"
+        inner = (f"cd {tmp} && DISPATCH_NODE=x {sys.executable} -c "
+                 f"\"import os, time; open('{pidfile}', 'w').write(str(os.getpid())); "
+                 f"time.sleep(60)\"")
+        wrapper = subprocess.Popen(["bash", "-c", inner], start_new_session=True)
+        try:
+            assert _wait_for(lambda: pidfile.exists() and pidfile.read_text()), "no child"
+            child = int(pidfile.read_text())
+            assert child != wrapper.pid, "bash exec'd the command; test is moot"
+
+            out = io_capture(lambda: exec(gd.kill_code(wrapper.pid), {}))
+            assert f"ok pgid={wrapper.pid}" in out, out
+            wrapper.wait(timeout=10)
+
+            def child_gone() -> bool:
+                try:
+                    os.kill(child, 0)
+                except ProcessLookupError:
+                    return True
+                return False
+            assert _wait_for(child_gone, timeout=10), "worker survived the kill"
+            assert "gone" in io_capture(lambda: exec(gd.kill_code(wrapper.pid), {}))
+        finally:
+            if wrapper.poll() is None:
+                os.killpg(wrapper.pid, 9)
+
+
+def io_capture(fn) -> str:
+    import contextlib
+    import io
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        fn()
+    return buf.getvalue()
+
+
 # ---------------------------------------------------------------------------
 
 def _main() -> int:

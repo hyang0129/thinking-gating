@@ -12,14 +12,33 @@ Layout, anchored at the dispatch root:
     claimed/<worker_id>/heartbeat              # mtime touched while alive
     done/<prio>__<cell_id>.json                # cell + "result" block
     failed/<prio>__<cell_id>.json              # cell + "result" block
-    logs/<cell_id>.attempt<N>.log              # stdout+stderr of each attempt
+    retired/**/<prio>__<cell_id>.json          # operator-retired; never re-expanded
+    logs/<cell_id>.attempt<N>[.rK].log         # stdout+stderr of each attempt
     results/<cell_id>.json                     # return value of `call` cells
 
 Every state transition is write-temp-then-rename, so a worker killed mid-move
 leaves either the old state or the new one — never a half-written cell. A cell
 stranded in `claimed/` by a dead worker is reclaimed by `gc_stale_claims()`
-once its heartbeat goes stale, and re-run; cells are expected to be idempotent
-(see `output_check` in cells.py, which also makes re-runs cheap).
+once its heartbeat goes stale, and re-run.
+
+**Cells can run more than once, so they must be idempotent.** Staleness is
+judged by heartbeat mtime, so a worker that is alive but whose heartbeat
+stalled (an NFS hiccup, clock skew between hosts larger than the stale window,
+or an operator running `queue.py gc --stale-seconds` with a small value) can
+have its cell reclaimed and re-run by another worker while it is still running
+it. The original worker detects this (its claim file is gone and the cell is
+found elsewhere), kills its own copy, and exits without touching the cell (see
+worker.py). Between the reclaim and that detection, at most one heartbeat
+interval, both copies run. `output_check` makes any later re-run a skip.
+
+Finishing transitions (`complete_cell`, `fail_cell`, `release_cell`,
+`retry_cell`) first rename the claim to `<name>.finishing` in the worker's own
+claim dir. That rename is the ownership test: if the claim was reclaimed it
+fails with `ClaimLost` and nothing is written. The old order (write the result
+into the claim file, then rename) could recreate a reclaimed cell in claimed/
+and file it as done while another worker re-ran it. `.finishing` files do not
+match `*__*.json`, so older workers' GC and scans ignore them; this module's GC
+returns any it finds in a stale worker dir to pending.
 
 Stdlib only, and pure functions over the filesystem — no shared in-memory
 state. That is what lets a worker, a CLI, and a test all drive the same queue.
@@ -27,6 +46,7 @@ state. That is what lets a worker, a CLI, and a test all drive the same queue.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -37,6 +57,17 @@ from typing import Iterator, Optional
 
 STATES = ("pending", "claimed", "done", "failed")
 SUBDIRS = STATES + ("logs", "results")
+# Not a queue state. An operator moves cells here by hand to take them out of
+# circulation for good (e.g. v3 shards at a budget known to truncate).
+# find_cell scans it so re-expanding a manifest cannot quietly resurrect them.
+RETIRED_DIR = "retired"
+FINISHING_SUFFIX = ".finishing"
+
+# The fields that decide what a cell *does*. Same id + same fingerprint is the
+# same work. Same id + different fingerprint is an edited manifest, which must
+# be neither silently dropped nor silently swapped in.
+FINGERPRINT_FIELDS = ("kind", "script", "args", "code", "target", "kwargs",
+                      "command", "env", "cwd", "output_check")
 
 # Workers touch their heartbeat every HEARTBEAT_INTERVAL seconds; a claim whose
 # heartbeat is older than this is treated as abandoned and returned to pending.
@@ -49,6 +80,14 @@ _FILENAME_RE = re.compile(r"^(?P<prio>\d{3})__(?P<cell_id>.+)\.json$")
 
 class QueueError(RuntimeError):
     """Raised for malformed cell ids, filenames, or impossible transitions."""
+
+
+class ClaimLost(FileNotFoundError):
+    """The claim file vanished: the cell was reclaimed and now belongs elsewhere.
+
+    Subclasses FileNotFoundError so callers that caught the bare rename error
+    keep working.
+    """
 
 
 # ---------------------------------------------------------------------------
@@ -120,8 +159,23 @@ def write_cell_atomic(path: Path, cell: dict) -> Path:
     return path
 
 
+def cell_fingerprint(cell: dict) -> str:
+    """Stable hash of what a cell runs (FINGERPRINT_FIELDS), ignoring bookkeeping.
+
+    Computed from the cell's content and never stored, so it works on cells
+    written by any version of this code.
+    """
+    payload = {k: cell.get(k) for k in FINGERPRINT_FIELDS if cell.get(k) is not None}
+    blob = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
 def find_cell(root: Path, cell_id: str) -> Optional[tuple[str, Path]]:
-    """Locate a cell in any state. Returns (state, path) or None."""
+    """Locate a cell in any state, or in retired/. Returns (state, path) or None.
+
+    Live states win over retired/, so a cell deliberately resurrected with
+    `allow_resurrect` is found in pending/ rather than in retired/.
+    """
     root = Path(root)
     for state in ("pending", "done", "failed"):
         for path in (root / state).glob(f"*__{cell_id}.json"):
@@ -135,6 +189,11 @@ def find_cell(root: Path, cell_id: str) -> Optional[tuple[str, Path]]:
             for path in worker_dir.glob(f"*__{cell_id}.json"):
                 if cell_id_from_path(path) == cell_id:
                     return "claimed", path
+    retired = root / RETIRED_DIR
+    if retired.is_dir():
+        for path in sorted(retired.rglob(f"*__{cell_id}.json")):
+            if cell_id_from_path(path) == cell_id:
+                return RETIRED_DIR, path
     return None
 
 
@@ -142,28 +201,64 @@ def find_cell(root: Path, cell_id: str) -> Optional[tuple[str, Path]]:
 # Queue operations
 # ---------------------------------------------------------------------------
 
-def add_cell(root: Path, cell: dict, *, replace: bool = False) -> tuple[Path, str]:
-    """Enqueue one cell. Returns (path, "added" | "skipped" | "replaced").
+def plan_add(
+    root: Path, cell: dict, *, replace: bool = False, allow_resurrect: bool = False,
+) -> tuple[str, Optional[str], Optional[Path]]:
+    """Decide what `add_cell` would do, without writing anything.
 
-    A cell already present in *any* state is skipped unless `replace=True`, so
-    re-expanding a manifest to append new work never re-runs finished cells and
-    never steals a cell out from under a running worker.
+    Returns (action, existing_state, existing_path). action is one of:
+
+      "add"       no cell with this id anywhere
+      "skip"      same id and same fingerprint, already queued/running/finished
+      "retired"   the id sits in retired/ and allow_resurrect is off
+      "resurrect" the id sits in retired/ and allow_resurrect is on
+      "conflict"  same id, DIFFERENT fingerprint, replace off: the manifest was
+                  edited, and adding nothing is the safe default
+      "replace"   replace is on and the existing cell is not claimed
+      "claimed"   replace is on but a worker holds the cell
     """
-    root = init_dispatch_dirs(Path(root))
     cell_id = validate_cell_id(cell.get("cell_id", ""))
     existing = find_cell(root, cell_id)
-    if existing is not None:
-        state, path = existing
-        if not replace:
-            return path, "skipped"
-        if state == "claimed":
-            raise QueueError(
-                f"cell {cell_id!r} is claimed by a live worker; refusing to replace"
-            )
+    if existing is None:
+        return "add", None, None
+    state, path = existing
+    if state == RETIRED_DIR:
+        return ("resurrect" if allow_resurrect else "retired"), state, path
+    if replace:
+        return ("claimed" if state == "claimed" else "replace"), state, path
+    try:
+        same = cell_fingerprint(load_cell(path)) == cell_fingerprint(cell)
+    except (OSError, ValueError):
+        same = True  # moved under us (claimed -> done); fall back to identity by id
+    return ("skip" if same else "conflict"), state, path
+
+
+def add_cell(
+    root: Path, cell: dict, *, replace: bool = False, allow_resurrect: bool = False,
+) -> tuple[Path, str]:
+    """Enqueue one cell. Returns (path, action), where action is one of
+    "added" | "skipped" | "replaced" | "retired" | "conflict".
+
+    A cell already present in *any* state, retired/ included, is not re-added.
+    Re-expanding a manifest therefore never re-runs finished cells, never
+    steals a cell from a running worker, and never resurrects retired work
+    (`allow_resurrect=True` overrides the last). A same-id cell whose content
+    differs is reported as "conflict" and left alone unless `replace=True`.
+    """
+    root = init_dispatch_dirs(Path(root))
+    action, _state, path = plan_add(root, cell, replace=replace,
+                                    allow_resurrect=allow_resurrect)
+    if action in ("skip", "retired", "conflict"):
+        return path, ("skipped" if action == "skip" else action)
+    if action == "claimed":
+        raise QueueError(
+            f"cell {cell['cell_id']!r} is claimed by a live worker; refusing to replace"
+        )
+    if action == "replace":
         path.unlink()
     target = root / "pending" / cell_filename(cell)
     write_cell_atomic(target, cell)
-    return target, "replaced" if existing else "added"
+    return target, ("replaced" if action == "replace" else "added")
 
 
 def claim_next_cell(root: Path, worker_id: str) -> Optional[Path]:
@@ -190,21 +285,46 @@ def claim_next_cell(root: Path, worker_id: str) -> Optional[Path]:
     return None
 
 
-def _move_with_result(cell_path: Path, dest_dir: Path, result: Optional[dict]) -> Path:
+def _grab_claim(cell_path: Path) -> Path:
+    """Take exclusive hold of a claimed cell before finishing it.
+
+    Renames `<name>` to `<name>.finishing` in the same directory. If the claim
+    is gone (reclaimed by GC and possibly re-claimed by another worker), this
+    raises ClaimLost and nothing has been written anywhere.
+    """
+    cell_path = Path(cell_path)
+    held = cell_path.with_name(cell_path.name + FINISHING_SUFFIX)
+    try:
+        os.rename(cell_path, held)
+    except FileNotFoundError as exc:
+        raise ClaimLost(
+            f"claim {cell_path} is gone: the cell was reclaimed (stale "
+            "heartbeat) and is no longer this worker's to finish"
+        ) from exc
+    return held
+
+
+def _move_with_result(cell_path: Path, dest_dir: Path, result: Optional[dict],
+                      *, bump_attempts: bool = False) -> Path:
     """Attach `result` to the cell, then move it to `dest_dir` atomically.
 
-    The result is written into the claimed file first and only then renamed, so
-    an observer of the destination directory never sees a cell without its
-    outcome recorded.
+    Ownership is taken first (`_grab_claim`), then the result is written into
+    the held file, then the file is renamed into place. An observer of the
+    destination never sees a cell without its outcome, and a worker that lost
+    its claim writes nothing.
     """
     cell_path = Path(cell_path)
     dest_dir.mkdir(parents=True, exist_ok=True)
-    if result is not None:
-        cell = load_cell(cell_path)
-        cell["result"] = result
-        write_cell_atomic(cell_path, cell)
+    held = _grab_claim(cell_path)
+    if result is not None or bump_attempts:
+        cell = load_cell(held)
+        if bump_attempts:
+            cell["attempts"] = int(cell.get("attempts", 0)) + 1
+        if result is not None:
+            cell["result"] = result
+        write_cell_atomic(held, cell)
     target = dest_dir / cell_path.name
-    os.replace(cell_path, target)
+    os.replace(held, target)
     return target
 
 
@@ -229,16 +349,8 @@ def release_cell(root: Path, cell_path: Path, result: Optional[dict] = None) -> 
 
 def retry_cell(root: Path, cell_path: Path, result: Optional[dict] = None) -> Path:
     """claimed → pending with `attempts` incremented (transient-failure path)."""
-    cell_path = Path(cell_path)
-    cell = load_cell(cell_path)
-    cell["attempts"] = int(cell.get("attempts", 0)) + 1
-    if result is not None:
-        cell["result"] = result
-    write_cell_atomic(cell_path, cell)
-    target = Path(root) / "pending" / cell_path.name
-    target.parent.mkdir(parents=True, exist_ok=True)
-    os.replace(cell_path, target)
-    return target
+    return _move_with_result(cell_path, Path(root) / "pending", result,
+                             bump_attempts=True)
 
 
 def requeue(root: Path, path: Path, *, reset_attempts: bool = True) -> Path:
@@ -310,6 +422,14 @@ def gc_stale_claims(
                 reclaimed.append(target)
             except OSError:
                 continue
+        # A worker that died mid-finish leaves `<name>.finishing` behind.
+        for cell in sorted(worker_dir.glob("*__*.json" + FINISHING_SUFFIX)):
+            target = pending / cell.name[: -len(FINISHING_SUFFIX)]
+            try:
+                os.rename(cell, target)
+                reclaimed.append(target)
+            except OSError:
+                continue
         try:
             if hb.exists():
                 hb.unlink()
@@ -317,6 +437,11 @@ def gc_stale_claims(
         except OSError:
             pass  # another worker may have just claimed into this dir
     return reclaimed
+
+
+def node_of_worker(worker_id: str) -> str:
+    """`alphagpu17-8882_12345` → `alphagpu17-8882`, the DISPATCH_NODE part."""
+    return worker_id.rsplit("_", 1)[0] if "_" in worker_id else worker_id
 
 
 def live_workers(

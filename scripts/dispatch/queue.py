@@ -50,6 +50,60 @@ def _default_root_for(manifest: dict) -> Path:
 # Commands
 # ---------------------------------------------------------------------------
 
+def _refuse_conflicts(root: Path, cells: list[dict], args: argparse.Namespace) -> bool:
+    """Preflight: refuse, before writing anything, if an id would change meaning.
+
+    Cell ids do not encode args. A manifest edited after it was expanded (a
+    new budget, a new batch size) yields the same ids with different content,
+    and the old behaviour skipped them silently, so the edit never ran. That
+    is refused here unless --replace is given.
+    """
+    if not root.is_dir():
+        return False
+    conflicts = []
+    for cell in cells:
+        action, state, path = claim.plan_add(
+            root, cell, replace=args.replace,
+            allow_resurrect=getattr(args, "allow_resurrect", False))
+        if action == "conflict":
+            conflicts.append((cell["cell_id"], state, path))
+    if not conflicts:
+        return False
+    print(f"error: {len(conflicts)} cell id(s) already exist with DIFFERENT "
+          "content (args/script/env/output_check changed since they were queued):",
+          file=sys.stderr)
+    for cell_id, state, path in conflicts[:20]:
+        print(f"  {cell_id}  [{state}]  {path}", file=sys.stderr)
+    if len(conflicts) > 20:
+        print(f"  ... and {len(conflicts) - 20} more", file=sys.stderr)
+    print("nothing written. Use a new manifest name (new root) or set "
+          '"cell_id_hash": true for new work; --replace overwrites the existing '
+          "non-claimed cells.", file=sys.stderr)
+    return True
+
+
+def _add_all(root: Path, cells: list[dict], args: argparse.Namespace) -> dict:
+    tally = {"added": 0, "skipped": 0, "replaced": 0, "retired": 0, "conflict": 0,
+             "retired_ids": []}
+    for cell in cells:
+        _, action = claim.add_cell(
+            root, cell, replace=args.replace,
+            allow_resurrect=getattr(args, "allow_resurrect", False))
+        tally[action] += 1
+        if action == "retired":
+            tally["retired_ids"].append(cell["cell_id"])
+    return tally
+
+
+def _report_retired(tally: dict) -> None:
+    if not tally["retired"]:
+        return
+    print(f"refused {tally['retired']} retired cell(s), present in "
+          f"<root>/{claim.RETIRED_DIR}/ (pass --allow-resurrect to re-queue them):")
+    for cell_id in tally["retired_ids"]:
+        print(f"  {cell_id}")
+
+
 def cmd_expand(args: argparse.Namespace) -> int:
     manifest = cells_mod.load_manifest(Path(args.manifest))
     cells = cells_mod.expand_manifest(manifest)
@@ -62,20 +116,29 @@ def cmd_expand(args: argparse.Namespace) -> int:
 
     if args.dry_run:
         for cell in cells:
-            print(f"  {cell['cell_id']}")
+            note = ""
+            if root.is_dir():
+                action, state, _ = claim.plan_add(
+                    root, cell, replace=args.replace,
+                    allow_resurrect=args.allow_resurrect)
+                note = {"skip": f"  [exists: {state}]", "add": "",
+                        "retired": "  [RETIRED: would be refused]",
+                        "conflict": f"  [CONFLICT: differs from {state} copy]",
+                        }.get(action, f"  [{action}]")
+            print(f"  {cell['cell_id']}{note}")
             print(f"      {cells_mod.describe_command(cell)}")
             for path in cell.get("output_check", []) or []:
                 print(f"      check: {path}")
         print("\n(dry run — nothing written)")
         return 0
 
+    if _refuse_conflicts(root, cells, args):
+        return 3
     claim.init_dispatch_dirs(root)
-    tally = {"added": 0, "skipped": 0, "replaced": 0}
-    for cell in cells:
-        _, action = claim.add_cell(root, cell, replace=args.replace)
-        tally[action] += 1
+    tally = _add_all(root, cells, args)
     print(f"added {tally['added']}, replaced {tally['replaced']}, "
           f"skipped {tally['skipped']} (already queued or finished)")
+    _report_retired(tally)
     print(f"\nnext: dispatch a worker with\n"
           f"  python scripts/gpu_dispatch.py run --desc {manifest['name']!r} \\\n"
           f"      .venv/bin/python scripts/dispatch/worker.py --root {root}")
@@ -94,13 +157,14 @@ def cmd_add(args: argparse.Namespace) -> int:
         cells = [json.loads(line) for line in raw.splitlines() if line.strip()]
 
     root = _resolve_root(args.root)
-    claim.init_dispatch_dirs(root)
-    tally = {"added": 0, "skipped": 0, "replaced": 0}
     for cell in cells:
         cells_mod.validate_cell(cell)
-        _, action = claim.add_cell(root, cell, replace=args.replace)
-        tally[action] += 1
+    if _refuse_conflicts(root, cells, args):
+        return 3
+    claim.init_dispatch_dirs(root)
+    tally = _add_all(root, cells, args)
     print(f"added {tally['added']}, replaced {tally['replaced']}, skipped {tally['skipped']}")
+    _report_retired(tally)
     return 0
 
 
@@ -183,7 +247,10 @@ def cmd_list(args: argparse.Namespace) -> int:
 
 def cmd_logs(args: argparse.Namespace) -> int:
     root = _resolve_root(args.root)
-    logs = sorted((root / "logs").glob(f"{args.cell}.attempt*.log"))
+    # Newest first by mtime: lexicographic order puts attempt10 before attempt2,
+    # and a re-run of the same attempt writes `.attempt<N>.r<K>.log`.
+    logs = sorted((root / "logs").glob(f"{args.cell}.attempt*.log"),
+                  key=lambda p: (p.stat().st_mtime, p.name))
     if not logs:
         print(f"no logs for cell {args.cell!r} under {root / 'logs'}", file=sys.stderr)
         return 1
@@ -260,6 +327,9 @@ def build_parser() -> argparse.ArgumentParser:
     e.add_argument("--limit", type=int, default=0, help="only queue the first N cells")
     e.add_argument("--replace", action="store_true",
                    help="overwrite cells that already exist (not claimed ones)")
+    e.add_argument("--allow-resurrect", action="store_true",
+                   help=f"re-queue cells whose id sits in <root>/{claim.RETIRED_DIR}/ "
+                        "(refused by default)")
     e.add_argument("--dry-run", action="store_true", help="print cells, write nothing")
     e.set_defaults(func=cmd_expand)
 
@@ -267,6 +337,8 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--root", required=True)
     a.add_argument("--file", default="-", help="JSON list, JSONL, or '-' for stdin")
     a.add_argument("--replace", action="store_true")
+    a.add_argument("--allow-resurrect", action="store_true",
+                   help=f"re-queue cells whose id sits in <root>/{claim.RETIRED_DIR}/")
     a.set_defaults(func=cmd_add)
 
     s = sub.add_parser("status", help="counts, live workers, and failure summary")
