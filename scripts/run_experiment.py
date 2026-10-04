@@ -13,7 +13,10 @@ at one layer, captured before any token is generated. Training on thinking-on
 activations would be circular — you cannot route a query using a state that
 only exists after you already paid for thinking.
 
-Reported per seed on a held-out test split, then aggregated as mean ± 95% CI:
+Reported per seed on a held-out test split, then aggregated over seeds. The
+interval to quote is `aggregate.test_auroc_bootstrap.ci` (percentile
+bootstrap over test rows); `aggregate.test_auroc.ci` is seed spread and too
+narrow.
 
     AUROC / AUPRC          how well the probe separates helped from not_helped
     AUROC by difficulty    the confound check. If the probe is really a
@@ -24,10 +27,20 @@ Reported per seed on a held-out test split, then aggregated as mean ± 95% CI:
                            thinking only when the probe says so, and see what
                            task accuracy you end up with. The decision
                            threshold is chosen on validation, never on test.
+                           Reported beside random escalation at the same rate
+                           and the oracle at the same rate.
+    routed curve / nAUC    the exact routed-accuracy curve over every
+                           threshold (ties averaged, so it is deterministic)
+                           and its area normalised so 0 = random escalation
+                           and 1 = oracle, over 0-50% and 0-100% escalation.
 
 Against three baselines: never think, always think, and the oracle that knows
 the right answer per query. A probe is only interesting strictly between
 `max(never, always)` and `oracle`.
+
+Also writes `predictions.json` (per-row val/test scores by sample_id, every
+seed) so compare_baselines.py can run a paired bootstrap against a baseline on
+identical rows. The statistics themselves live in utils/metrics.py.
 """
 
 from __future__ import annotations
@@ -126,136 +139,20 @@ class Standardizer:
 
 
 # ---------------------------------------------------------------------------
-# Metrics
+# Metrics — implemented once in utils/metrics.py. Re-exported here because
+# other scripts (and older notebooks) import them from run_experiment.
 # ---------------------------------------------------------------------------
 
-def auroc(y_true: np.ndarray, scores: np.ndarray) -> float:
-    """Rank-based AUROC with tie handling; nan when only one class is present."""
-    y_true = np.asarray(y_true).astype(int)
-    pos, neg = int(y_true.sum()), int((1 - y_true).sum())
-    if pos == 0 or neg == 0:
-        return float("nan")
-    order = np.argsort(scores, kind="mergesort")
-    ranks = np.empty(len(scores), dtype=np.float64)
-    sorted_scores = np.asarray(scores)[order]
-    i = 0
-    while i < len(scores):
-        j = i
-        while j + 1 < len(scores) and sorted_scores[j + 1] == sorted_scores[i]:
-            j += 1
-        ranks[order[i:j + 1]] = 0.5 * (i + j) + 1.0  # average rank across ties
-        i = j + 1
-    return (ranks[y_true == 1].sum() - pos * (pos + 1) / 2) / (pos * neg)
+from utils.metrics import (  # noqa: E402,F401
+    auprc, auroc, best_threshold, bootstrap_auroc_ci, cost_accuracy_curve,
+    curve_accuracy_at, mean_bootstrap_ci, mean_ci, min_fraction_for_accuracy,
+    oracle_curve, random_accuracy_at, routed_accuracy_curve, routed_nauc,
+    routing_metrics,
+)
 
-
-def auprc(y_true: np.ndarray, scores: np.ndarray) -> float:
-    """Average precision. The base rate is the trivial floor to compare against."""
-    y_true = np.asarray(y_true).astype(int)
-    if y_true.sum() == 0:
-        return float("nan")
-    order = np.argsort(-np.asarray(scores), kind="mergesort")
-    y_sorted = y_true[order]
-    tp = np.cumsum(y_sorted)
-    precision = tp / np.arange(1, len(y_sorted) + 1)
-    return float((precision * y_sorted).sum() / y_sorted.sum())
-
-
-def mean_ci(values: list[float], confidence: float = 0.95) -> dict:
-    """Mean with a normal-approximation CI; nans dropped."""
-    vals = [v for v in values if not math.isnan(v)]
-    if not vals:
-        return {"mean": float("nan"), "ci": [float("nan")] * 2, "n": 0}
-    mean = sum(vals) / len(vals)
-    if len(vals) < 2:
-        return {"mean": mean, "ci": [mean, mean], "n": len(vals)}
-    sd = math.sqrt(sum((v - mean) ** 2 for v in vals) / (len(vals) - 1))
-    half = 1.96 * sd / math.sqrt(len(vals))
-    return {"mean": mean, "ci": [mean - half, mean + half],
-            "sd": sd, "n": len(vals)}
-
-
-def bootstrap_auroc_ci(y, scores, n_boot: int = 2000, seed: int = 0,
-                       confidence: float = 0.95) -> dict:
-    """Percentile-bootstrap CI for AUROC over *test examples*.
-
-    This is the interval that answers "how well does this probe do on the
-    population", and it is the one to quote. mean_ci over seeds answers a
-    different and much narrower question -- how much the number moves when you
-    reshuffle the split of a *fixed* sample -- so on a few hundred test points
-    it understates uncertainty severalfold. Report both, labelled.
-    """
-    y = np.asarray(y)
-    scores = np.asarray(scores)
-    n = len(y)
-    if n < 2 or len(np.unique(y)) < 2:
-        return {"ci": [float("nan")] * 2, "n_boot": 0}
-    rng = np.random.default_rng(seed)
-    stats = []
-    for _ in range(n_boot):
-        idx = rng.integers(0, n, n)
-        if len(np.unique(y[idx])) < 2:
-            continue          # a resample with one class has no AUROC
-        stats.append(auroc(y[idx], scores[idx]))
-    if not stats:
-        return {"ci": [float("nan")] * 2, "n_boot": 0}
-    lo, hi = np.percentile(stats, [(1 - confidence) / 2 * 100,
-                                   (1 + confidence) / 2 * 100])
-    return {"ci": [float(lo), float(hi)], "n_boot": len(stats)}
-
-
-def mean_bootstrap_ci(per_seed_cis: list[dict]) -> dict:
-    """Average the per-seed bootstrap intervals into one reported interval."""
-    los = [c["ci"][0] for c in per_seed_cis if not math.isnan(c["ci"][0])]
-    his = [c["ci"][1] for c in per_seed_cis if not math.isnan(c["ci"][1])]
-    if not los:
-        return {"ci": [float("nan")] * 2, "n_seeds": 0}
-    return {"ci": [sum(los) / len(los), sum(his) / len(his)],
-            "n_seeds": len(los)}
-
-
-def routing_metrics(correct_off, correct_on, scores, threshold: float) -> dict:
-    """Task accuracy if thinking is used only where the probe says to."""
-    think = np.asarray(scores) >= threshold
-    routed = np.where(think, np.asarray(correct_on), np.asarray(correct_off))
-    return {
-        "threshold": float(threshold),
-        "routed_accuracy": float(routed.mean()),
-        "fraction_routed_to_thinking": float(think.mean()),
-    }
-
-
-def cost_accuracy_curve(correct_off, correct_on, scores, n_points: int = 21) -> list[dict]:
-    """Accuracy as a function of how much of the workload gets to think.
-
-    On these tasks "always think" is already close to oracle accuracy, so the
-    question worth asking is not how much accuracy routing gains but how much
-    thinking it can skip while holding accuracy. Sweeping the routing budget
-    answers that directly: route the top-k highest-scoring queries to thinking
-    and read accuracy off the curve.
-    """
-    scores = np.asarray(scores)
-    order = np.argsort(-scores)  # most likely to need thinking first
-    n = len(scores)
-    curve = []
-    for i in range(n_points):
-        k = round(i * n / (n_points - 1))
-        think = np.zeros(n, dtype=bool)
-        think[order[:k]] = True
-        routed = np.where(think, np.asarray(correct_on), np.asarray(correct_off))
-        curve.append({"fraction_routed": k / n if n else 0.0,
-                      "accuracy": float(routed.mean())})
-    return curve
-
-
-def best_threshold(correct_off, correct_on, scores) -> float:
-    """Threshold maximizing routed accuracy — chosen on validation only."""
-    candidates = np.unique(np.concatenate([[0.0, 1.0], np.asarray(scores)]))
-    best, best_acc = 0.5, -1.0
-    for t in candidates:
-        acc = routing_metrics(correct_off, correct_on, scores, t)["routed_accuracy"]
-        if acc > best_acc:
-            best, best_acc = float(t), acc
-    return best
+# Escalation ranges the routed-accuracy area is reported over. [0, 0.5] is
+# the pre-registered G2 range (paper/proposal_system_one_gating.md §3).
+NAUC_RANGES = {"escalation_0_50": (0.0, 0.5), "escalation_0_100": (0.0, 1.0)}
 
 
 # ---------------------------------------------------------------------------
@@ -372,18 +269,38 @@ def evaluate_split(scores, y, correct_off, correct_on, difficulties, threshold) 
             "auroc_bootstrap": bootstrap_auroc_ci(y[mask], np.asarray(scores)[mask]),
         }
     out["by_difficulty"] = by_difficulty
+
+    # References at the probe's realised escalation rate: what escalating the
+    # same fraction at random, or by oracle, would have scored.
+    curve = routed_accuracy_curve(correct_off, correct_on, scores)
+    oracle = oracle_curve(correct_off, correct_on)
+    rate = out["fraction_routed_to_thinking"]
+    out["random_at_matched_rate"] = float(random_accuracy_at(correct_off, correct_on, rate))
+    out["oracle_at_matched_rate"] = float(curve_accuracy_at(oracle, rate))
+
+    # The exact curve (its vertices, one per distinct score; linear between
+    # them) and its normalised area. cost_curve is the old 21-point grid,
+    # kept so existing readers of this JSON keep working.
+    out["routed_curve"] = {
+        "fraction": [round(float(v), 6) for v in curve["vertex_fraction"]],
+        "accuracy": [round(float(v), 6) for v in curve["vertex_accuracy"]],
+    }
+    out["routed_nauc"] = {name: routed_nauc(correct_off, correct_on, scores, lo, hi)
+                          for name, (lo, hi) in NAUC_RANGES.items()}
     out["cost_curve"] = cost_accuracy_curve(correct_off, correct_on, scores)
 
     # The headline cost number: the smallest routed fraction whose accuracy
     # still matches always-think, i.e. how much thinking is simply wasted.
+    # Read off the exact curve, not the grid.
     always = float(np.mean(correct_on))
-    reachable = [pt for pt in out["cost_curve"] if pt["accuracy"] >= always - 1e-9]
-    out["min_routed_for_always_think_accuracy"] = (
-        min(pt["fraction_routed"] for pt in reachable) if reachable else 1.0)
+    out["min_routed_for_always_think_accuracy"] = min_fraction_for_accuracy(curve, always)
     return out
 
 
-def run_seed(args, X, y, correct_off, correct_on, difficulties, seed: int) -> tuple[dict, dict]:
+def run_seed(args, X, y, correct_off, correct_on, difficulties, seed: int,
+             return_predictions: bool = False):
+    """Train one seed. Returns (metrics, checkpoint), plus the per-row
+    validation/test predictions when ``return_predictions`` is set."""
     train_idx, val_idx, test_idx = stratified_split(y, seed)
     scaler = Standardizer().fit(X[train_idx])
     Xtr, Xva, Xte = (scaler.transform(X[i]) for i in (train_idx, val_idx, test_idx))
@@ -417,13 +334,49 @@ def run_seed(args, X, y, correct_off, correct_on, difficulties, seed: int) -> tu
         "threshold": threshold, "scaler": scaler.state_dict(),
         "input_dim": int(X.shape[1]),
     }
+    if getattr(args, "layers", None):
+        # Concatenated-layer probe: eval_transfer must rebuild the same
+        # features, so record which layers, not just the unused --layer.
+        checkpoint["layers"] = list(args.layers)
     if args.method == "mlp":
         checkpoint["state_dict"] = {k: v.cpu().tolist()
                                     for k, v in model.state_dict().items()}
     else:
         checkpoint["coef"] = model.coef_.tolist()
         checkpoint["intercept"] = model.intercept_.tolist()
-    return metrics, checkpoint
+    if not return_predictions:
+        return metrics, checkpoint
+    predictions = {"val": {"row": val_idx.tolist(), "score": val_scores.tolist()},
+                   "test": {"row": test_idx.tolist(), "score": test_scores.tolist()}}
+    return metrics, checkpoint, predictions
+
+
+def predictions_record(rows: list[dict], y, correct_off, correct_on,
+                       per_seed: dict[int, dict], *, target: str, source: str) -> dict:
+    """Per-row predictions in the shape compare_baselines.py pairs on.
+
+    ``per_seed[seed] = {"val": {"row": [...], "score": [...]}, "test": ...}``
+    with row positions into ``rows``. Rows are written by sample_id so two
+    methods' predictions are matched on identity, never on position.
+    """
+    out = {"target": target, "source": source, "seeds": {}}
+    for seed, splits in per_seed.items():
+        rec = {}
+        for split, node in splits.items():
+            idx = node["row"]
+            rec[split] = {
+                "sample_id": [str(rows[i]["sample_id"]) for i in idx],
+                "y": [int(y[i]) for i in idx],
+                "correct_off": [bool(correct_off[i]) for i in idx],
+                "correct_on": [bool(correct_on[i]) for i in idx],
+            }
+            if "score" in node:       # one scorer (the probe)
+                rec[split]["score"] = [float(s) for s in node["score"]]
+            if "scores" in node:      # several named scorers (baselines)
+                rec[split]["scores"] = {k: [float(s) for s in v]
+                                        for k, v in node["scores"].items()}
+        out["seeds"][str(seed)] = rec
+    return out
 
 
 def aggregate(per_seed: list[dict]) -> dict:
@@ -446,6 +399,11 @@ def aggregate(per_seed: list[dict]) -> dict:
         "oracle": mean_ci(collect(["test", "baselines", "oracle"])),
         "min_routed_for_always_think_accuracy": mean_ci(
             collect(["test", "min_routed_for_always_think_accuracy"])),
+        "test_random_at_matched_rate": mean_ci(collect(["test", "random_at_matched_rate"])),
+        "test_oracle_at_matched_rate": mean_ci(collect(["test", "oracle_at_matched_rate"])),
+        "test_routed_nauc": {
+            name: mean_ci(collect(["test", "routed_nauc", name, "nauc"]))
+            for name in NAUC_RANGES},
     }
     # The honest interval. "test_auroc" above is seed-to-seed spread on a fixed
     # sample and is systematically too narrow; quote this one in the paper.
@@ -633,11 +591,12 @@ def main(argv: list[str] | None = None) -> int:
         logger.info("probing layer %d — features %s, method=%s",
                     args.layer, X.shape, args.method)
 
-    per_seed = []
+    per_seed, seed_predictions = [], {}
     for seed in args.seeds:
-        metrics, checkpoint = run_seed(args, X, y, correct_off, correct_on,
-                                       difficulties, seed)
+        metrics, checkpoint, preds = run_seed(args, X, y, correct_off, correct_on,
+                                              difficulties, seed, return_predictions=True)
         per_seed.append(metrics)
+        seed_predictions[seed] = preds
         seed_dir = out_dir / f"seed_{seed}"
         seed_dir.mkdir(parents=True, exist_ok=True)
         (seed_dir / "metrics.json").write_text(json.dumps(metrics, indent=2) + "\n")
@@ -663,11 +622,20 @@ def main(argv: list[str] | None = None) -> int:
         "aggregate": agg, "per_seed": per_seed,
     }
     (out_dir / "aggregate_metrics.json").write_text(json.dumps(summary, indent=2) + "\n")
+    # Per-row validation/test scores, keyed by sample_id: what
+    # compare_baselines.py needs for a paired probe-vs-baseline bootstrap.
+    (out_dir / "predictions.json").write_text(json.dumps(predictions_record(
+        labels, y, correct_off, correct_on, seed_predictions,
+        target=args.target, source="prefill_probe")) + "\n")
 
     auc = agg["test_auroc"]
+    boot = agg["test_auroc_bootstrap"]["ci"]
     logger.info("=" * 64)
-    logger.info("test AUROC        %.3f  [%.3f, %.3f]  over %d seeds",
-                auc["mean"], auc["ci"][0], auc["ci"][1], auc["n"])
+    logger.info("test AUROC        %.3f  [%.3f, %.3f] bootstrap 95%% CI  over %d seeds",
+                auc["mean"], boot[0], boot[1], auc["n"])
+    nauc = agg["test_routed_nauc"]["escalation_0_50"]
+    logger.info("routed nAUC 0-50%% %.3f  (0 = random escalation, 1 = oracle)",
+                nauc["mean"])
     logger.info("routed accuracy   %.3f  [%.3f, %.3f]",
                 agg["test_routed_accuracy"]["mean"], *agg["test_routed_accuracy"]["ci"])
     logger.info("  never think     %.3f", agg["baseline_never_think"]["mean"])

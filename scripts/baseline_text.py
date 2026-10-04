@@ -14,6 +14,11 @@ Baselines:
   tfidf          TF-IDF over word 1-2 grams -> logistic regression
   tfidf_char     TF-IDF over char 3-5 grams -> logistic regression
 
+Each baseline's node carries `test_auroc` (seed mean), `test_auroc_bootstrap`
+(the interval to quote) and `val_auroc` (what compare_baselines.py selects the
+best baseline on). With --out-file, per-row val/test scores by sample_id are
+written beside it as `<out-file stem>.predictions.json`.
+
 Usage:
     python scripts/baseline_text.py \\
         --capture-dir shared/icr_capture/math500_thinking_qwen3 \\
@@ -30,10 +35,11 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from run_experiment import (auroc, bootstrap_auroc_ci, mean_ci,      # noqa: E402
-                            mean_bootstrap_ci, stratified_split)
+from run_experiment import predictions_record, stratified_split      # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from utils.capture_io import align_labels, load_labels, load_meta    # noqa: E402
+from utils.metrics import (auroc, bootstrap_auroc_ci, mean_bootstrap_ci,  # noqa: E402
+                           mean_ci)
 
 logger = logging.getLogger("baseline_text")
 
@@ -55,39 +61,84 @@ def build_target(labels, target):
     return y, keep
 
 
-def score_scalar(values, y, seeds):
+def seed_record(seed, y, va, te, val_scores, test_scores) -> dict:
+    """One seed of one baseline: val/test AUROC, test bootstrap CI, raw scores.
+
+    The validation AUROC is what compare_baselines.py selects "the best
+    baseline" on; the test AUROC is only ever reported, never selected on.
+    """
+    return {"seed": seed, "val_row": va, "test_row": te,
+            "val_score": np.asarray(val_scores, dtype=float),
+            "test_score": np.asarray(test_scores, dtype=float),
+            "val_auroc": auroc(y[va], val_scores),
+            "test_auroc": auroc(y[te], test_scores),
+            "test_ci": bootstrap_auroc_ci(y[te], test_scores)}
+
+
+def score_scalar(values, y, seeds) -> list[dict]:
     """A single scalar feature needs no fitting -- AUROC reads it directly.
 
-    Sign is chosen on TRAIN, so the test number cannot be flattered by
-    flipping the comparison after the fact.
+    Sign is chosen on TRAIN, so neither the validation nor the test number
+    can be flattered by flipping the comparison after the fact.
     """
-    per_seed, cis = [], []
+    out = []
     for seed in seeds:
-        tr, _, te = stratified_split(y, seed)
+        tr, va, te = stratified_split(y, seed)
         sign = 1.0 if auroc(y[tr], values[tr]) >= 0.5 else -1.0
-        s = sign * values[te]
-        per_seed.append(auroc(y[te], s))
-        cis.append(bootstrap_auroc_ci(y[te], s))
-    return per_seed, cis
+        out.append(seed_record(seed, y, va, te, sign * values[va], sign * values[te]))
+    return out
 
 
-def score_tfidf(texts, y, seeds, analyzer, ngram):
+def score_tfidf(texts, y, seeds, analyzer, ngram) -> list[dict]:
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.linear_model import LogisticRegression
 
-    per_seed, cis = [], []
+    out = []
     for seed in seeds:
         tr, va, te = stratified_split(y, seed)
         vec = TfidfVectorizer(analyzer=analyzer, ngram_range=ngram,
                               min_df=2, sublinear_tf=True)
         Xtr = vec.fit_transform([texts[i] for i in tr])   # fit on train only
-        Xte = vec.transform([texts[i] for i in te])
         clf = LogisticRegression(max_iter=2000, C=1.0)
         clf.fit(Xtr, y[tr])
-        s = clf.predict_proba(Xte)[:, 1]
-        per_seed.append(auroc(y[te], s))
-        cis.append(bootstrap_auroc_ci(y[te], s))
-    return per_seed, cis
+        s_va = clf.predict_proba(vec.transform([texts[i] for i in va]))[:, 1]
+        s_te = clf.predict_proba(vec.transform([texts[i] for i in te]))[:, 1]
+        out.append(seed_record(seed, y, va, te, s_va, s_te))
+    return out
+
+
+def summarize(records: list[dict]) -> dict:
+    """The per-baseline JSON node: seed-mean test AUROC, its bootstrap CI,
+    and the seed-mean validation AUROC used for selection."""
+    return {"test_auroc": mean_ci([r["test_auroc"] for r in records]),
+            "test_auroc_bootstrap": mean_bootstrap_ci([r["test_ci"] for r in records]),
+            "val_auroc": mean_ci([r["val_auroc"] for r in records])}
+
+
+def predictions_path(out_file) -> Path:
+    """`x.json` -> `x.predictions.json`, the per-row scores beside a result."""
+    return Path(out_file).with_suffix(".predictions.json")
+
+
+def write_results(out_file, out: dict, scored: dict[str, list[dict]], rows, y,
+                  target: str, source: str) -> None:
+    """Write the summary JSON and, beside it, the per-row predictions."""
+    out_file = Path(out_file)
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    out_file.write_text(json.dumps(out, indent=2) + "\n")
+    correct_off = np.array([bool(r["correct_off"]) for r in rows])
+    correct_on = np.array([bool(r["correct_on"]) for r in rows])
+    per_seed = {}
+    for name, records in scored.items():
+        for r in records:
+            node = per_seed.setdefault(r["seed"], {
+                "val": {"row": list(map(int, r["val_row"])), "scores": {}},
+                "test": {"row": list(map(int, r["test_row"])), "scores": {}}})
+            node["val"]["scores"][name] = r["val_score"]
+            node["test"]["scores"][name] = r["test_score"]
+    preds = predictions_record(rows, y, correct_off, correct_on, per_seed,
+                               target=target, source=source)
+    predictions_path(out_file).write_text(json.dumps(preds) + "\n")
 
 
 def main(argv=None):
@@ -119,26 +170,27 @@ def main(argv=None):
     chars = np.array([float(len(t)) for t in texts])
     words = np.array([float(len(t.split())) for t in texts])
 
-    results = {}
-    for name, (ps, cis) in {
+    scored = {
         "length_chars": score_scalar(chars, y, args.seeds),
         "length_words": score_scalar(words, y, args.seeds),
         "tfidf_word": score_tfidf(texts, y, args.seeds, "word", (1, 2)),
         "tfidf_char": score_tfidf(texts, y, args.seeds, "char_wb", (3, 5)),
-    }.items():
-        agg = mean_ci(ps)
-        boot = mean_bootstrap_ci(cis)
-        results[name] = {"test_auroc": agg, "test_auroc_bootstrap": boot}
-        logger.info("%-14s AUROC %.3f  bootstrap [%.3f, %.3f]",
-                    name, agg["mean"], boot["ci"][0], boot["ci"][1])
+    }
+    results = {}
+    for name, records in scored.items():
+        results[name] = summarize(records)
+        agg, boot = results[name]["test_auroc"], results[name]["test_auroc_bootstrap"]
+        logger.info("%-14s AUROC %.3f  bootstrap [%.3f, %.3f]  (val %.3f)",
+                    name, agg["mean"], boot["ci"][0], boot["ci"][1],
+                    results[name]["val_auroc"]["mean"])
 
     out = {"target": args.target, "n": int(len(y)),
            "base_rate": float(y.mean()), "seeds": args.seeds,
            "capture_dirs": args.capture_dir, "baselines": results}
     if args.out_file:
-        Path(args.out_file).parent.mkdir(parents=True, exist_ok=True)
-        Path(args.out_file).write_text(json.dumps(out, indent=2) + "\n")
-        logger.info("wrote %s", args.out_file)
+        write_results(args.out_file, out, scored, [labels[i] for i in keep], y,
+                      args.target, "baseline_text")
+        logger.info("wrote %s (+ %s)", args.out_file, predictions_path(args.out_file).name)
     return 0
 
 
