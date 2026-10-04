@@ -155,10 +155,15 @@ for task in $TASKS; do
   fi
   AVAILABLE="$AVAILABLE $task"
   lab="$(labels_file "$task")"
-  if stale "$lab" "$cap"/meta.shard*.jsonl; then
+  # Labels are regraded from the stored responses with the current grader, so
+  # a grader fix re-labels old captures; the task module is an input for that.
+  # REGRADE=0 keeps the grades stored at capture time (synthetic test captures
+  # carry placeholder responses that cannot be regraded).
+  if [ "${REGRADE:-1}" = "1" ]; then regrade=(--regrade); else regrade=(); fi
+  if stale "$lab" "$cap"/meta.shard*.jsonl "tasks/${task}.py"; then
     log "labels $task"
     run_step "labels_${task}" "base rate|accuracy :|truncated" \
-      "$PY" scripts/generate_labels.py --capture-dir "$cap" --out-file "$lab"
+      "$PY" scripts/generate_labels.py ${regrade[@]+"${regrade[@]}"} --capture-dir "$cap" --out-file "$lab"
   else
     log "labels $task — up to date"
   fi

@@ -532,7 +532,7 @@ def analysis_repo(tmp_path_factory):
 def _analysis(root: Path, **env) -> subprocess.CompletedProcess:
     full_env = {**os.environ, "PY": sys.executable, "CAPTURE_SLUG": "synth",
                 "TASKS": "bbh gsm8k", "TARGETS": "needs_thinking",
-                "WITHIN_TARGETS": "needs_thinking", "SEEDS": "42 1",
+                "WITHIN_TARGETS": "needs_thinking", "SEEDS": "42 1", "REGRADE": "0",
                 "OMP_NUM_THREADS": "2", **env}
     return subprocess.run(["bash", str(root / "scripts/run_full_analysis.sh")],
                           capture_output=True, text=True, timeout=900, env=full_env,
