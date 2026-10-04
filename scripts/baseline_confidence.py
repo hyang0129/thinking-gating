@@ -27,7 +27,9 @@ Baselines:
   confidence_lr  logistic regression over the four scalars, fit on train
 
 Scalar baselines need no fitting; their sign is chosen on TRAIN so the test
-AUROC cannot be flattered by picking the direction after the fact.
+AUROC cannot be flattered by picking the direction after the fact. Output
+shape (val_auroc for selection, a .predictions.json beside --out-file) is
+the same as baseline_text.py's.
 
 Requires captures made with --capture-logprobs (every v3 capture). Fails
 loudly, rather than silently scoring zeros, if the field is missing.
@@ -40,7 +42,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 from pathlib import Path
@@ -48,9 +49,9 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from baseline_text import build_target, score_scalar                 # noqa: E402
-from run_experiment import (auroc, bootstrap_auroc_ci, mean_ci,       # noqa: E402
-                            mean_bootstrap_ci, stratified_split)
+from baseline_text import (build_target, predictions_path, score_scalar,  # noqa: E402
+                           seed_record, summarize, write_results)
+from run_experiment import stratified_split                           # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from utils.capture_io import align_labels, load_labels, load_meta    # noqa: E402
 
@@ -87,16 +88,16 @@ def score_logreg(X, y, seeds):
     from sklearn.linear_model import LogisticRegression
     from sklearn.preprocessing import StandardScaler
 
-    per_seed, cis = [], []
+    out = []
     for seed in seeds:
-        tr, _, te = stratified_split(y, seed)
+        tr, va, te = stratified_split(y, seed)
         scaler = StandardScaler().fit(X[tr])           # fit on train only
         clf = LogisticRegression(max_iter=2000, C=1.0)
         clf.fit(scaler.transform(X[tr]), y[tr])
-        s = clf.predict_proba(scaler.transform(X[te]))[:, 1]
-        per_seed.append(auroc(y[te], s))
-        cis.append(bootstrap_auroc_ci(y[te], s))
-    return per_seed, cis
+        s_va = clf.predict_proba(scaler.transform(X[va]))[:, 1]
+        s_te = clf.predict_proba(scaler.transform(X[te]))[:, 1]
+        out.append(seed_record(seed, y, va, te, s_va, s_te))
+    return out
 
 
 def main(argv=None):
@@ -129,12 +130,12 @@ def main(argv=None):
     scored = {name: score_scalar(X[:, j], y, args.seeds)
               for j, name in enumerate(SCALARS)}
     scored["confidence_lr"] = score_logreg(X, y, args.seeds)
-    for name, (ps, cis) in scored.items():
-        agg = mean_ci(ps)
-        boot = mean_bootstrap_ci(cis)
-        results[name] = {"test_auroc": agg, "test_auroc_bootstrap": boot}
-        logger.info("%-14s AUROC %.3f  bootstrap [%.3f, %.3f]",
-                    name, agg["mean"], boot["ci"][0], boot["ci"][1])
+    for name, records in scored.items():
+        results[name] = summarize(records)
+        agg, boot = results[name]["test_auroc"], results[name]["test_auroc_bootstrap"]
+        logger.info("%-14s AUROC %.3f  bootstrap [%.3f, %.3f]  (val %.3f)",
+                    name, agg["mean"], boot["ci"][0], boot["ci"][1],
+                    results[name]["val_auroc"]["mean"])
 
     out = {"target": args.target, "n": int(len(y)),
            "base_rate": float(y.mean()), "seeds": args.seeds,
@@ -142,9 +143,9 @@ def main(argv=None):
            "sees_thinking_off_generation": True,
            "baselines": results}
     if args.out_file:
-        Path(args.out_file).parent.mkdir(parents=True, exist_ok=True)
-        Path(args.out_file).write_text(json.dumps(out, indent=2) + "\n")
-        logger.info("wrote %s", args.out_file)
+        write_results(args.out_file, out, scored, [labels[i] for i in keep], y,
+                      args.target, "baseline_confidence")
+        logger.info("wrote %s (+ %s)", args.out_file, predictions_path(args.out_file).name)
     return 0
 
 

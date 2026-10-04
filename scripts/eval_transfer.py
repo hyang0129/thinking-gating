@@ -22,6 +22,11 @@ Interpretation, per the experiment design:
 
 Passing several --probe checkpoints evaluates each and reports the spread, so a
 single lucky seed cannot carry the conclusion.
+
+"Above chance" is judged on the bootstrap interval over target rows
+(`transfer_auroc_bootstrap`, the per-probe percentile intervals averaged), not
+on `transfer_auroc.ci`, which is only the spread across the source seeds' probes
+and is far too narrow to say anything about the target population.
 """
 
 from __future__ import annotations
@@ -42,8 +47,9 @@ from utils.capture_io import (  # noqa: E402
     align_labels, load_capture, load_config, load_labels,
 )
 from scripts.run_experiment import (  # noqa: E402
-    Standardizer, evaluate_split, mean_ci, select_layer,
+    Standardizer, evaluate_split, select_layer, select_layers,
 )
+from utils.metrics import mean_bootstrap_ci, mean_ci  # noqa: E402
 
 # The verdict vocabulary, named once. These strings are the public shape of a
 # transfer result -- they land in paper/results/ and get asserted on in
@@ -170,7 +176,10 @@ def main(argv: list[str] | None = None) -> int:
 
     per_probe = []
     for probe_path, (score_fn, ckpt) in zip(args.probe, ckpts):
-        X = select_layer(activations, ckpt["layer"])
+        if ckpt.get("layers"):
+            X = select_layers(activations, ckpt["layers"])
+        else:
+            X = select_layer(activations, ckpt["layer"])
         if X.shape[1] != ckpt["input_dim"]:
             logger.error("probe expects %d features but target has %d — "
                          "different model or layer", ckpt["input_dim"], X.shape[1])
@@ -187,7 +196,8 @@ def main(argv: list[str] | None = None) -> int:
         logger.info("probe seed %-4s transfer AUROC %.3f  routed acc %.3f",
                     ckpt.get("seed"), result["auroc"], result["routed_accuracy"])
 
-    transfer_auroc = mean_ci([r["auroc"] for r in per_probe])
+    transfer_auroc = mean_ci([r["auroc"] for r in per_probe])        # seed spread
+    transfer_auroc_bootstrap = mean_bootstrap_ci([r["auroc_bootstrap"] for r in per_probe])
     objectives = sorted({r.get("target_objective", "helped") for r in per_probe})
     if len(objectives) > 1:
         logger.warning("probes were trained on different objectives %s — "
@@ -201,6 +211,7 @@ def main(argv: list[str] | None = None) -> int:
         "objective": objective,
         "prefill_mode": prefill_mode,
         "transfer_auroc": transfer_auroc,
+        "transfer_auroc_bootstrap": transfer_auroc_bootstrap,
         "transfer_routed_accuracy": mean_ci([r["routed_accuracy"] for r in per_probe]),
         "target_baselines": per_probe[0]["baselines"],
         "per_probe": per_probe,
@@ -216,10 +227,13 @@ def main(argv: list[str] | None = None) -> int:
         # failure for dropping 17pp even though 0.70 is real signal. Ask three
         # questions in order — was the source probe any good, does the target
         # end above chance, and only then how much was lost.
-        target_lo = transfer_auroc["ci"][0]
+        # The lower bound of the *bootstrap* interval over target rows. The
+        # seed-spread interval in transfer_auroc.ci only measures how much the
+        # source probes disagree, and called near-chance targets "transfer".
+        target_lo = transfer_auroc_bootstrap["ci"][0]
         if source_auroc < 0.55:
             verdict = VERDICT_UNDEFINED
-        elif target_lo <= 0.5:
+        elif not target_lo > 0.5:            # also catches an undefined (nan) bound
             verdict = VERDICT_NONE
         elif drop_pp < 5:
             verdict = VERDICT_STRONG
@@ -231,6 +245,7 @@ def main(argv: list[str] | None = None) -> int:
         summary["source_test_auroc"] = source_auroc
         summary["auroc_drop_pp"] = drop_pp
         summary["verdict"] = verdict
+        summary["verdict_ci"] = "transfer_auroc_bootstrap"
         logger.info("source %s AUROC %.3f -> target %s AUROC %.3f  "
                     "(drop %.1f pp: %s)", source.get("task"), source_auroc,
                     target_config.get("task"), transfer_auroc["mean"], drop_pp, verdict)
