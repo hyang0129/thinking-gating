@@ -1,0 +1,90 @@
+
+== qwen3v3 (layer 18 = middle): probe aggregates vs published qwen3v3 ==
+  bbh      helped          min_routed_for_always_think_accuracy 0.8500->0.8278   [new nAUC0-50 +0.298]
+  bbh      needs_thinking  min_routed_for_always_think_accuracy 0.7093->0.6704   [new nAUC0-50 +0.329]
+  bbh      rescued         min_routed_for_always_think_accuracy 0.8857->0.8743   [new nAUC0-50 +0.526]
+  gsm8k    helped          min_routed_for_always_think_accuracy 0.1597->0.1156   [new nAUC0-50 +0.101]
+  gsm8k    needs_thinking  min_routed_for_always_think_accuracy 0.1000->0.0939   [new nAUC0-50 +0.021]
+  gsm8k    rescued         identical   [new nAUC0-50 +0.149]
+  math500  helped          min_routed_for_always_think_accuracy 0.4000->0.3780   [new nAUC0-50 +0.070]
+  math500  needs_thinking  min_routed_for_always_think_accuracy 0.1100->0.0980   [new nAUC0-50 +0.144]
+  math500  rescued         identical   [new nAUC0-50 +0.053]
+  mmlu_pro helped          min_routed_for_always_think_accuracy 0.9600->0.9350   [new nAUC0-50 +0.009]
+  mmlu_pro needs_thinking  min_routed_for_always_think_accuracy 0.5600->0.5120   [new nAUC0-50 +0.173]
+  mmlu_pro rescued         min_routed_for_always_think_accuracy 1.0000->0.9947   [new nAUC0-50 +0.019]
+
+== nemotronv3 at published layer 18: probe aggregates vs published nemotronv3 ==
+  bbh      helped          min_routed_for_always_think_accuracy 0.0593->0.0556   [new nAUC0-50 -0.036]
+  bbh      needs_thinking  min_routed_for_always_think_accuracy 0.2000->0.1907   [new nAUC0-50 -0.065]
+  bbh      rescued         min_routed_for_always_think_accuracy 0.7111->0.6889   [new nAUC0-50 +0.443]
+  lsat     helped          min_routed_for_always_think_accuracy 0.9087->0.8957   [new nAUC0-50 +0.143]
+  lsat     needs_thinking  min_routed_for_always_think_accuracy 0.9304->0.9261   [new nAUC0-50 -0.068]
+  lsat     rescued         min_routed_for_always_think_accuracy 0.8471->0.8412   [new nAUC0-50 +0.308]
+
+== nemotronv3 at middle layer 16: probe aggregates vs published nemotronv3 ==
+  bbh      helped          test_auroc 0.5341->0.5409; test_routed_accuracy 0.3315->0.3352; fraction_routed 0.2704->0.3074; min_routed_for_always_think_accuracy 0.0593->0.0222; boot ci 0.300,0.767->0.329,0.750   [new nAUC0-50 -0.100]
+  bbh      needs_thinking  test_auroc 0.7546->0.7442; test_routed_accuracy 0.3130->0.3167; fraction_routed 0.5222->0.4852; min_routed_for_always_think_accuracy 0.2000->0.2630; boot ci 0.650,0.848->0.639,0.839   [new nAUC0-50 -0.075]
+  bbh      rescued         test_auroc 0.7556->0.7763; min_routed_for_always_think_accuracy 0.7111->0.7000; boot ci 0.547,0.932->0.568,0.950   [new nAUC0-50 +0.510]
+  lsat     helped          test_auroc 0.5925->0.5888; test_routed_accuracy 0.5000->0.5174; fraction_routed 0.9435->1.0000; min_routed_for_always_think_accuracy 0.9087->0.8435; boot ci 0.398,0.775->0.395,0.776   [new nAUC0-50 +0.116]
+  lsat     needs_thinking  test_auroc 0.5618->0.5530; min_routed_for_always_think_accuracy 0.9304->0.9478; boot ci 0.353,0.761->0.344,0.753   [new nAUC0-50 -0.081]
+  lsat     rescued         test_auroc 0.6886->0.6198; min_routed_for_always_think_accuracy 0.8471->0.8765; boot ci 0.497,0.861->0.420,0.809   [new nAUC0-50 +0.183]
+
+== qwen3v3: baselines (test numbers, selection) ==
+  confidence__bbh__needs_thinking        test numbers identical; best(val) n_tokens_off
+  confidence__bbh__rescued               test numbers identical; best(val) confidence_lr  ** best changes mean_entropy 0.571 -> confidence_lr 0.464 (val 0.587)
+  confidence__gsm8k__needs_thinking      test numbers identical; best(val) n_tokens_off
+  confidence__gsm8k__rescued             test numbers identical; best(val) min_logprob
+  confidence__math500__needs_thinking    test numbers identical; best(val) confidence_lr
+  confidence__math500__rescued           test numbers identical; best(val) min_logprob  ** best changes n_tokens_off 0.524 -> min_logprob 0.505 (val 0.483)
+  confidence__mmlu_pro__needs_thinking   test numbers identical; best(val) confidence_lr
+  confidence__mmlu_pro__rescued          test numbers identical; best(val) n_tokens_off
+  text__bbh__needs_thinking              test numbers identical; best(val) tfidf_char
+  text__bbh__rescued                     test numbers identical; best(val) tfidf_char  ** best changes tfidf_word 0.723 -> tfidf_char 0.717 (val 0.805)
+  text__gsm8k__needs_thinking            test numbers identical; best(val) length_words  ** best changes tfidf_word 0.634 -> length_words 0.604 (val 0.701)
+  text__gsm8k__rescued                   test numbers identical; best(val) length_chars
+  text__math500__needs_thinking          test numbers identical; best(val) length_chars
+  text__math500__rescued                 test numbers identical; best(val) tfidf_char
+  text__mmlu_pro__needs_thinking         test numbers identical; best(val) tfidf_word
+  text__mmlu_pro__rescued                test numbers identical; best(val) length_chars
+
+== nemotronv3: baselines (test numbers, selection) ==
+  confidence__bbh__needs_thinking        test numbers identical; best(val) confidence_lr
+  confidence__bbh__rescued               test numbers identical; best(val) n_tokens_off  ** best changes confidence_lr 0.538 -> n_tokens_off 0.521 (val 0.485)
+  confidence__lsat__needs_thinking       test numbers identical; best(val) n_tokens_off
+  confidence__lsat__rescued              test numbers identical; best(val) min_logprob  ** best changes mean_entropy 0.619 -> min_logprob 0.550 (val 0.574)
+  text__bbh__needs_thinking              test numbers identical; best(val) tfidf_word
+  text__bbh__rescued                     test numbers identical; best(val) tfidf_char
+  text__lsat__needs_thinking             test numbers identical; best(val) length_words
+  text__lsat__rescued                    test numbers identical; best(val) tfidf_word
+
+== qwen3v3: within-group ==
+  within_group__bbh__needs_thinking: published 0.4938 [0.22973232849762987, 0.7645350682146135] -> rerun 0.4938 [0.2297323284976299, 0.7645350682146135] (informative groups 20/27); overall 0.8200->0.8200
+  within_group__bbh__rescued: published 0.5061 [0.00935817805383023, 1.0] -> rerun 0.5061 [0.009358178053830265, 1.0] (informative groups 13/22); overall 0.7380->0.7380
+
+== qwen3v3: baseline_comparison.txt (rerun) ==
+task      target               n   base  prefill probe           best text (val-sel.)                  best confidence (val-sel.)            probe - best, paired                        
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+bbh       helped             540  0.185  0.734 [0.611, 0.844]    -                                     -                                     -                                           
+bbh       needs_thinking     540  0.324  0.820 [0.732, 0.898]    tfidf_char 0.846 [0.761, 0.920]       n_tokens_off 0.560 [0.445, 0.675]     -0.026 [-0.091, +0.037] vs tfidf_char       
+bbh       rescued            175  0.571  0.738 [0.557, 0.890]    tfidf_char 0.717 [0.527, 0.879]       confidence_lr 0.464 [0.272, 0.652]    +0.021 [-0.129, +0.170] vs tfidf_char       
+gsm8k     helped            1319  0.036  0.688 [0.508, 0.852]    -                                     -                                     -                                           
+gsm8k     needs_thinking    1319  0.067  0.687 [0.561, 0.800]    length_words 0.604 [0.452, 0.749]     n_tokens_off 0.690 [0.543, 0.823]     -0.003 [-0.166, +0.168] vs n_tokens_off     
+gsm8k     rescued             89  0.539  0.597 [0.308, 0.861]    length_chars 0.583 [0.285, 0.866]     min_logprob 0.578 [0.288, 0.849]      +0.014 [-0.309, +0.321] vs length_chars     
+math500   helped             500  0.078  0.626 [0.438, 0.801]    -                                     -                                     -                                           
+math500   needs_thinking     500  0.236  0.699 [0.561, 0.818]    length_chars 0.715 [0.590, 0.827]     confidence_lr 0.814 [0.700, 0.914]    -0.115 [-0.266, +0.037] vs confidence_lr    
+math500   rescued            118  0.331  0.559 [0.318, 0.787]    tfidf_char 0.642 [0.404, 0.848]       min_logprob 0.505 [0.246, 0.772]      -0.083 [-0.371, +0.198] vs tfidf_char       
+mmlu_pro  helped            1000  0.131  0.516 [0.391, 0.641]    -                                     -                                     -                                           
+mmlu_pro  needs_thinking    1000  0.376  0.659 [0.582, 0.736]    tfidf_word 0.617 [0.535, 0.697]       confidence_lr 0.646 [0.564, 0.724]    +0.013 [-0.087, +0.115] vs confidence_lr    
+mmlu_pro  rescued            376  0.348  0.489 [0.349, 0.634]    length_chars 0.506 [0.373, 0.640]     n_tokens_off 0.607 [0.474, 0.732]     -0.117 [-0.292, +0.057] vs n_tokens_off     
+
+
+== nemotronv3: baseline_comparison.txt (rerun) ==
+task      target               n   base  prefill probe           best text (val-sel.)                  best confidence (val-sel.)            probe - best, paired                        
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+bbh       helped             540  0.067  0.541 [0.329, 0.750]    -                                     -                                     -                                           
+bbh       needs_thinking     540  0.669  0.744 [0.639, 0.839]    tfidf_word 0.794 [0.700, 0.875]       confidence_lr 0.666 [0.564, 0.765]    -0.050 [-0.132, +0.031] vs tfidf_word       
+bbh       rescued            361  0.100  0.776 [0.568, 0.950]    tfidf_char 0.802 [0.638, 0.934]       n_tokens_off 0.521 [0.280, 0.751]     -0.025 [-0.173, +0.121] vs tfidf_char       
+lsat      helped             230  0.296  0.589 [0.395, 0.776]    -                                     -                                     -                                           
+lsat      needs_thinking     230  0.757  0.553 [0.344, 0.753]    length_words 0.574 [0.380, 0.758]     n_tokens_off 0.608 [0.433, 0.773]     -0.055 [-0.293, +0.191] vs n_tokens_off     
+lsat      rescued            174  0.391  0.620 [0.420, 0.809]    tfidf_word 0.640 [0.441, 0.816]       min_logprob 0.550 [0.347, 0.748]      -0.020 [-0.254, +0.217] vs tfidf_word       
+

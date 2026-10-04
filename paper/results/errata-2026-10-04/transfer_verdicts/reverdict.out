@@ -1,0 +1,42 @@
+qwen3v3    transfer__bbh_to_gsm8k__helped               0.519 boot[0.430,0.605]  same: no transfer — target at chance -> no transfer — target at chance
+qwen3v3    transfer__bbh_to_gsm8k__needs_thinking       0.611 boot[0.548,0.671]  same: weak transfer — above chance but large drop -> weak transfer — above chance but large drop
+qwen3v3    transfer__bbh_to_gsm8k__rescued              0.423 boot[0.309,0.543]  same: no transfer — target at chance -> no transfer — target at chance
+qwen3v3    transfer__bbh_to_math500__helped             0.498 boot[0.408,0.587]  same: no transfer — target at chance -> no transfer — target at chance
+qwen3v3    transfer__bbh_to_math500__needs_thinking     0.598 boot[0.537,0.660]  same: weak transfer — above chance but large drop -> weak transfer — above chance but large drop
+qwen3v3    transfer__bbh_to_math500__rescued            0.498 boot[0.389,0.605]  same: no transfer — target at chance -> no transfer — target at chance
+qwen3v3    transfer__bbh_to_mmlu_pro__helped            0.541 boot[0.485,0.594]  FLIP: weak transfer — above chance but large drop -> no transfer — target at chance
+qwen3v3    transfer__bbh_to_mmlu_pro__needs_thinking    0.576 boot[0.540,0.613]  same: weak transfer — above chance but large drop -> weak transfer — above chance but large drop
+qwen3v3    transfer__bbh_to_mmlu_pro__rescued           0.495 boot[0.433,0.556]  same: no transfer — target at chance -> no transfer — target at chance
+qwen3v3    transfer__gsm8k_to_bbh__helped               0.507 boot[0.444,0.571]  same: no transfer — target at chance -> no transfer — target at chance
+qwen3v3    transfer__gsm8k_to_bbh__needs_thinking       0.559 boot[0.505,0.613]  same: partial transfer -> partial transfer
+qwen3v3    transfer__gsm8k_to_bbh__rescued              0.575 boot[0.486,0.668]  FLIP: strong transfer -> no transfer — target at chance
+qwen3v3    transfer__gsm8k_to_math500__helped           0.630 boot[0.543,0.709]  same: partial transfer -> partial transfer
+qwen3v3    transfer__gsm8k_to_math500__needs_thinking   0.652 boot[0.594,0.707]  same: strong transfer -> strong transfer
+qwen3v3    transfer__gsm8k_to_math500__rescued          0.480 boot[0.374,0.586]  same: no transfer — target at chance -> no transfer — target at chance
+qwen3v3    transfer__gsm8k_to_mmlu_pro__helped          0.498 boot[0.444,0.552]  same: no transfer — target at chance -> no transfer — target at chance
+qwen3v3    transfer__gsm8k_to_mmlu_pro__needs_thinking  0.550 boot[0.515,0.588]  same: partial transfer -> partial transfer
+qwen3v3    transfer__gsm8k_to_mmlu_pro__rescued         0.513 boot[0.457,0.569]  same: no transfer — target at chance -> no transfer — target at chance
+qwen3v3    transfer__math500_to_bbh__helped             0.567 boot[0.501,0.631]  same: partial transfer -> partial transfer
+qwen3v3    transfer__math500_to_bbh__needs_thinking     0.431 boot[0.379,0.485]  same: no transfer — target at chance -> no transfer — target at chance
+qwen3v3    transfer__math500_to_bbh__rescued            0.587 boot[0.498,0.674]  FLIP: strong transfer -> no transfer — target at chance
+qwen3v3    transfer__math500_to_gsm8k__helped           0.564 boot[0.484,0.646]  FLIP: partial transfer -> no transfer — target at chance
+qwen3v3    transfer__math500_to_gsm8k__needs_thinking   0.555 boot[0.490,0.619]  FLIP: partial transfer -> no transfer — target at chance
+qwen3v3    transfer__math500_to_gsm8k__rescued          0.492 boot[0.372,0.611]  same: no transfer — target at chance -> no transfer — target at chance
+qwen3v3    transfer__math500_to_mmlu_pro__helped        0.532 boot[0.478,0.588]  same: no transfer — target at chance -> no transfer — target at chance
+qwen3v3    transfer__math500_to_mmlu_pro__needs_thinking0.507 boot[0.479,0.535]  same: no transfer — target at chance -> no transfer — target at chance
+qwen3v3    transfer__math500_to_mmlu_pro__rescued       0.491 boot[0.430,0.552]  same: no transfer — target at chance -> no transfer — target at chance
+qwen3v3    transfer__mmlu_pro_to_bbh__helped            0.560 boot[0.503,0.617]  same: undefined — source probe was at chance -> undefined — source probe was at chance
+qwen3v3    transfer__mmlu_pro_to_bbh__needs_thinking    0.556 boot[0.507,0.606]  same: partial transfer -> partial transfer
+qwen3v3    transfer__mmlu_pro_to_bbh__rescued           0.550 boot[0.463,0.635]  same: undefined — source probe was at chance -> undefined — source probe was at chance
+qwen3v3    transfer__mmlu_pro_to_gsm8k__helped          0.465 boot[0.376,0.556]  same: undefined — source probe was at chance -> undefined — source probe was at chance
+qwen3v3    transfer__mmlu_pro_to_gsm8k__needs_thinking  0.478 boot[0.411,0.546]  same: no transfer — target at chance -> no transfer — target at chance
+qwen3v3    transfer__mmlu_pro_to_gsm8k__rescued         0.422 boot[0.331,0.514]  same: undefined — source probe was at chance -> undefined — source probe was at chance
+qwen3v3    transfer__mmlu_pro_to_math500__helped        0.511 boot[0.438,0.579]  same: undefined — source probe was at chance -> undefined — source probe was at chance
+qwen3v3    transfer__mmlu_pro_to_math500__needs_thinking0.692 boot[0.640,0.742]  same: strong transfer -> strong transfer
+qwen3v3    transfer__mmlu_pro_to_math500__rescued       0.522 boot[0.435,0.612]  same: undefined — source probe was at chance -> undefined — source probe was at chance
+nemotronv3 transfer__bbh_to_lsat__helped                0.449 boot[0.365,0.536]  same: undefined — source probe was at chance -> undefined — source probe was at chance
+nemotronv3 transfer__bbh_to_lsat__needs_thinking        0.448 boot[0.362,0.536]  same: no transfer — target at chance -> no transfer — target at chance
+nemotronv3 transfer__bbh_to_lsat__rescued               0.446 boot[0.360,0.532]  same: no transfer — target at chance -> no transfer — target at chance
+nemotronv3 transfer__lsat_to_bbh__helped                0.502 boot[0.406,0.600]  same: no transfer — target at chance -> no transfer — target at chance
+nemotronv3 transfer__lsat_to_bbh__needs_thinking        0.548 boot[0.496,0.599]  FLIP: strong transfer -> no transfer — target at chance
+nemotronv3 transfer__lsat_to_bbh__rescued               0.578 boot[0.480,0.675]  FLIP: partial transfer -> no transfer — target at chance

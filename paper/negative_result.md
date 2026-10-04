@@ -13,16 +13,16 @@ through this section.
 
 **Where the corrected numbers come from.** "Published" numbers are in
 `paper/results/metrics/{qwen3v3,nemotronv3}/`. Corrected numbers are
-**working numbers** from the audit's scratch directory
-(`/private/tmp/claude-501/-Users-hong-Documents-code-projects-thinking-gating/f4da22a3-8ae9-47b8-aec9-90da43277d56/scratchpad/`,
-abbreviated `scratch/` below; it is not durable). They have not been promoted.
-They reach `paper/results/` only by re-running `scripts/run_full_analysis.sh`
+**working numbers** from the 2026-10-04 audit, kept with the scripts that
+produced them in `paper/results/errata-2026-10-04/` (abbreviated `errata/`
+below; see its README). They are not promoted metrics: the canonical
+corrected tables come from re-running `scripts/run_full_analysis.sh`
 (which now regrades labels) with `PROMOTE=1`.
 
 **What has and has not been re-run.** The analysis was re-run with the fixed
 code on the **published (pre-regrade) labels**
-(`scratch/rerun_metrics/`, `rerun.py`; diff against the published files in
-`scratch/rerun_metrics/diff_published.out`). At the published layer, every
+(`errata/rerun_metrics/`, `rerun.py`; diff against the published files in
+`errata/rerun_metrics/diff_published.out`). At the published layer, every
 probe AUROC, bootstrap interval, baseline test AUROC and within-group AUROC
 reproduces exactly. **No probe or baseline AUROC has been computed on the
 regraded labels yet.** The label shifts below are therefore shifts in the
@@ -35,7 +35,7 @@ no attention mask, so the model attended to pad tokens. About 93% of Qwen3 v3
 rows are padded. Spearman(pad count, mean log-prob) is −0.72 to −0.88 across
 the four tasks. On unpadded rows only, mean-log-prob AUROC for
 `needs_thinking` is 0.70 / 0.76 / 0.70 / 0.80 (n = 86 / 65 / 64 / 39), against
-0.58 / 0.65 / 0.56 / 0.53 on all rows (`scratch/cleanup_inventory.md`, B1).
+0.58 / 0.65 / 0.56 / 0.53 on all rows (`errata/b1_confidence_padding.md`).
 
 - **Invalid:** every `mean_logprob`, `min_logprob`, `mean_entropy` and
   `confidence_lr` number, in both models' `baselines/confidence__*.json` and
@@ -51,7 +51,7 @@ the four tasks. On unpadded rows only, mean-log-prob AUROC for
 ### Graders (B2, B16, B17, B18) and unfinished reasoning (B7)
 
 Each capture was regraded from its stored responses with the fixed graders
-(`scratch/regraded/TABLE.md`). An independent audit grader agrees to within
+(`errata/regraded/TABLE.md`). An independent audit grader agrees to within
 0–2 rows per capture.
 
 - **B2, BBH:** the prompt asked for "(letter)" on non-lettered subtasks, and
@@ -82,7 +82,7 @@ Nemotron BBH.
 On BBH, 7 of 540 thinking-on responses contain `<think>`, 118 are
 byte-identical to the thinking-off response, and the median thinking-on length
 is 20 tokens. On LSAT, 77 of 230 have no `<think>`
-(`scratch/b7b/nemotron_think.out`). §3.4's BBH rows therefore compare two
+(`errata/b7b/nemotron_think.out`). §3.4's BBH rows therefore compare two
 non-thinking runs, and a third of its LSAT rows do too. The capture now logs a
 reasoning-trace rate and warns below 80%.
 
@@ -90,7 +90,7 @@ reasoning-trace rate and warns below 80%.
 
 §1's "layer 18, the a-priori middle layer of 36" is right for Qwen3-8B. For
 Nemotron-Nano-8B, which has 33 hidden states, the a-priori middle layer is 16.
-At layer 16, on the published labels (`scratch/rerun_metrics/nemotronv3/metrics/`):
+At layer 16, on the published labels (`errata/rerun_metrics/nemotronv3/metrics/`):
 
 | task | target | published (layer 18) | layer 16 |
 |---|---|---|---|
@@ -101,7 +101,7 @@ At layer 16, on the published labels (`scratch/rerun_metrics/nemotronv3/metrics/
 
 The one lead in §3.4 moves 0.07 across two layers. At the a-priori layer it
 sits below its text baseline: paired difference vs tfidf_word is −0.020
-[−0.254, +0.217] (`scratch/rerun_metrics/nemotronv3/metrics/baseline_comparison.txt`).
+[−0.254, +0.217] (`errata/rerun_metrics/nemotronv3/metrics/baseline_comparison.txt`).
 Its labels also change under B7 (68 → 59 positives), and on those labels it
 has not been re-run. **It is not a lead.**
 
@@ -111,7 +111,7 @@ The verdict's "above chance" test used the seed-spread interval. Re-applying
 the fixed rule (the bootstrap interval over target rows) to the per-probe
 intervals stored in the published transfer files turns 7 of 42 verdicts into
 "no transfer — target at chance". The AUROCs are unchanged
-(`scratch/transfer_verdicts/reverdict.out`; no retraining). The seven:
+(`errata/transfer_verdicts/reverdict.out`; no retraining). The seven:
 
 - **Qwen3:**
   - gsm8k→bbh `rescued` (was "strong")
@@ -128,7 +128,7 @@ the "strong transfer" pairs is moot.
 ### Baseline selection (B10) and paired comparisons
 
 The "best baseline" columns were picked by **test** AUROC. Picked on
-validation (`scratch/rerun_metrics/diff_published.out`), these change:
+validation (`errata/rerun_metrics/diff_published.out`), these change:
 
 - §3.1 gsm8k text: tfidf_word 0.634 → length_words 0.604 [0.452, 0.749].
 - §3.2 math500 confidence: n_tokens_off 0.524 → min_logprob 0.505 (B1-invalid).
