@@ -49,7 +49,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # Reason=Priority, which reads like ordinary queue contention and is not.
 # An 8B model is ~16G of VRAM and peaks near 32G of host RAM while loading
 # shards, so 64G is still roomy. The 12-job caps above are untouched.
-SBATCH_FLAGS = ["--cpus-per-task=8", "--mem-per-cpu=8g", "--time=0-72:00:00", "--qos=rit"]
+# QOS: by 2026-10-04 the account allowed only `burst` (`rit` was rejected as
+# "Invalid qos specification"). burst jobs are preemptible (PreemptMode=requeue);
+# the cell queue recovers a preempted worker's cell via its stale heartbeat.
+SBATCH_FLAGS = ["--cpus-per-task=8", "--mem-per-cpu=8g", "--time=0-72:00:00", "--qos=burst"]
 PORT_MIN, PORT_MAX = 8800, 8899  # 88xx convention (see gpu_dispatch._port_is_88xx)
 
 # A jupyter allocation's name is "jupyter_empire_<port>" once the job's own
