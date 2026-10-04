@@ -22,9 +22,13 @@ Routers (each a per-row escalation score; escalate the top-k):
                privileged router
   oracle       gain itself (escalates helped rows first, hurt rows last)
 
-For each router: the smallest escalation fraction whose routed accuracy is
->= always-think accuracy - tolerance (exact over k, not a grid), and the mean
-routed accuracy over escalation 0-50%. Intervals are a paired percentile
+For each router, from the exact routed-accuracy curve (utils.metrics): nAUC
+over escalation 0-50% (0 = random, 1 = oracle) and the mean routed accuracy
+there; the smallest escalation reaching always-think accuracy minus 1, 0.5
+and 0 pp; and accuracy at 10% and 20% escalation. The tolerance point alone
+is fragile: on the regraded Qwen3 mix always-think beats never-think by only
+0.6 pp, so "within 1 pp" needs no escalation at all. Per-task off/on
+accuracy gaps are reported with bootstrap intervals. Intervals are a paired percentile
 bootstrap over rows (the same resample for every router). The router scores
 are cross-fitted once on the full data and held fixed across resamples, so
 the intervals cover routing noise, not refitting noise.
@@ -45,6 +49,8 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from utils.capture_io import (CONFIDENCE_SOURCES, align_labels,  # noqa: E402
                               load_labels, load_meta, resolve_confidence)
+from utils.metrics import (curve_accuracy_at, min_fraction_for_accuracy,  # noqa: E402
+                           routed_accuracy_curve, routed_nauc)
 
 logger = logging.getLogger("headroom_proxy")
 ROUTERS = ("conf_raw", "conf_fit", "conf_family", "oracle")
@@ -109,31 +115,32 @@ def cross_fit(X, y, seed=0, folds=5):
     return p
 
 
-def escalation_to(score, off, on, target):
-    """Smallest fraction k/n with mean(routed) >= target; nan if never.
-    Ties in the score are broken by a stable sort on row order."""
-    n = len(score)
-    order = np.argsort(-score, kind="stable")
-    acc = (off.sum() + np.concatenate([[0], np.cumsum((on - off)[order])])) / n
-    hit = np.flatnonzero(acc >= target - 1e-12)
-    return float(hit[0] / n) if len(hit) else float("nan")
+TOLERANCES = (0.01, 0.005, 0.0)
+BUDGETS = (0.1, 0.2)
 
 
-def mean_routed_acc(score, off, on, max_frac=0.5, points=51):
-    n = len(score)
-    order = np.argsort(-score, kind="stable")
-    acc = (off.sum() + np.concatenate([[0], np.cumsum((on - off)[order])])) / n
-    ks = np.round(np.linspace(0, max_frac, points) * n).astype(int)
-    return float(acc[ks].mean())
+def router_stats(score, off, on, tolerances=TOLERANCES, budgets=BUDGETS) -> dict:
+    """Every statistic for one router on one set of rows, from the exact
+    tie-averaged routed-accuracy curve (utils.metrics)."""
+    curve = routed_accuracy_curve(off, on, score)
+    out = {}
+    nauc = routed_nauc(off, on, score, 0.0, 0.5)
+    out["nauc_0_50"] = nauc["nauc"]
+    out["mean_routed_acc_0_50"] = nauc["mean_accuracy"]
+    acc_on = float(np.mean(on))
+    for tol in tolerances:
+        f = min_fraction_for_accuracy(curve, acc_on - tol)
+        # min_fraction_for_accuracy returns 1.0 when never reached
+        out[f"escalation_to_always_think_minus_{tol:g}"] = f
+    for b in budgets:
+        out[f"acc_at_{b:g}_escalation"] = float(curve_accuracy_at(curve, b))
+    return out
 
 
-def evaluate(scores, off, on, tol, rows=None):
+def evaluate(scores, off, on, rows=None):
     if rows is None:
         rows = np.arange(len(off))
-    o, a = off[rows], on[rows]
-    target = a.mean() - tol
-    return {name: {"escalation": escalation_to(s[rows], o, a, target),
-                   "mean_routed_acc_0_50": mean_routed_acc(s[rows], o, a)}
+    return {name: router_stats(s[rows], off[rows], on[rows])
             for name, s in scores.items()}
 
 
@@ -147,7 +154,6 @@ def main(argv=None):
                    help="Accept B1-corrupted stored confidence (reproduction only).")
     p.add_argument("--label-root", default="shared/labels",
                    help="Labels are read from <label-root>/<slug>/<task>_labels.jsonl")
-    p.add_argument("--tolerance", type=float, default=0.01)
     p.add_argument("--n-boot", type=int, default=1000)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--out-file", default=None)
@@ -164,61 +170,71 @@ def main(argv=None):
     scores = {"conf_raw": -X[:, 0], "conf_fit": cross_fit(X, gain, args.seed),
               "conf_family": cross_fit(Xcf, gain, args.seed), "oracle": gain.copy()}
 
-    point = evaluate(scores, off, on, args.tolerance)
+    point = evaluate(scores, off, on)
+    stat_keys = list(point["oracle"])
     rng = np.random.default_rng(args.seed)
     n = len(off)
-    boots = {name: {"escalation": [], "mean_routed_acc_0_50": []} for name in ROUTERS}
+    boots = {name: {k: [] for k in stat_keys} for name in ROUTERS}
+    fam_boot = {f: [] for f in fams}
     for _ in range(args.n_boot):
         rows = rng.integers(0, n, n)
-        res = evaluate(scores, off, on, args.tolerance, rows)
+        res = evaluate(scores, off, on, rows)
         for name in ROUTERS:
-            for k in boots[name]:
+            for k in stat_keys:
                 boots[name][k].append(res[name][k])
+        for f in fams:
+            r = rows[T[rows] == f]
+            fam_boot[f].append(on[r].mean() - off[r].mean() if len(r) else np.nan)
 
     def ci(vals):
         v = np.asarray(vals, float)
         v = v[np.isfinite(v)]
         return [float(x) for x in np.percentile(v, [2.5, 97.5])] if len(v) else [None, None]
 
-    routers = {}
-    for name in ROUTERS:
-        routers[name] = {k: {"point": point[name][k], "ci": ci(boots[name][k]),
-                             "n_boot_finite": int(np.isfinite(boots[name][k]).sum())}
-                         for k in boots[name]}
+    routers = {name: {k: {"point": point[name][k], "ci": ci(boots[name][k])}
+                      for k in stat_keys} for name in ROUTERS}
     diffs = {}
     for a, b in PAIRS:
-        for k in ("escalation", "mean_routed_acc_0_50"):
+        for k in stat_keys:
             d = np.asarray(boots[a][k]) - np.asarray(boots[b][k])
-            diffs[f"{a} - {b}: {k}"] = {"point": point[a][k] - point[b][k], "ci": ci(d)}
+            diffs[f"{a} - {b}: {k}"] = {
+                "point": point[a][k] - point[b][k], "ci": ci(d),
+                "p_le_zero": float(np.mean(d[np.isfinite(d)] <= 0))}
 
     per_task = {}
     for f in fams:
         m = T == f
         per_task[f] = {"n": int(m.sum()), "acc_off": float(off[m].mean()),
                        "acc_on": float(on[m].mean()),
+                       "gap_on_minus_off": float(on[m].mean() - off[m].mean()),
+                       "gap_ci": ci(fam_boot[f]),
                        "helped": float(((on - off)[m] == 1).mean()),
                        "hurt": float(((on - off)[m] == -1).mean())}
     out = {
-        "slug": args.slug, "tasks": fams, "n": int(n),
-        "tolerance": args.tolerance, "n_boot": args.n_boot, "seed": args.seed,
-        "acc_off": float(off.mean()), "acc_on": float(on.mean()),
-        "target_acc": float(on.mean() - args.tolerance),
+        "slug": args.slug, "tasks": fams, "n": int(n), "n_boot": args.n_boot,
+        "seed": args.seed, "acc_off": float(off.mean()), "acc_on": float(on.mean()),
         "helped": float((gain == 1).mean()), "hurt": float((gain == -1).mean()),
         "per_task": per_task, "features": feat_report, "routers": routers,
         "paired_differences": diffs, "provenance": prov,
-        "note": ("router scores cross-fitted once (5-fold) and held fixed; "
+        "note": ("exact tie-averaged routed-accuracy curves (utils.metrics); "
+                 "nAUC over escalation 0-50%: 0 = random, 1 = oracle; "
+                 "escalation_to_always_think_minus_t is 1.0 when never reached; "
+                 "router scores cross-fitted once (5-fold) and held fixed, the "
                  "bootstrap resamples rows only"),
     }
     print(f"n={n} acc_off={off.mean():.4f} acc_on={on.mean():.4f} "
           f"helped={(gain == 1).mean():.4f} hurt={(gain == -1).mean():.4f}")
-    for name in ROUTERS:
-        e = routers[name]["escalation"]
-        m = routers[name]["mean_routed_acc_0_50"]
-        print(f"{name:12s} escalation to always-think-{args.tolerance:.0%}: "
-              f"{e['point']:.3f} [{e['ci'][0]:.3f}, {e['ci'][1]:.3f}]   "
-              f"mean routed acc 0-50%: {m['point']:.4f} [{m['ci'][0]:.4f}, {m['ci'][1]:.4f}]")
+    for f, d in per_task.items():
+        print(f"  {f:9s} n={d['n']:5d} off={d['acc_off']:.3f} on={d['acc_on']:.3f} "
+              f"gap={d['gap_on_minus_off']:+.3f} [{d['gap_ci'][0]:+.3f}, {d['gap_ci'][1]:+.3f}] "
+              f"helped={d['helped']:.3f} hurt={d['hurt']:.3f}")
+    for k in stat_keys:
+        print(k)
+        for name in ROUTERS:
+            r = routers[name][k]
+            print(f"  {name:12s} {r['point']:.4f} [{r['ci'][0]:.4f}, {r['ci'][1]:.4f}]")
     for key, d in diffs.items():
-        print(f"{key:55s} {d['point']:+.4f} [{d['ci'][0]:+.4f}, {d['ci'][1]:+.4f}]")
+        print(f"{key:70s} {d['point']:+.4f} [{d['ci'][0]:+.4f}, {d['ci'][1]:+.4f}]")
     if args.out_file:
         Path(args.out_file).parent.mkdir(parents=True, exist_ok=True)
         Path(args.out_file).write_text(json.dumps(out, indent=2) + "\n")
