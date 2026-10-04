@@ -780,6 +780,38 @@ def cmd_jobs(args: argparse.Namespace) -> None:
         )
 
 
+def kill_code(pid: int, sig: int = 15) -> str:
+    """Python source, run in the node's Jupyter kernel, that signals a job.
+
+    The recorded pid is the `bash -c "cd ... && DISPATCH_NODE=... <cmd>"`
+    wrapper, started with start_new_session=True, so it leads its own process
+    group and the real command (bash does not exec the last command of an &&
+    list) is a child in that group. Signalling only the pid killed the wrapper
+    and orphaned the worker, which kept running while the manifest said
+    "killed". Signal the whole group instead. The dispatch worker puts each
+    cell in a group of its own, and its SIGTERM handler kills that group and
+    releases the cell. Falls back to the bare pid if the group is gone or
+    the pid is not a group leader.
+
+    Prints `ok pgid=<pid>`, `ok pid=<pid>`, or `gone`.
+    """
+    return (
+        "import os\n"
+        f"_pid, _sig = {int(pid)}, {int(sig)}\n"
+        "try:\n"
+        "    if os.getpgid(_pid) != _pid:\n"
+        "        raise ProcessLookupError('not a group leader')\n"
+        "    os.killpg(_pid, _sig)\n"
+        "    print(f'ok pgid={_pid}')\n"
+        "except (ProcessLookupError, PermissionError):\n"
+        "    try:\n"
+        "        os.kill(_pid, _sig)\n"
+        "        print(f'ok pid={_pid}')\n"
+        "    except ProcessLookupError:\n"
+        "        print('gone')\n"
+    )
+
+
 def cmd_kill(args: argparse.Namespace) -> None:
     """Handle the 'kill' subcommand."""
     config = load_config(args.config)
@@ -814,11 +846,14 @@ def cmd_kill(args: argparse.Namespace) -> None:
             if node and node.jupyter_url:
                 try:
                     from utils.jupyter_exec import JupyterExecutor
-                    code = f"import os; os.kill({target.pid}, 15)\nprint('ok')\n"
+                    code = kill_code(target.pid)
                     with JupyterExecutor(base_url=node.jupyter_url, password=node.jupyter_password) as jup:
                         result = jup.run(code)
                     if "ok" in result.stdout:
-                        print(f"Sent kill signal to PID {target.pid} on {target.node_name} ({target.hostname}, via Jupyter)")
+                        print(f"Sent SIGTERM to {result.stdout.strip().split()[-1]} "
+                              f"on {target.node_name} ({target.hostname}, via Jupyter)")
+                    elif "gone" in result.stdout:
+                        print(f"PID {target.pid} on {target.node_name} had already exited")
                     else:
                         print(f"Warning: unexpected Jupyter kill response: {result.stdout}")
                 except Exception as exc:

@@ -2,12 +2,16 @@
   "_comment": [
     "Example sweep manifest — copy this shape for new work.",
     "Expand it into cells:  python scripts/dispatch/queue.py expand configs/dispatch/example_probe_sweep.json --dry-run",
-    "Everything the worker needs is here; the worker itself never changes."
+    "Everything the worker needs is here; the worker itself never changes.",
+    "Every arg is a real scripts/run_experiment.py flag (tests/test_dispatch.py checks this against its argparse).",
+    "run_experiment.py writes <out-dir>/aggregate_metrics.json plus seed_<N>/metrics.json, hence the output_check.",
+    "cell_id_hash puts a fingerprint of the args in each cell id, so editing args later makes new cells instead of a conflict."
   ],
 
   "name": "gsm8k_probe_sweep",
   "kind": "python_script",
   "script": "scripts/run_experiment.py",
+  "cell_id_hash": true,
 
   "constants": {
     "capture": "shared/icr_capture/gsm8k_thinking_qwen3",
@@ -15,19 +19,19 @@
   },
 
   "grid": {
-    "method": ["mlp", "contrastive"],
+    "method": ["mlp", "logreg"],
     "seed": [42, 1, 2, 3, 4]
   },
 
   "args": [
-    "--activations", "{capture}/activations_thinking_off.npz",
+    "--capture-dir", "{capture}",
     "--labels", "shared/gsm8k_thinking_labels.jsonl",
     "--method", "{method}",
     "--seeds", "{seed}",
     "--out-dir", "{out}"
   ],
 
-  "output_check": ["{out}/metrics.json"],
+  "output_check": ["{out}/aggregate_metrics.json", "{out}/seed_{seed}/metrics.json"],
   "timeout_s": 7200,
   "max_attempts": 2,
   "priority": 100,
