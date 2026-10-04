@@ -21,7 +21,7 @@ model prefill state for thinking-mode routing.
 
 **The repo is self-contained.** Task modules, dispatch tooling, and the venv all
 live here. `bash scripts/setup_env.sh` on any machine. See
-`.agent-work/EMPIRE_AI_SETUP.md` for cluster workflow, `agent.md` for the
+`.agent-work/EMPIRE_AI_SETUP.md` for cluster workflow, `AGENTS.md` for the
 operating rules (which machine may do what, dispatch hygiene, pitfalls).
 
 ### The three objectives
@@ -62,7 +62,7 @@ Still unwritten: `scripts/template_ablation.py` (optional, low priority).
 
 Full numbers and caveats: `paper/results/metrics/qwen3v3/README.md` and
 `paper/results/metrics/nemotronv3/README.md`. The short version is in
-`CLAUDE.md` → "Current State". Do not quote anything from
+`AGENTS.md` → "Current State". Do not quote anything from
 `paper/results/metrics/*.json` at the top level or from `truncation/`,
 `baselines/`, `decomposition/`, `tuning/` — those are the retracted pre-v3
 runs, kept as the record of the confound.
@@ -170,7 +170,7 @@ forward:
 **Cluster:** `~/LLM_research/thinking-gating/` on Empire AI; large artifacts in
 `/raid0/think-gating/`.
 
-- `agent.md` (symlinked `claude.md`) — operating rules, dispatch, pitfalls
+- `AGENTS.md` (imported by the `CLAUDE.md` shim) — operating rules, dispatch, pitfalls
 - `.agent-work/EMPIRE_AI_SETUP.md` — cluster setup and dispatch workflow
 - `paper/results/` — provenance record; every quoted number traces to a file
   here. Read the per-group READMEs (`truncation/`, `baselines/`,

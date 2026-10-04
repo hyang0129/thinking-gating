@@ -60,3 +60,9 @@ logs/
 # Temporary
 .tmp/
 scratch/
+
+# Claude Code agent worktrees and local settings
+.claude/
+
+# pytest cache (written into the repo root)
+.pytest_cache/

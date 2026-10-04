@@ -37,7 +37,7 @@ source .venv/bin/activate
 
 The same two commands work on Empire AI. See
 [.agent-work/EMPIRE_AI_SETUP.md](.agent-work/EMPIRE_AI_SETUP.md) for cluster
-dispatch, and [agent.md](agent.md) for the operating rules — which machine may
+dispatch, and [AGENTS.md](AGENTS.md) for the operating rules — which machine may
 run what, and the pitfalls that have already cost a round of results.
 
 `transformers >= 4.51` is a hard floor: Qwen3 support and the `enable_thinking`

@@ -21,7 +21,7 @@ Run it on the login node, detached:
 
 It only ever calls `gpu_dispatch.py sync-jupyter` (read-only), `gpu_dispatch.py
 run` (dispatch) and `git fetch`. It never submits, cancels, or kills a SLURM job.
-See agent.md, "what needs approval". Launching an allocation is still a
+See AGENTS.md, "what needs approval". Launching an allocation is still a
 separate, deliberate act.
 
 Each poll:
@@ -216,7 +216,7 @@ def running_allocations() -> list[dict]:
 
 
 def dispatch(root: Path, node: str) -> bool:
-    """One worker onto one node. Quoted per agent.md: `run` takes nargs='+'."""
+    """One worker onto one node. Quoted per AGENTS.md: `run` takes nargs='+'."""
     # The "--" is load-bearing: `run` takes the command as nargs="+", so
     # without it argparse reads the worker's own --root/--wait as unknown
     # gpu_dispatch options and the dispatch dies before submitting anything
