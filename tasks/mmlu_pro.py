@@ -34,9 +34,25 @@ PROMPT_TEMPLATE = (
     "{question}"
 )
 
-_MARKED_LETTER = re.compile(
-    r"(?:answer|choice|option)\s*(?:is)?\s*[:=]?\s*\**\s*\(?([A-J])\)?\b", re.IGNORECASE)
-_BARE_LETTER = re.compile(r"\(([A-J])\)|(?<![A-Za-z])([A-J])[).]")
+# A letter after a word-bounded "answer" marker. The marker is case-insensitive;
+# the letter is NOT, so prose ("the answer is a ...", "the answer I got") does
+# not read as an option. An optional "option"/"choice" word, $\boxed{...},
+# \text{...} and "**" wrappers are allowed between marker and letter (a bare
+# "$" is not: "the answer is $ A i $" is math, not option A).
+_ANSWER_MARKER = re.compile(
+    r"(?<![<\w])(?i:answer)\b\s*(?:\**\s*(?i:is)\b)?\s*\**\s*(?P<sep>[:=])?")
+_LETTER_AFTER_MARKER = re.compile(
+    r"\s*\**\s*(?:(?i:option|choice)\s+)?"
+    r"(?:\$*\s*(?P<boxed>\\boxed\s*\{\s*))?(?:\\text(?:bf)?\s*\{\s*)?"
+    r"(?P<open>\()?\s*(?P<letter>[A-J])\s*(?P<close>\))?(?![A-Za-z0-9])")
+# \boxed{J} / \boxed{\text{(J)}} anywhere — Qwen3 closes with "$$\boxed{J}$$".
+_BOXED_LETTER = re.compile(r"\\boxed\s*\{\s*(?:\\text(?:bf)?\s*\{\s*)?\(?\s*([A-J])\s*\)?\s*\}")
+# Last resort: a final line that is nothing but the letter ("(C)", "C.", "**C**",
+# "Option C"). The old fallback took the last "(X)" / "X." anywhere, which read
+# hydrogen "(H)" or initials "I.F." out of prose as an answer.
+_FINAL_LINE_LETTER = re.compile(
+    r"^\W*(?:(?i:the\s+)?(?:(?i:correct)\s+)?(?i:option|choice)\s*(?:(?i:is)\s*)?:?\s*)?"
+    r"\(?([A-J])\)?\W*$")
 
 
 def render_question(question: str, options: list[str]) -> str:
@@ -51,16 +67,31 @@ def format_prompt(question: str) -> str:
 
 
 def extract_prediction(generation: str) -> str | None:
+    """The answer letter: last marked letter or \\boxed letter, else a bare final line."""
     if not generation:
         return None
-    marked = list(_MARKED_LETTER.finditer(generation))
-    if marked:
-        return marked[-1].group(1).upper()
-    bare = list(_BARE_LETTER.finditer(generation))
-    if bare:
-        return (bare[-1].group(1) or bare[-1].group(2)).upper()
-    stripped = generation.strip().rstrip(".").upper()
-    return stripped if stripped in LETTERS else None
+    candidates: list[tuple[int, str]] = []
+    for hit in _ANSWER_MARKER.finditer(generation):
+        m = _LETTER_AFTER_MARKER.match(generation, hit.end())
+        if not m:
+            continue
+        # "answer: B" / "answer is B" need the separator; without one the
+        # letter must be wrapped ("answer (B)", "answer \boxed{B}"), so
+        # "the answer I got" is not read as option I.
+        explicit = hit.group("sep") or re.search(r"(?i:\bis)\s*\**\s*$", hit.group(0))
+        wrapped = m.group("boxed") or (m.group("open") and m.group("close"))
+        if explicit or wrapped:
+            candidates.append((hit.start(), m.group("letter")))
+    for m in _BOXED_LETTER.finditer(generation):
+        candidates.append((m.start(), m.group(1)))
+    if candidates:
+        return max(candidates)[1]
+    lines = [ln for ln in generation.strip().splitlines() if ln.strip()]
+    if lines:
+        m = _FINAL_LINE_LETTER.match(lines[-1].strip())
+        if m:
+            return m.group(1)
+    return None
 
 
 def is_correct(generation: str, answer: str) -> bool:
