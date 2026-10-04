@@ -13,7 +13,11 @@ Usage:
     python scripts/capture_inference_thinking.py \\
         --task gsm8k --model Qwen/Qwen3-8B \\
         --out-dir shared/icr_capture/gsm8k_thinking_qwen3 \\
-        --max-samples 500 --chat-template
+        --max-samples 500 --chat-template \\
+        --max-response-len 2048 --max-response-len-thinking 8192
+
+--max-response-len is required: its old default (320) silently truncated most
+thinking-OFF answers on MATH-500 and invalidated a round of results.
 
 Sharding, for fanning a capture across nodes via scripts/dispatch/:
     --shard-index 0 --shard-count 4     # takes samples 0, 4, 8, ... 
@@ -22,7 +26,9 @@ Each shard writes its own files, so shards never collide and a failed shard is
 re-runnable on its own:
 
     <out-dir>/
-      config.json
+      config.json                           # written by the first shard to start
+      config.shard00.json                   # this shard's exact config, git
+                                            # commit, and end-of-run summary
       meta.shard00.jsonl                    # one row per query
       activations_thinking_off.shard00.npz  # (N, num_layers+1, hidden_dim) fp16
       activations_thinking_on.shard00.npz
@@ -38,7 +44,28 @@ Two details that matter for label quality:
     --max-response-len-thinking defaults far higher and every row records
     whether generation hit the cap (`truncated_on`).
   * **The answer is what follows </think>.** Correctness is graded on the
-    post-think text; the raw generation is kept for inspection.
+    post-think text; the raw generation is kept for inspection. A thinking-on
+    response whose <think> block never closes has no answer at all, so it is
+    graded wrong and flagged (`unclosed_think_on`) rather than graded on the
+    unfinished reasoning.
+
+Meta-row fields added 2026-10 (absent on earlier captures; absence means the
+old behaviour):
+
+  dataset_index_global  index into the task split (after --max-samples).
+                        `dataset_index` keeps its old meaning: the position
+                        within this shard.
+  prompt_truncated      the templated prompt exceeded --max-prompt-len, so the
+                        START of the user content was dropped to make it fit.
+                        (Before, the templated prompt was cut from the right,
+                        silently dropping the assistant header.)
+  has_reasoning_on      the thinking-on response carries a non-empty
+                        reasoning trace. Some models ignore the toggle.
+  unclosed_think_on     that trace never closed; correct_on is forced False.
+  confidence_version    2 = confidence_off scored on the row with its left
+                        padding stripped. Rows without the field were scored
+                        by v1, which attended to pad tokens: invalid for any
+                        row that was padded in its batch.
 """
 
 from __future__ import annotations
@@ -49,6 +76,7 @@ import importlib
 import json
 import logging
 import re
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -88,6 +116,7 @@ _TASK_REGISTRY: dict[str, tuple[str, Any, str]] = {
     "bbh": ("load_bbh", _correct_str, "test"),
 }
 
+_THINK_OPEN = re.compile(r"<think>", re.IGNORECASE)
 _THINK_CLOSE = re.compile(r"</think>", re.IGNORECASE)
 # Granite 3.3 wraps its answer in <response>...</response> when thinking is on
 # (its own system prompt instructs it to). Left in place, the tags ride along
@@ -101,6 +130,18 @@ _RESPONSE_CLOSE = re.compile(r"</response>", re.IGNORECASE)
 # chain of thought and scores the reasoning instead of the answer.
 _HARMONY_FINAL = re.compile(r"<\|channel\|>final<\|message\|>")
 _HARMONY_END = re.compile(r"<\|(?:end|return|call)\|>")
+_HARMONY_ANALYSIS = re.compile(r"<\|channel\|>analysis<\|message\|>")
+
+# Version of the sequence_confidence scorer, recorded on every meta row that
+# carries confidence_off. v1 (rows without the field) re-scored left-padded
+# rows with no attention mask; v2 strips each row's padding first.
+CONFIDENCE_VERSION = 2
+
+# Below this share of thinking-on rows carrying a reasoning trace, the shard is
+# reported at WARNING level: the "thinking-on" pass mostly did not think, so
+# its labels compare two non-thinking runs. A warning, not a failure, so cells
+# already queued keep their exit-code behaviour.
+REASONING_TRACE_WARN = 0.8
 
 
 # ---------------------------------------------------------------------------
@@ -133,6 +174,72 @@ def strip_thinking(text: str) -> str:
     if closes:
         answer = answer[:closes[0].start()]
     return answer.strip()
+
+
+def _think_left_open(prompt: str) -> bool:
+    """True if the rendered prompt opens a <think> block it never closes
+    (templates that prefill '<think>' for the model)."""
+    opens = list(_THINK_OPEN.finditer(prompt))
+    if not opens:
+        return False
+    closes = list(_THINK_CLOSE.finditer(prompt))
+    return not closes or closes[-1].start() < opens[-1].start()
+
+
+def assess_reasoning(response: str, prompt: str = "") -> dict:
+    """Does a thinking-on response carry a reasoning trace, and did it close?
+
+    Returns {"has_reasoning": bool, "unclosed": bool}.
+
+      * `<think>...</think>` with non-empty content -> reasoning, closed.
+      * `<think>` and no closing tag -> reasoning, UNCLOSED: the response is
+        all unfinished reasoning and has no answer to grade.
+      * no tags at all -> no reasoning.
+      * `</think>` with no `<think>`, or a prompt that itself leaves `<think>`
+        open -> the reasoning starts at the first response token.
+      * harmony (gpt-oss): an analysis channel is reasoning; it is unclosed
+        if no final channel follows.
+    """
+    analysis = _HARMONY_ANALYSIS.search(response)
+    if analysis is not None:
+        final = _HARMONY_FINAL.search(response, analysis.end())
+        end = final.start() if final else len(response)
+        body = _HARMONY_END.split(response[analysis.end():end])[0]
+        return {"has_reasoning": bool(body.strip()), "unclosed": final is None}
+
+    if _think_left_open(prompt):
+        start = 0
+    else:
+        first_open = _THINK_OPEN.search(response)
+        first_close = _THINK_CLOSE.search(response)
+        if first_open is not None and (first_close is None
+                                       or first_open.start() < first_close.start()):
+            start = first_open.end()
+        elif first_close is not None:
+            start = 0            # the opening tag was in the prompt or stripped
+        else:
+            return {"has_reasoning": False, "unclosed": False}
+    close = _THINK_CLOSE.search(response, start)
+    body = response[start: close.start() if close else len(response)]
+    return {"has_reasoning": bool(_THINK_OPEN.sub("", body).strip()),
+            "unclosed": close is None}
+
+
+def git_provenance() -> dict:
+    """Best-effort code provenance for the per-shard config. Never raises."""
+    info: dict[str, Any] = {"git_commit": None, "git_dirty": None}
+    try:
+        info["git_commit"] = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=_PROJECT_ROOT, capture_output=True,
+            text=True, timeout=10, check=True).stdout.strip() or None
+        status = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            cwd=_PROJECT_ROOT, capture_output=True, text=True, timeout=10,
+            check=True).stdout
+        info["git_dirty"] = bool(status.strip())
+    except Exception as exc:  # noqa: BLE001 -- provenance must never kill a run
+        logger.warning("could not record git commit: %s", exc)
+    return info
 
 
 # Families spell the thinking toggle three different ways, so resolve it per
@@ -259,6 +366,49 @@ def build_prompt(
     )
 
 
+def fit_prompt(raw_prompt: str, render: Any, tokenizer: Any, max_len: int,
+               add_special_tokens: bool) -> tuple[str, bool]:
+    """Render `raw_prompt`; if it exceeds `max_len` tokens, shorten the USER
+    CONTENT from the left until the rendered prompt fits.
+
+    Returns (rendered_prompt, was_truncated).
+
+    Truncating the rendered prompt instead -- what the tokenizer's
+    `truncation=True` does -- cuts from the right and silently drops the
+    template's generation prompt (`<|im_start|>assistant`, the thinking
+    toggle's empty think block), so the model is asked to continue the
+    question rather than answer it. Dropping the start of the question keeps
+    the template intact and keeps the end of the question, where task prompts
+    put the actual ask and the answer-format instruction.
+
+    When nothing overflows this returns exactly `render(raw_prompt)`, so the
+    tokens fed to the model are identical to the old behaviour.
+    """
+    def n_tokens(text: str) -> int:
+        return len(tokenizer(text, add_special_tokens=add_special_tokens).input_ids)
+
+    rendered = render(raw_prompt)
+    over = n_tokens(rendered) - max_len
+    if over <= 0:
+        return rendered, False
+
+    ids = tokenizer(raw_prompt, add_special_tokens=False).input_ids
+    keep = len(ids) - over
+    # decode -> re-encode is not always length-preserving at the cut, so
+    # shrink until it fits rather than trusting one subtraction.
+    for _ in range(16):
+        if keep <= 0:
+            break
+        rendered = render(tokenizer.decode(ids[-keep:], skip_special_tokens=False))
+        over = n_tokens(rendered) - max_len
+        if over <= 0:
+            return rendered, True
+        keep -= over
+    raise ValueError(
+        f"cannot fit prompt into --max-prompt-len {max_len}: the template "
+        "alone (or nearly all of it) exceeds the limit. Raise --max-prompt-len.")
+
+
 def load_model(model_name: str, attn_implementation: str = "sdpa"):
     """Load tokenizer + model for left-padded batched inference."""
     import torch
@@ -328,13 +478,52 @@ def prefill_hidden_states(model, input_ids, attention_mask) -> np.ndarray:
     return stacked.to(torch.float16).cpu().numpy()
 
 
+def _left_pad_counts(attention_mask, prompt_len: int, n_rows: int) -> list[int]:
+    """Leading-pad count per row, read from the batch's prompt attention mask.
+
+    Read from the mask, never from token values: many tokenizers set pad = eos
+    (or pad = bos), so a real prompt token can equal the pad id.
+    """
+    if attention_mask is None:
+        if n_rows > 1:
+            raise ValueError(
+                "sequence_confidence needs the prompt attention_mask for a "
+                "batch of more than one row: a left-padded row scored without "
+                "it attends to its pad tokens (confidence v1 bug)")
+        return [0]
+    mask = attention_mask.detach().to("cpu").long()
+    if mask.shape != (n_rows, prompt_len):
+        raise ValueError(f"attention_mask shape {tuple(mask.shape)} does not "
+                         f"match (rows, prompt_len) = ({n_rows}, {prompt_len})")
+    pads = []
+    for row in mask:
+        n_real = int(row.sum())
+        pad = prompt_len - n_real
+        # Only contiguous LEFT padding can be stripped by slicing.
+        if n_real == 0 or row[:pad].any() or not row[pad:].all():
+            raise ValueError("attention_mask is not contiguous left padding; "
+                             "the tokenizer must use padding_side='left'")
+        pads.append(pad)
+    return pads
+
+
 def sequence_confidence(model, sequences, prompt_len: int, n_new: list[int],
-                        pad_id: int) -> list[dict]:
+                        pad_id: int | None = None,
+                        attention_mask=None) -> list[dict]:
     """Mean log-prob and mean predictive entropy over each row's generated tokens.
 
     This is the baseline any reviewer asks for first: if the model can simply
     say it is unsure, a probe on its hidden state has to beat that to be worth
     a forward pass.
+
+    `sequences` is generate()'s output for a LEFT-PADDED batch: (B, prompt_len
+    + new). `attention_mask` is that batch's (B, prompt_len) prompt mask and is
+    required when B > 1. Each row is scored with its padding sliced off, so it
+    is scored exactly as if it had been generated alone. (Version 1 of this
+    function sliced from column 0 with no mask, so the model attended to the
+    pad tokens; mean log-prob then tracked the pad count, Spearman -0.72 to
+    -0.88 on the v3 captures.) `pad_id` is unused and kept for call-site
+    compatibility -- padding is read from the mask, not token values.
 
     Scored one row at a time on purpose. A batched forward materialises
     (batch, seq, vocab) logits -- at batch 16, 3k tokens and a 150k vocab that
@@ -344,6 +533,7 @@ def sequence_confidence(model, sequences, prompt_len: int, n_new: list[int],
     import torch
     import torch.nn.functional as F
 
+    pads = _left_pad_counts(attention_mask, prompt_len, sequences.shape[0])
     out = []
     for i in range(sequences.shape[0]):
         n = int(n_new[i])
@@ -351,13 +541,14 @@ def sequence_confidence(model, sequences, prompt_len: int, n_new: list[int],
             out.append({"mean_logprob": None, "min_logprob": None,
                         "mean_entropy": None})
             continue
-        seq = sequences[i : i + 1, : prompt_len + n]
+        seq = sequences[i : i + 1, pads[i] : prompt_len + n]
+        real_prompt = prompt_len - pads[i]
         with torch.no_grad():
             logits = model(input_ids=seq, use_cache=False).logits[0].float()
         # position t predicts token t+1, so the generated tokens are scored by
-        # the logits at prompt_len-1 .. prompt_len+n-2
-        pred = logits[prompt_len - 1 : prompt_len + n - 1]
-        tgt = seq[0, prompt_len : prompt_len + n]
+        # the logits at real_prompt-1 .. real_prompt+n-2
+        pred = logits[real_prompt - 1 : real_prompt + n - 1]
+        tgt = seq[0, real_prompt : real_prompt + n]
         logprobs = -F.cross_entropy(pred, tgt, reduction="none")
         lsm = F.log_softmax(pred, dim=-1)
         entropy = -(lsm.exp() * lsm).sum(dim=-1)
@@ -444,6 +635,32 @@ def build_writer_config(model: Any, args: argparse.Namespace) -> dict:
     }
 
 
+def build_shard_config(model: Any, args: argparse.Namespace,
+                       toggle: Any) -> dict:
+    """Everything that determined THIS shard's rows. config.json is written by
+    whichever shard starts first, so it cannot show that two shards of one
+    capture ran at different budgets, batch sizes, or commits; this can."""
+    import torch
+    import transformers
+
+    cfg = build_writer_config(model, args)
+    cfg.update({
+        "thinking_toggle": toggle.describe() if toggle is not None else None,
+        "shard_index": args.shard_index,
+        "max_samples": args.max_samples,
+        "attn_implementation": args.attn_implementation,
+        "capture_logprobs": bool(args.capture_logprobs),
+        "confidence_version": CONFIDENCE_VERSION if args.capture_logprobs else None,
+        "prompt_truncation": "left, user content only, flagged per row",
+        "torch_version": torch.__version__,
+        "transformers_version": transformers.__version__,
+        "argv": list(sys.argv),
+        "started_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        **git_provenance(),
+    })
+    return cfg
+
+
 # ---------------------------------------------------------------------------
 # Capture
 # ---------------------------------------------------------------------------
@@ -472,6 +689,10 @@ def run_capture(args: argparse.Namespace) -> int:
 
     if args.max_samples > 0:
         dataset = dataset[: args.max_samples]
+    # Shard the indices alongside the rows so each row can record where it
+    # sits in the split, not just where it sits in this shard.
+    global_index = select_shard(list(range(len(dataset))),
+                                args.shard_index, args.shard_count)
     dataset = select_shard(dataset, args.shard_index, args.shard_count)
     logger.info(
         "shard %d/%d: %d examples to process",
@@ -488,41 +709,61 @@ def run_capture(args: argparse.Namespace) -> int:
     off_path = out_dir / f"activations_thinking_off.{suffix}.npz"
     on_path = out_dir / f"activations_thinking_on.{suffix}.npz"
     config_path = out_dir / "config.json"
+    shard_config_path = out_dir / f"config.{suffix}.json"
 
+    # config.json: unchanged legacy file, first shard to start wins. Readers
+    # (utils.capture_io.load_config) only take shard-invariant keys from it.
     if not config_path.exists():
         capture_config = build_writer_config(model, args)
         capture_config["thinking_toggle"] = (
             toggle.describe() if toggle is not None else None)
         config_path.write_text(json.dumps(capture_config, indent=2))
+    shard_config = build_shard_config(model, args, toggle)
+    shard_config["status"] = "running"
+    shard_config_path.write_text(json.dumps(shard_config, indent=2) + "\n")
+
+    add_special = not args.chat_template
+
+    def renderer(enable_thinking: bool):
+        if not args.chat_template:
+            return lambda raw: raw
+        return lambda raw: toggle.render(tokenizer, raw, enable_thinking)
+
+    render_off, render_on = renderer(False), renderer(True)
 
     acts_off, acts_on, meta_rows = [], [], []
     started = time.monotonic()
 
     for start in range(0, len(dataset), args.batch_size):
         batch = dataset[start: start + args.batch_size]
+        raws = [_prompt_default(task_module, s) for s in batch]
 
-        prompts_off = [
-            build_prompt(s, task_module, tokenizer, args.model,
-                         chat_template=args.chat_template, enable_thinking=False,
-                         toggle=toggle)
-            for s in batch
-        ]
-        prompts_on = [
-            build_prompt(s, task_module, tokenizer, args.model,
-                         chat_template=args.chat_template, enable_thinking=True,
-                         toggle=toggle)
-            for s in batch
-        ]
+        # The untruncated rendering, for prompt_hash: a row's identity should
+        # not depend on --max-prompt-len.
+        prompts_off = [render_off(r) for r in raws]
+        fitted_off = [fit_prompt(r, render_off, tokenizer, args.max_prompt_len,
+                                 add_special) for r in raws]
+        fitted_on = [fit_prompt(r, render_on, tokenizer, args.max_prompt_len,
+                                add_special) for r in raws]
+        prompt_truncated = [a[1] or b[1] for a, b in zip(fitted_off, fitted_on)]
+        if any(prompt_truncated):
+            logger.warning(
+                "%d/%d prompts in this batch exceed --max-prompt-len %d; the "
+                "start of their user content was dropped (flagged "
+                "prompt_truncated)", sum(prompt_truncated), len(batch),
+                args.max_prompt_len)
 
         results = {}
-        for mode, prompts, budget in (
-            ("off", prompts_off, args.max_response_len),
-            ("on", prompts_on, args.max_response_len_thinking),
+        for mode, fitted, budget in (
+            ("off", fitted_off, args.max_response_len),
+            ("on", fitted_on, args.max_response_len_thinking),
         ):
+            prompts = [f[0] for f in fitted]
+            # No truncation here: fit_prompt already guaranteed the limit
+            # without cutting the template.
             tokens = tokenizer(
-                prompts, padding=True, truncation=True,
-                max_length=args.max_prompt_len, return_tensors="pt",
-                add_special_tokens=not args.chat_template,
+                prompts, padding=True, return_tensors="pt",
+                add_special_tokens=add_special,
             ).to(model.device)
 
             hidden = prefill_hidden_states(model, tokens.input_ids, tokens.attention_mask)
@@ -537,8 +778,9 @@ def run_capture(args: argparse.Namespace) -> int:
             if args.capture_logprobs and mode == "off":
                 conf = sequence_confidence(
                     model, sequences, tokens.input_ids.shape[1], lengths,
-                    tokenizer.pad_token_id)
+                    tokenizer.pad_token_id, attention_mask=tokens.attention_mask)
             results[mode] = {
+                "prompts": prompts,
                 "hidden": hidden, "texts": texts,
                 "truncated": truncated, "lengths": lengths,
                 "confidence": conf,
@@ -553,13 +795,24 @@ def run_capture(args: argparse.Namespace) -> int:
             answer_off = strip_thinking(results["off"]["texts"][i])
             answer_on = strip_thinking(results["on"]["texts"][i])
             correct_off = bool(is_correct_adapter(task_module, answer_off, sample))
-            correct_on = bool(is_correct_adapter(task_module, answer_on, sample))
+            reasoning_on = assess_reasoning(results["on"]["texts"][i],
+                                            results["on"]["prompts"][i])
+            # An unclosed <think> means the model never reached an answer;
+            # strip_thinking returns the raw reasoning, and grading that can
+            # score a number the model was still working through as correct.
+            correct_on = (not reasoning_on["unclosed"]
+                          and bool(is_correct_adapter(task_module, answer_on, sample)))
+            gidx = global_index[start + i]
+            conf_off = results["off"]["confidence"][i]
 
             acts_off.append(results["off"]["hidden"][i])
             acts_on.append(results["on"]["hidden"][i])
-            meta_rows.append({
-                "sample_id": sample.get("key", f"{args.task}-{start + i}"),
+            row = {
+                # Fallback id uses the split index: the within-shard position
+                # collides across shards.
+                "sample_id": sample.get("key", f"{args.task}-{gidx}"),
                 "dataset_index": start + i,
+                "dataset_index_global": gidx,
                 "prompt_hash": sha256(prompts_off[i]),
                 "question": sample["question"],
                 "answer": sample["answer"],
@@ -571,13 +824,19 @@ def run_capture(args: argparse.Namespace) -> int:
                 "correct_off": correct_off,
                 "correct_on": correct_on,
                 "truncated_off": results["off"]["truncated"][i],
-                "confidence_off": results["off"]["confidence"][i],
+                "confidence_off": conf_off,
                 "truncated_on": results["on"]["truncated"][i],
                 "n_tokens_off": results["off"]["lengths"][i],
                 "n_tokens_on": results["on"]["lengths"][i],
                 "prompt_len_off": results["off"]["prompt_lens"][i],
                 "prompt_len_on": results["on"]["prompt_lens"][i],
-            })
+                "prompt_truncated": prompt_truncated[i],
+                "has_reasoning_on": reasoning_on["has_reasoning"],
+                "unclosed_think_on": reasoning_on["unclosed"],
+            }
+            if conf_off is not None:
+                row["confidence_version"] = CONFIDENCE_VERSION
+            meta_rows.append(row)
 
         done = len(meta_rows)
         rate = done / max(time.monotonic() - started, 1e-6)
@@ -602,6 +861,24 @@ def run_capture(args: argparse.Namespace) -> int:
     hurt = sum(1 for r in meta_rows if r["correct_off"] and not r["correct_on"])
     trunc = sum(r["truncated_on"] for r in meta_rows)
     trunc_off = sum(r["truncated_off"] for r in meta_rows)
+    n_reasoning = sum(r["has_reasoning_on"] for r in meta_rows)
+    n_unclosed = sum(r["unclosed_think_on"] for r in meta_rows)
+    n_prompt_trunc = sum(r["prompt_truncated"] for r in meta_rows)
+
+    shard_config["summary"] = {
+        "n_samples": n,
+        "accuracy_off": round(n_off / n, 4),
+        "accuracy_on": round(n_on / n, 4),
+        "off_truncation_rate": round(trunc_off / n, 4),
+        "on_truncation_rate": round(trunc / n, 4),
+        "has_reasoning_on_rate": round(n_reasoning / n, 4),
+        "unclosed_think_on": n_unclosed,
+        "prompt_truncated": n_prompt_trunc,
+    }
+    shard_config["finished_at"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    shard_config["status"] = (
+        "quarantined" if trunc_off / n > OFF_TRUNCATION_LIMIT else "complete")
+    shard_config_path.write_text(json.dumps(shard_config, indent=2) + "\n")
 
     logger.info("wrote %s and activations %s", meta_path.name, np.stack(acts_off).shape)
     logger.info("thinking-OFF accuracy: %d/%d (%.1f%%)", n_off, n, 100 * n_off / n)
@@ -614,6 +891,28 @@ def run_capture(args: argparse.Namespace) -> int:
             "reflect truncation, not reasoning; raise --max-response-len-thinking",
             trunc, n, args.max_response_len_thinking,
         )
+    if n_unclosed:
+        logger.warning(
+            "%d/%d thinking-on responses never closed their reasoning block; "
+            "graded correct_on=False (flagged unclosed_think_on)",
+            n_unclosed, n)
+    if n_prompt_trunc:
+        logger.warning(
+            "%d/%d prompts exceeded --max-prompt-len %d and had the start of "
+            "their user content dropped (flagged prompt_truncated)",
+            n_prompt_trunc, n, args.max_prompt_len)
+
+    # A "thinking-on" pass that mostly did not think compares two non-thinking
+    # runs; Nemotron-Nano on BBH emitted <think> in 7 of 540 rows. Warn only:
+    # failing here would change the exit status of cells already queued.
+    reasoning_rate = n_reasoning / n
+    (logger.warning if reasoning_rate < REASONING_TRACE_WARN else logger.info)(
+        "thinking-on responses with a reasoning trace: %d/%d (%.1f%%)%s",
+        n_reasoning, n, 100 * reasoning_rate,
+        "" if reasoning_rate >= REASONING_TRACE_WARN else
+        f" -- below {REASONING_TRACE_WARN:.0%}: the thinking toggle is not "
+        "taking effect on most rows, so on/off labels here do not measure "
+        "what thinking adds")
 
     # Thinking-OFF truncation is the more dangerous of the two and used to go
     # unreported. correct_off defines BOTH objectives -- needs_thinking is
@@ -691,9 +990,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out-dir", required=True)
     p.add_argument("--max-samples", type=int, default=0, help="0 = the whole split")
     p.add_argument("--batch-size", type=int, default=8)
-    p.add_argument("--max-prompt-len", type=int, default=1024)
-    p.add_argument("--max-response-len", type=int, default=320,
-                   help="Token budget with thinking OFF")
+    p.add_argument("--max-prompt-len", type=int, default=1024,
+                   help="Token limit on the templated prompt. A prompt over it "
+                        "has the start of its user content dropped (never the "
+                        "template) and is flagged prompt_truncated.")
+    p.add_argument("--max-response-len", type=int, required=True,
+                   help="Token budget with thinking OFF. Required: the old "
+                        "default of 320 truncated 75%% of MATH-500 answers, "
+                        "and correct_off then measured length, not ability. "
+                        "Size it so thinking-OFF truncation is near zero.")
     p.add_argument("--max-response-len-thinking", type=int, default=1536,
                    help="Token budget with thinking ON — must fit the <think> "
                         "block plus the answer, or labels measure truncation")
