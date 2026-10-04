@@ -73,6 +73,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import importlib
+import inspect
 import json
 import logging
 import re
@@ -96,6 +97,11 @@ logger = logging.getLogger("capture")
 # ---------------------------------------------------------------------------
 
 def _correct_str(task_module: Any, generation: str, sample: dict) -> bool:
+    # bbh resolves a bare "(B)" against the question's options; pass the
+    # question to any grader that takes it, so capture grades as --regrade does.
+    if "question" in inspect.signature(task_module.is_correct).parameters:
+        return task_module.is_correct(generation, sample["answer"],
+                                      question=sample["question"])
     return task_module.is_correct(generation, sample["answer"])
 
 
