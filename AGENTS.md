@@ -14,11 +14,13 @@ interpreter. If a script needs something new, add it here and list it in
 
 ## Current State (2026-10-04)
 
-**One line:** the repo is pivoting to **System One decision models** — can a
-single-pass decision model estimate the value of computation it cannot perform,
-better than its own confidence? Plan: GitHub issue #1
-(`gh issue view 1 -R hyang0129/thinking-gating --comments`) and
-`paper/proposal_system_one_gating.md`. The old prefill-probe line is **closed
+**One line:** the repo is building a **bolt-on System 1** for reasoning models: an
+activated-LoRA decision head gives a hybrid-thinking model Jev-style single-pass
+typed answers, with free fallback to the untouched model's thinking mode (exact
+KV-cache reuse). Plan: `paper/proposal_bolt_on_system1.md` (v3) and GitHub issue #1
+(`gh issue view 1 -R hyang0129/thinking-gating --comments`); v2
+(`paper/proposal_system_one_gating.md`) is superseded but its gates still apply.
+The old prefill-probe line is **closed
 as a negative result** (`paper/negative_result.md`), with an
 "Errata (2026-10-04)" section at its top listing the bugs found in the
 cleanup audit and what they change.

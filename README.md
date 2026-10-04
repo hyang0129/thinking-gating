@@ -5,10 +5,10 @@ Can a model tell, before it spends the compute, whether thinking will help?
 > **Status (2026-10-04).** The prefill-probe line is **closed as a negative
 > result**: [paper/negative_result.md](paper/negative_result.md), with an
 > errata section at the top from the 2026-10-04 cleanup audit. The repo is
-> pivoting to **System One decision models** — whether a single-pass decision
-> model can estimate the value of computation better than its own confidence:
-> GitHub issue #1 and
-> [paper/proposal_system_one_gating.md](paper/proposal_system_one_gating.md).
+> building a **bolt-on System 1** for reasoning models — an activated-LoRA
+> decision head that gives a hybrid-thinking model Jev-style single-pass typed
+> answers with free fallback to its own thinking mode: GitHub issue #1 and
+> [paper/proposal_bolt_on_system1.md](paper/proposal_bolt_on_system1.md).
 > The capture, grading, baseline, statistics and dispatch tooling carry over
 > (fixed in the cleanup); the probe becomes one baseline among several.
 > Operating rules for agents: [AGENTS.md](AGENTS.md).

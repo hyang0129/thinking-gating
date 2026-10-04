@@ -1,5 +1,8 @@
 # Proposal: Single-pass models can estimate the value of computation they cannot perform
 
+> **Superseded 2026-10-04 by [`proposal_bolt_on_system1.md`](proposal_bolt_on_system1.md)** (v3: bolt-on System 1 via activated-adapter
+> decision heads). Kept because the negative-result errata cite §8, and v3 reuses its gates (§3).
+
 **Status:** research plan, 2026-10-04 (v2, revised after an internal
 adversarial review). Supersedes the prefill-probe line
 (`paper/negative_result.md`). ✓ = checked against the primary source;
