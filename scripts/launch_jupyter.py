@@ -52,7 +52,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # QOS: by 2026-10-04 the account allowed only `burst` (`rit` was rejected as
 # "Invalid qos specification"). burst jobs are preemptible (PreemptMode=requeue);
 # the cell queue recovers a preempted worker's cell via its stale heartbeat.
-SBATCH_FLAGS = ["--cpus-per-task=8", "--mem-per-cpu=8g", "--time=0-72:00:00", "--qos=burst"]
+# Walltime is a flag (--time) because it decides scheduling: SLURM backfills
+# short jobs into gaps, and on 2026-10-04/05 two 72h requests sat PENDING ~16h
+# on "Priority" while shorter work started. Ask for what the job needs.
+DEFAULT_TIME = "0-72:00:00"
+SBATCH_FLAGS = ["--cpus-per-task=8", "--mem-per-cpu=8g", "--qos=burst"]
 PORT_MIN, PORT_MAX = 8800, 8899  # 88xx convention (see gpu_dispatch._port_is_88xx)
 
 # A jupyter allocation's name is "jupyter_empire_<port>" once the job's own
@@ -115,6 +119,10 @@ def main():
     parser = argparse.ArgumentParser(
         description="Guarded Jupyter Lab launcher (enforces job caps; no cancel path).")
     parser.add_argument("port", help=f"Jupyter port ({PORT_MIN}-{PORT_MAX})")
+    parser.add_argument("--time", default=DEFAULT_TIME,
+                        help="SLURM walltime, e.g. 04:00:00 or 1-00:00:00 "
+                             f"(default {DEFAULT_TIME}). Short requests backfill "
+                             "far sooner; use them for short jobs.")
     parser.add_argument("--dry-run", action="store_true",
                         help="Run the cap checks and print the sbatch command, but do not submit.")
     args = parser.parse_args()
@@ -149,7 +157,7 @@ def main():
         sys.exit(_fail(11, f"port {port} is already served by a running jupyter "
                            f"job. Pick another port."))
 
-    cmd = ["sbatch", *SBATCH_FLAGS, str(JUPYTER_SCRIPT), str(port)]
+    cmd = ["sbatch", *SBATCH_FLAGS, f"--time={args.time}", str(JUPYTER_SCRIPT), str(port)]
     printable = " ".join(cmd)
 
     if args.dry_run:

@@ -204,6 +204,11 @@ ssh empire-ai 'cd ~/LLM_research/thinking-gating && python scripts/launch_jupyte
 ssh empire-ai 'cd ~/LLM_research/thinking-gating && python scripts/launch_jupyter.py 8882 --dry-run'
 ```
 
+**Request only the walltime the work needs** (`--time 04:00:00` for jobs under a
+few hours). SLURM backfills short requests into gaps; a 72 h default request
+sat PENDING ~16 h on "Priority" on 2026-10-05 while shorter jobs started. Jobs
+run under QOS `burst`, which is preemptible (requeue).
+
 Ports follow the 88xx convention. A non-zero exit means a cap was hit — report
 it, do not route around it. **Give every node a distinct port** (8882, 8883,
 8884, …): the launcher only refuses a port serving a *RUNNING* job, so a second
