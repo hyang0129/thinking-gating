@@ -1,0 +1,13 @@
+task,target,n,base_rate,probe_mean,probe_lo,probe_hi,text_name,text_selected_on,text_mean,text_lo,text_hi,conf_name,conf_selected_on,conf_mean,conf_lo,conf_hi,diff_vs,diff_mean,diff_lo,diff_hi,diff_p_le_zero
+bbh,helped,540,0.1278,0.7225,0.5614,0.8647,,,,,,,,,,,,,,,
+bbh,needs_thinking,540,0.2389,0.7613,0.6534,0.8589,tfidf_char,val,0.8024,0.7069,0.8851,confidence_lr,val,0.7149,0.6034,0.8174,tfidf_char,-0.0412,-0.1260,0.0418,0.7506
+bbh,rescued,129,0.5349,0.6560,0.4237,0.8566,tfidf_char,val,0.6452,0.4183,0.8514,mean_entropy,val,0.5024,0.2733,0.7326,tfidf_char,0.0107,-0.1613,0.1889,0.4816
+gsm8k,helped,1319,0.0318,0.7309,0.5195,0.8995,,,,,,,,,,,,,,,
+gsm8k,needs_thinking,1319,0.0675,0.6868,0.5611,0.8003,length_words,val,0.6045,0.4520,0.7485,confidence_lr,val,0.8102,0.6960,0.9075,confidence_lr,-0.1234,-0.2586,0.0053,0.8991
+gsm8k,rescued,89,0.4719,0.6311,0.3521,0.8848,length_chars,val,0.5378,0.2540,0.8050,n_tokens_off,val,0.6378,0.3613,0.8924,length_chars,0.0933,-0.2726,0.4529,0.3456
+math500,helped,500,0.0660,0.5713,0.3757,0.7639,,,,,,,,,,,,,,,
+math500,needs_thinking,500,0.1760,0.7751,0.6559,0.8789,length_chars,val,0.6969,0.5690,0.8149,confidence_lr,val,0.9192,0.8496,0.9748,confidence_lr,-0.1442,-0.2532,-0.0467,0.9948
+math500,rescued,88,0.3750,0.6515,0.3506,0.9221,tfidf_char,val,0.5848,0.2902,0.8668,mean_logprob,val,0.8061,0.5542,0.9767,mean_logprob,-0.1545,-0.5167,0.2035,0.7724
+mmlu_pro,helped,1000,0.1020,0.5327,0.3941,0.6633,,,,,,,,,,,,,,,
+mmlu_pro,needs_thinking,1000,0.3830,0.6268,0.5486,0.7045,tfidf_word,val,0.5918,0.5098,0.6750,confidence_lr,val,0.7862,0.7156,0.8515,confidence_lr,-0.1594,-0.2489,-0.0685,0.9980
+mmlu_pro,rescued,383,0.2663,0.4714,0.3250,0.6207,tfidf_word,val,0.4361,0.2889,0.5878,confidence_lr,val,0.6350,0.4988,0.7604,confidence_lr,-0.1636,-0.3554,0.0292,0.9174

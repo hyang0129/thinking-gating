@@ -1,0 +1,14 @@
+task      target               n   base  prefill probe           best text (val-sel.)                  best confidence (val-sel.)            probe - best, paired                        
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+bbh       helped             540  0.128  0.722 [0.561, 0.865]    -                                     -                                     -                                           
+bbh       needs_thinking     540  0.239  0.761 [0.653, 0.859]    tfidf_char 0.802 [0.707, 0.885]       confidence_lr 0.715 [0.603, 0.817]    -0.041 [-0.126, +0.042] vs tfidf_char       
+bbh       rescued            129  0.535  0.656 [0.424, 0.857]    tfidf_char 0.645 [0.418, 0.851]       mean_entropy 0.502 [0.273, 0.733]     +0.011 [-0.161, +0.189] vs tfidf_char       
+gsm8k     helped            1319  0.032  0.731 [0.519, 0.899]    -                                     -                                     -                                           
+gsm8k     needs_thinking    1319  0.067  0.687 [0.561, 0.800]    length_words 0.604 [0.452, 0.749]     confidence_lr 0.810 [0.696, 0.907]    -0.123 [-0.259, +0.005] vs confidence_lr    
+gsm8k     rescued             89  0.472  0.631 [0.352, 0.885]    length_chars 0.538 [0.254, 0.805]     n_tokens_off 0.638 [0.361, 0.892]     +0.093 [-0.273, +0.453] vs length_chars     
+math500   helped             500  0.066  0.571 [0.376, 0.764]    -                                     -                                     -                                           
+math500   needs_thinking     500  0.176  0.775 [0.656, 0.879]    length_chars 0.697 [0.569, 0.815]     confidence_lr 0.919 [0.850, 0.975]    -0.144 [-0.253, -0.047] vs confidence_lr    
+math500   rescued             88  0.375  0.652 [0.351, 0.922]    tfidf_char 0.585 [0.290, 0.867]       mean_logprob 0.806 [0.554, 0.977]     -0.155 [-0.517, +0.203] vs mean_logprob     
+mmlu_pro  helped            1000  0.102  0.533 [0.394, 0.663]    -                                     -                                     -                                           
+mmlu_pro  needs_thinking    1000  0.383  0.627 [0.549, 0.705]    tfidf_word 0.592 [0.510, 0.675]       confidence_lr 0.786 [0.716, 0.851]    -0.159 [-0.249, -0.069] vs confidence_lr    
+mmlu_pro  rescued            383  0.266  0.471 [0.325, 0.621]    tfidf_word 0.436 [0.289, 0.588]       confidence_lr 0.635 [0.499, 0.760]    -0.164 [-0.355, +0.029] vs confidence_lr    

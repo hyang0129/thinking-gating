@@ -1,0 +1,583 @@
+{
+  "slug": "qwen3v3",
+  "tasks": [
+    "gsm8k",
+    "math500",
+    "mmlu_pro",
+    "bbh"
+  ],
+  "n": 3359,
+  "n_boot": 1000,
+  "seed": 0,
+  "acc_off": 0.7948794284013099,
+  "acc_on": 0.8130395951175945,
+  "helped": 0.0732360821673117,
+  "hurt": 0.055075915451027094,
+  "per_task": {
+    "gsm8k": {
+      "n": 1319,
+      "acc_off": 0.9325246398786959,
+      "acc_on": 0.9234268385140257,
+      "gap_on_minus_off": -0.0090978013646702,
+      "gap_ci": [
+        -0.024853651313620367,
+        0.006125809148902109
+      ],
+      "helped": 0.03184230477634572,
+      "hurt": 0.04094010614101592
+    },
+    "math500": {
+      "n": 500,
+      "acc_off": 0.824,
+      "acc_on": 0.82,
+      "gap_on_minus_off": -0.0040000000000000036,
+      "gap_ci": [
+        -0.03579265744702026,
+        0.030390845412977898
+      ],
+      "helped": 0.066,
+      "hurt": 0.07
+    },
+    "mmlu_pro": {
+      "n": 1000,
+      "acc_off": 0.617,
+      "acc_on": 0.648,
+      "gap_on_minus_off": 0.031000000000000028,
+      "gap_ci": [
+        0.00494414809529195,
+        0.05611678833614009
+      ],
+      "helped": 0.102,
+      "hurt": 0.071
+    },
+    "bbh": {
+      "n": 540,
+      "acc_off": 0.7611111111111111,
+      "acc_on": 0.8425925925925926,
+      "gap_on_minus_off": 0.08148148148148149,
+      "gap_ci": [
+        0.049512987012987016,
+        0.11732108092094118
+      ],
+      "helped": 0.12777777777777777,
+      "hurt": 0.046296296296296294
+    }
+  },
+  "features": {
+    "nonfinite_per_feature": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "routers": {
+    "conf_raw": {
+      "nauc_0_50": {
+        "point": 0.14422209339630196,
+        "ci": [
+          0.071243546424696,
+          0.21226055356284504
+        ]
+      },
+      "mean_routed_acc_0_50": {
+        "point": 0.8085534182271353,
+        "ci": [
+          0.7966204885968399,
+          0.820366759606877
+        ]
+      },
+      "escalation_to_always_think_minus_0.01": {
+        "point": 0.10806787734444775,
+        "ci": [
+          0.0,
+          0.26648556117892225
+        ]
+      },
+      "escalation_to_always_think_minus_0.005": {
+        "point": 0.16969336111938077,
+        "ci": [
+          0.007740398928252456,
+          0.36354569812444176
+        ]
+      },
+      "escalation_to_always_think_minus_0": {
+        "point": 0.3063411729681453,
+        "ci": [
+          0.04644239356951474,
+          0.9702292348913367
+        ]
+      },
+      "acc_at_0.1_escalation": {
+        "point": 0.8014587674903245,
+        "ci": [
+          0.7886126823459363,
+          0.8157189639773742
+        ]
+      },
+      "acc_at_0.2_escalation": {
+        "point": 0.8103006847275975,
+        "ci": [
+          0.7972476927657041,
+          0.8225721941053885
+        ]
+      }
+    },
+    "conf_fit": {
+      "nauc_0_50": {
+        "point": 0.12365912102083351,
+        "ci": [
+          0.05159050897576099,
+          0.19383435858465345
+        ]
+      },
+      "mean_routed_acc_0_50": {
+        "point": 0.8072511134345918,
+        "ci": [
+          0.7953296774334498,
+          0.8191206948828053
+        ]
+      },
+      "escalation_to_always_think_minus_0.01": {
+        "point": 0.06043465317058649,
+        "ci": [
+          0.0,
+          0.3268978862756773
+        ]
+      },
+      "escalation_to_always_think_minus_0.005": {
+        "point": 0.15123548675200954,
+        "ci": [
+          0.005284310806787739,
+          0.5674456683536767
+        ]
+      },
+      "escalation_to_always_think_minus_0": {
+        "point": 0.5194998511461745,
+        "ci": [
+          0.055671330753200354,
+          0.9970303661804109
+        ]
+      },
+      "acc_at_0.1_escalation": {
+        "point": 0.802917534980649,
+        "ci": [
+          0.7892229830306638,
+          0.8162846085144388
+        ]
+      },
+      "acc_at_0.2_escalation": {
+        "point": 0.8052991961893421,
+        "ci": [
+          0.7922581125334921,
+          0.8186960404882405
+        ]
+      }
+    },
+    "conf_family": {
+      "nauc_0_50": {
+        "point": 0.13491024188213074,
+        "ci": [
+          0.06127453916737364,
+          0.21116116297772874
+        ]
+      },
+      "mean_routed_acc_0_50": {
+        "point": 0.8079636752350752,
+        "ci": [
+          0.7957470104488383,
+          0.8201965526358028
+        ]
+      },
+      "escalation_to_always_think_minus_0.01": {
+        "point": 0.08067877344447752,
+        "ci": [
+          0.0,
+          0.24176094075617743
+        ]
+      },
+      "escalation_to_always_think_minus_0.005": {
+        "point": 0.141113426615064,
+        "ci": [
+          0.008566537660017866,
+          0.9473206311402204
+        ]
+      },
+      "escalation_to_always_think_minus_0": {
+        "point": 0.24471568919321227,
+        "ci": [
+          0.05714498362607919,
+          0.9973206311402203
+        ]
+      },
+      "acc_at_0.1_escalation": {
+        "point": 0.8044060732360822,
+        "ci": [
+          0.7907107770169693,
+          0.8172075022328074
+        ]
+      },
+      "acc_at_0.2_escalation": {
+        "point": 0.8109556415599881,
+        "ci": [
+          0.7977910092289372,
+          0.8240547782077999
+        ]
+      }
+    },
+    "oracle": {
+      "nauc_0_50": {
+        "point": 1.0,
+        "ci": [
+          1.0,
+          1.0
+        ]
+      },
+      "mean_routed_acc_0_50": {
+        "point": 0.8627519868374044,
+        "ci": [
+          0.8515947633410298,
+          0.8738702287119753
+        ]
+      },
+      "escalation_to_always_think_minus_0.01": {
+        "point": 0.008335814230425722,
+        "ci": [
+          0.0,
+          0.02024412027389104
+        ]
+      },
+      "escalation_to_always_think_minus_0.005": {
+        "point": 0.013396844298898482,
+        "ci": [
+          0.0008931229532598987,
+          0.0253051503423638
+        ]
+      },
+      "escalation_to_always_think_minus_0": {
+        "point": 0.01816016671628461,
+        "ci": [
+          0.0056564453706460256,
+          0.030068472759749925
+        ]
+      },
+      "acc_at_0.1_escalation": {
+        "point": 0.8681155105686216,
+        "ci": [
+          0.8564974694849657,
+          0.879130693658827
+        ]
+      },
+      "acc_at_0.2_escalation": {
+        "point": 0.8681155105686216,
+        "ci": [
+          0.8564974694849657,
+          0.879130693658827
+        ]
+      }
+    }
+  },
+  "paired_differences": {
+    "conf_fit - oracle: nauc_0_50": {
+      "point": -0.8763408789791665,
+      "ci": [
+        -0.948409491024239,
+        -0.8061656414153465
+      ],
+      "p_le_zero": 1.0
+    },
+    "conf_fit - oracle: mean_routed_acc_0_50": {
+      "point": -0.05550087340281262,
+      "ci": [
+        -0.06150558088842736,
+        -0.04943964223322046
+      ],
+      "p_le_zero": 1.0
+    },
+    "conf_fit - oracle: escalation_to_always_think_minus_0.01": {
+      "point": 0.05209883894016076,
+      "ci": [
+        0.0,
+        0.3076064304852634
+      ],
+      "p_le_zero": 0.101
+    },
+    "conf_fit - oracle: escalation_to_always_think_minus_0.005": {
+      "point": 0.13783864245311106,
+      "ci": [
+        0.004115808276272703,
+        0.5490398928252456
+      ],
+      "p_le_zero": 0.016
+    },
+    "conf_fit - oracle: escalation_to_always_think_minus_0": {
+      "point": 0.5013396844298899,
+      "ci": [
+        0.0479086037511164,
+        0.9744045846978268
+      ],
+      "p_le_zero": 0.0
+    },
+    "conf_fit - oracle: acc_at_0.1_escalation": {
+      "point": -0.06519797558797258,
+      "ci": [
+        -0.07353378981839842,
+        -0.05685546293539751
+      ],
+      "p_le_zero": 1.0
+    },
+    "conf_fit - oracle: acc_at_0.2_escalation": {
+      "point": -0.06281631437927948,
+      "ci": [
+        -0.0708544209586186,
+        -0.05388508484668053
+      ],
+      "p_le_zero": 1.0
+    },
+    "conf_family - conf_fit: nauc_0_50": {
+      "point": 0.011251120861297231,
+      "ci": [
+        -0.03639257784775355,
+        0.0594636913579806
+      ],
+      "p_le_zero": 0.332
+    },
+    "conf_family - conf_fit: mean_routed_acc_0_50": {
+      "point": 0.0007125618004834022,
+      "ci": [
+        -0.002302483736201677,
+        0.0037476288192705817
+      ],
+      "p_le_zero": 0.332
+    },
+    "conf_family - conf_fit: escalation_to_always_think_minus_0.01": {
+      "point": 0.020244120273891032,
+      "ci": [
+        -0.1313114022030366,
+        0.05215838047037803
+      ],
+      "p_le_zero": 0.563
+    },
+    "conf_family - conf_fit: escalation_to_always_think_minus_0.005": {
+      "point": -0.010122060136945527,
+      "ci": [
+        -0.30431676094075616,
+        0.5320779994045843
+      ],
+      "p_le_zero": 0.638
+    },
+    "conf_family - conf_fit: escalation_to_always_think_minus_0": {
+      "point": -0.2747841619529622,
+      "ci": [
+        -0.6857100327478416,
+        0.5717177731467697
+      ],
+      "p_le_zero": 0.527
+    },
+    "conf_family - conf_fit: acc_at_0.1_escalation": {
+      "point": 0.0014885382554331583,
+      "ci": [
+        -0.0026801131289074217,
+        0.005358737719559414
+      ],
+      "p_le_zero": 0.289
+    },
+    "conf_family - conf_fit: acc_at_0.2_escalation": {
+      "point": 0.005656445370646024,
+      "ci": [
+        0.00029026495980944463,
+        0.010717475439118829
+      ],
+      "p_le_zero": 0.025
+    },
+    "conf_raw - conf_fit: nauc_0_50": {
+      "point": 0.020562972375468447,
+      "ci": [
+        -0.023297252528316735,
+        0.06264522654593455
+      ],
+      "p_le_zero": 0.168
+    },
+    "conf_raw - conf_fit: mean_routed_acc_0_50": {
+      "point": 0.0013023047925435627,
+      "ci": [
+        -0.001463464872136866,
+        0.0040363538355141886
+      ],
+      "p_le_zero": 0.168
+    },
+    "conf_raw - conf_fit: escalation_to_always_think_minus_0.01": {
+      "point": 0.04763322417386127,
+      "ci": [
+        -0.11730425721941054,
+        0.07478416195296213
+      ],
+      "p_le_zero": 0.493
+    },
+    "conf_raw - conf_fit: escalation_to_always_think_minus_0.005": {
+      "point": 0.01845787436737123,
+      "ci": [
+        -0.2909720154807978,
+        0.08399821375409343
+      ],
+      "p_le_zero": 0.594
+    },
+    "conf_raw - conf_fit: escalation_to_always_think_minus_0": {
+      "point": -0.2131586781780292,
+      "ci": [
+        -0.6726034534087526,
+        0.372186662697231
+      ],
+      "p_le_zero": 0.689
+    },
+    "conf_raw - conf_fit: acc_at_0.1_escalation": {
+      "point": -0.0014587674903244752,
+      "ci": [
+        -0.005626674605537341,
+        0.0029770765108663166
+      ],
+      "p_le_zero": 0.694
+    },
+    "conf_raw - conf_fit: acc_at_0.2_escalation": {
+      "point": 0.005001488538255439,
+      "ci": [
+        -0.0008335814230425759,
+        0.009230425721941101
+      ],
+      "p_le_zero": 0.05
+    },
+    "conf_family - oracle: nauc_0_50": {
+      "point": -0.8650897581178693,
+      "ci": [
+        -0.9387254608326263,
+        -0.7888388370222712
+      ],
+      "p_le_zero": 1.0
+    },
+    "conf_family - oracle: mean_routed_acc_0_50": {
+      "point": -0.05478831160232922,
+      "ci": [
+        -0.06101294518660618,
+        -0.04879326476987579
+      ],
+      "p_le_zero": 1.0
+    },
+    "conf_family - oracle: escalation_to_always_think_minus_0.01": {
+      "point": 0.0723429592140518,
+      "ci": [
+        0.0,
+        0.22300535873771954
+      ],
+      "p_le_zero": 0.104
+    },
+    "conf_family - oracle: escalation_to_always_think_minus_0.005": {
+      "point": 0.12771658231616553,
+      "ci": [
+        0.006802619827329564,
+        0.9240845489729086
+      ],
+      "p_le_zero": 0.017
+    },
+    "conf_family - oracle: escalation_to_always_think_minus_0": {
+      "point": 0.22655552247692765,
+      "ci": [
+        0.05000744269127717,
+        0.9794581720750223
+      ],
+      "p_le_zero": 0.0
+    },
+    "conf_family - oracle: acc_at_0.1_escalation": {
+      "point": -0.06370943733253942,
+      "ci": [
+        -0.07204525156296526,
+        -0.05567133075320041
+      ],
+      "p_le_zero": 1.0
+    },
+    "conf_family - oracle: acc_at_0.2_escalation": {
+      "point": -0.05715986900863346,
+      "ci": [
+        -0.06519797558797258,
+        -0.04882405477820784
+      ],
+      "p_le_zero": 1.0
+    }
+  },
+  "provenance": [
+    {
+      "task": "gsm8k",
+      "capture_dir": "shared/icr_capture/gsm8k_thinking_qwen3v3",
+      "labels": "shared/labels/qwen3v3/gsm8k_labels.jsonl",
+      "n": 1319,
+      "regraded": true,
+      "grader_version": "gsm8k:c24307232d85",
+      "confidence": {
+        "capture_dir": "shared/icr_capture/gsm8k_thinking_qwen3v3",
+        "requested": "auto",
+        "source": "confidence_off_v2 sidecar",
+        "confidence_version": [
+          2
+        ],
+        "n_rows": 1319,
+        "flags": {}
+      }
+    },
+    {
+      "task": "math500",
+      "capture_dir": "shared/icr_capture/math500_thinking_qwen3v3",
+      "labels": "shared/labels/qwen3v3/math500_labels.jsonl",
+      "n": 500,
+      "regraded": true,
+      "grader_version": "math500:3b7928eaf5fe",
+      "confidence": {
+        "capture_dir": "shared/icr_capture/math500_thinking_qwen3v3",
+        "requested": "auto",
+        "source": "confidence_off_v2 sidecar",
+        "confidence_version": [
+          2
+        ],
+        "n_rows": 500,
+        "flags": {}
+      }
+    },
+    {
+      "task": "mmlu_pro",
+      "capture_dir": "shared/icr_capture/mmlu_pro_thinking_qwen3v3",
+      "labels": "shared/labels/qwen3v3/mmlu_pro_labels.jsonl",
+      "n": 1000,
+      "regraded": true,
+      "grader_version": "mmlu_pro:5506821df5c8",
+      "confidence": {
+        "capture_dir": "shared/icr_capture/mmlu_pro_thinking_qwen3v3",
+        "requested": "auto",
+        "source": "confidence_off_v2 sidecar",
+        "confidence_version": [
+          2
+        ],
+        "n_rows": 1000,
+        "flags": {}
+      }
+    },
+    {
+      "task": "bbh",
+      "capture_dir": "shared/icr_capture/bbh_thinking_qwen3v3",
+      "labels": "shared/labels/qwen3v3/bbh_labels.jsonl",
+      "n": 540,
+      "regraded": true,
+      "grader_version": "bbh:fdf16277ac0a",
+      "confidence": {
+        "capture_dir": "shared/icr_capture/bbh_thinking_qwen3v3",
+        "requested": "auto",
+        "source": "confidence_off_v2 sidecar",
+        "confidence_version": [
+          2
+        ],
+        "n_rows": 540,
+        "flags": {
+          "token_count_mismatch": 2
+        }
+      }
+    }
+  ],
+  "note": "exact tie-averaged routed-accuracy curves (utils.metrics); nAUC over escalation 0-50%: 0 = random, 1 = oracle; escalation_to_always_think_minus_t is 1.0 when never reached; router scores cross-fitted once (5-fold) and held fixed, the bootstrap resamples rows only"
+}

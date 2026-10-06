@@ -1,0 +1,68 @@
+{
+  "target": "rescued",
+  "capture_dir": "shared/icr_capture/bbh_thinking_qwen3v3",
+  "group_key": "sample_id:middle",
+  "layer": 18,
+  "seeds": [
+    42,
+    1,
+    2,
+    3,
+    4
+  ],
+  "n": 129,
+  "n_groups": 21,
+  "n_informative_groups": 12,
+  "base_rate": 0.5348837209302325,
+  "test_split_groups": [
+    {
+      "seed": 42,
+      "n_test": 26,
+      "n_groups": 13,
+      "n_informative_groups": 4,
+      "n_pairs": 6
+    },
+    {
+      "seed": 1,
+      "n_test": 26,
+      "n_groups": 13,
+      "n_informative_groups": 2,
+      "n_pairs": 6
+    },
+    {
+      "seed": 2,
+      "n_test": 26,
+      "n_groups": 13,
+      "n_informative_groups": 2,
+      "n_pairs": 4
+    },
+    {
+      "seed": 3,
+      "n_test": 26,
+      "n_groups": 11,
+      "n_informative_groups": 4,
+      "n_pairs": 6
+    },
+    {
+      "seed": 4,
+      "n_test": 26,
+      "n_groups": 13,
+      "n_informative_groups": 5,
+      "n_pairs": 9
+    }
+  ],
+  "test_auroc_bootstrap": {
+    "mean": 0.655952380952381,
+    "ci": [
+      0.4237453128978864,
+      0.8566106124267888
+    ]
+  },
+  "within_group_auroc_bootstrap": {
+    "mean": 0.6666666666666667,
+    "ci": [
+      0.25,
+      1.0
+    ]
+  }
+}

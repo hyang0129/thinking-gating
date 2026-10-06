@@ -3,30 +3,38 @@
 Hong Yang — 2026-09-12. Every number traces to a file under `paper/results/`;
 the path is given in the table captions.
 
-## Errata (2026-10-04)
+## Errata (2026-10-04; Qwen3 corrected results 2026-10-06)
 
 A cleanup audit on 2026-10-04 found bugs in the capture, the graders and the
 analysis code. They are fixed on branch `cleanup/system-one-carryover`
-(commits 8404347, 7e224b8, f2eabef, 9e24091, d0fa2de, 52fa811, 8de124f). The
-text below the errata is the 2026-09-12 writeup, unchanged; read its numbers
-through this section.
+(commits 8404347, 7e224b8, f2eabef, 9e24091, d0fa2de, 52fa811, 8de124f; the
+confidence re-score is 951d2b3). The text below the errata is the 2026-09-12
+writeup, unchanged; read its numbers through this section.
 
-**Where the corrected numbers come from.** "Published" numbers are in
-`paper/results/metrics/{qwen3v3,nemotronv3}/`. Corrected numbers are
-**working numbers** from the 2026-10-04 audit, kept with the scripts that
-produced them in `paper/results/errata-2026-10-04/` (abbreviated `errata/`
-below; see its README). They are not promoted metrics: the canonical
-corrected tables come from re-running `scripts/run_full_analysis.sh`
-(which now regrades labels) with `PROMOTE=1`.
+**Where the corrected numbers come from.**
 
-**What has and has not been re-run.** The analysis was re-run with the fixed
-code on the **published (pre-regrade) labels**
-(`errata/rerun_metrics/`, `rerun.py`; diff against the published files in
-`errata/rerun_metrics/diff_published.out`). At the published layer, every
-probe AUROC, bootstrap interval, baseline test AUROC and within-group AUROC
-reproduces exactly. **No probe or baseline AUROC has been computed on the
-regraded labels yet.** The label shifts below are therefore shifts in the
-*targets*. Their effect on the AUROCs is unknown.
+- "Published" numbers are in `paper/results/metrics/{qwen3v3,nemotronv3}/`.
+- **Qwen3-8B corrected numbers are promoted** in
+  `paper/results/metrics/qwen3v3_corrected/` (abbreviated `corrected/`
+  below; see its README). They use regraded labels, re-scored (v2)
+  confidence and the fixed analysis code, at commit b368bd7.
+- Everything else, including all Nemotron numbers, is a **working number**
+  from the 2026-10-04 audit, kept with its scripts in
+  `paper/results/errata-2026-10-04/` (abbreviated `errata/`).
+
+**What has been re-run.**
+
+- **Fixed code on the published labels.** The analysis was first re-run on
+  the **published (pre-regrade) labels** (`errata/rerun_metrics/`, diff in
+  `errata/rerun_metrics/diff_published.out`). At the published layer, every
+  probe AUROC, bootstrap interval, baseline test AUROC and within-group
+  AUROC reproduces exactly.
+- **Qwen3 on corrected inputs.** Qwen3 was then re-run end to end on the
+  **regraded** labels with **v2** confidence (`corrected/`, and
+  "Corrected Qwen3 results" below).
+- **Nemotron** has not been re-run on regraded labels, and its confidence
+  has not been re-scored. Its thinking-on pass mostly did not think (B7b),
+  so it is out of scope for the re-score.
 
 ### B1 — confidence baselines invalid (critical)
 
@@ -45,8 +53,34 @@ the four tasks. On unpadded rows only, mean-log-prob AUROC for
 - **Clean:** `n_tokens_off`. Even so, a column chosen as "best confidence
   baseline" was chosen against corrupted competitors.
 - **Likely direction:** the bug *understates* the confidence baseline.
-- **Not yet done:** re-scoring from the stored responses needs a GPU but no
-  regeneration.
+  Confirmed for `needs_thinking`; see below.
+
+**Re-scored 2026-10-06 (Qwen3 only).** `scripts/rescore_confidence.py`
+re-scored every stored thinking-off answer one unpadded row at a time, with
+no regeneration. It ran on Empire AI (alphagpu51, RTX PRO 6000 Blackwell;
+`corrected/rescore/`).
+
+- **Coverage.** All 3,359 rows were scored, and every prompt was rebuilt
+  by its `prompt_hash`. The v3 BBH capture used the old BBH prompt,
+  `PROMPT_TEMPLATE_V1`.
+- **Exactness.** On the 254 rows that had no padding in their capture
+  batch, v2 equals the stored value exactly.
+- **Pad correlation.** Spearman(pad count, mean log-prob) moves from
+  −0.72…−0.88 to −0.02…+0.19.
+- **Tokenization.** 7 rows re-tokenize to a slightly different answer
+  length, and 2 BBH rows (Δ = −3) are flagged.
+
+`confidence_lr` test AUROC, v1 → v2, on the same regraded labels and
+splits (`corrected/extra/conf_before_after.json`):
+
+| task | `needs_thinking` | `rescued` |
+|---|---|---|
+| gsm8k | 0.677 → 0.810 [0.696, 0.907] | 0.649 → 0.527 [0.240, 0.805] |
+| math500 | 0.887 → 0.919 [0.850, 0.975] | 0.561 → 0.739 [0.447, 0.978] |
+| mmlu_pro | 0.670 → 0.786 [0.716, 0.851] | 0.442 → 0.635 [0.499, 0.760] |
+| bbh | 0.556 → 0.715 [0.603, 0.817] | 0.523 → 0.438 [0.210, 0.671] |
+
+Nemotron's confidence numbers remain B1-invalid.
 
 ### Graders (B2, B16, B17, B18) and unfinished reasoning (B7)
 
@@ -140,8 +174,61 @@ The tables also compared overlapping intervals. The fixed
 `compare_baselines.py` reports a paired-bootstrap probe − best-baseline
 difference on identical test rows. On the published labels, **no paired
 difference excludes zero** for any Qwen3 or Nemotron (layer 16) task and
-target. Where the best baseline is a B1-affected confidence column, that
-comparison waits on the re-score.
+target. On the corrected Qwen3 inputs this changes for the confidence
+baseline; see the next section.
+
+### Corrected Qwen3 results (2026-10-06)
+
+Regraded labels, v2 confidence, fixed code; probe − best baseline of each
+kind (selected on validation), paired bootstrap on identical test rows
+(`corrected/baseline_comparison.txt`, `corrected/extra/paired_by_kind.json`):
+
+| task | target (n) | probe | probe − best text | probe − best confidence |
+|---|---|---|---|---|
+| gsm8k | needs_thinking (1319) | 0.687 [0.561, 0.800] | +0.082 [−0.111, +0.279] | −0.123 [−0.259, +0.005] |
+| math500 | needs_thinking (500) | 0.775 [0.656, 0.879] | +0.078 [−0.072, +0.226] | **−0.144 [−0.253, −0.047]** |
+| mmlu_pro | needs_thinking (1000) | 0.627 [0.549, 0.705] | +0.035 [−0.067, +0.134] | **−0.159 [−0.249, −0.069]** |
+| bbh | needs_thinking (540) | 0.761 [0.653, 0.859] | −0.041 [−0.126, +0.042] | +0.046 [−0.098, +0.190] |
+| gsm8k | rescued (89) | 0.631 [0.352, 0.885] | +0.093 [−0.273, +0.453] | −0.007 [−0.347, +0.317] |
+| math500 | rescued (88) | 0.652 [0.351, 0.922] | +0.067 [−0.288, +0.399] | −0.155 [−0.517, +0.203] |
+| mmlu_pro | rescued (383) | 0.471 [0.325, 0.621] | +0.035 [−0.147, +0.213] | −0.164 [−0.355, +0.029] |
+| bbh | rescued (129) | 0.656 [0.424, 0.857] | +0.011 [−0.161, +0.189] | +0.154 [−0.157, +0.448] |
+
+**Probe vs baselines.**
+- **Text.** No probe − text interval excludes zero.
+- **Confidence.** Thinking-off confidence **beats the probe** on math500
+  and mmlu_pro `needs_thinking`, with paired intervals excluding zero.
+  On gsm8k the difference is borderline. This holds with confidence's
+  post-hoc advantage: it reads the thinking-off generation.
+
+**`rescued`.**
+- **Probe.** At chance on gsm8k, math500 and mmlu_pro.
+- **Transfer.** All 12 ordered pairs are "no transfer" or "undefined".
+- **Confidence.** The one `rescued` interval that clears 0.5 is the
+  math500 confidence `mean_logprob`: 0.806 [0.554, 0.977], n = 88. It was
+  validation-selected from five baselines and is unreplicated.
+
+**BBH.** Still a subtask detector. Within-subtask AUROC is 0.512
+[0.254, 0.763] for `needs_thinking` (21 of 27 subtasks informative) and
+0.667 [0.25, 1.00] for `rescued` (12 of 21).
+
+**Headroom proxy.** `corrected/extra/headroom_*.json`;
+`scripts/headroom_proxy.py`; 1000 paired resamples. This measures routing
+between Qwen3's two **generative** modes, the old project's setting. It
+does not measure the proposal's single-pass decision-readout setting.
+
+On gsm8k + math500 + mmlu_pro (n = 2,819):
+
+- **Accuracy.** Thinking-off 0.801 vs thinking-on 0.807.
+- **Per-task on − off gaps.** gsm8k −0.009 [−0.024, +0.006], math500 −0.004
+  [−0.038, +0.027], mmlu_pro +0.031 [+0.003, +0.055]. BBH is +0.081
+  [+0.050, +0.117].
+- **nAUC over escalation 0–50%** (0 = random, 1 = oracle):
+  - −mean log-prob: 0.137 [0.046, 0.221]
+  - cross-fitted confidence: 0.101 [0.019, 0.182]
+  - confidence + true task family: 0.056 [−0.030, 0.141]
+  - With v1 confidence: −0.010 to 0.057, every interval spanning 0.
+- **Family label.** It adds nothing: −0.045 [−0.091, −0.000] paired.
 
 ### Routed accuracy and the "waste" column (B11, B12, B14)
 
@@ -180,7 +267,9 @@ unverified). Read §1 and the abstract without any novelty claim.
 
 ### What the errata change, and what they do not
 
-**They do not change the conclusion in §5.** On the published labels:
+**They do not change the conclusion in §5.** It holds on the published labels
+and, for Qwen3, on the corrected labels and confidence (previous section).
+On the published labels:
 
 - The prefill probe still never beats a **text** baseline. Text baselines are
   untouched by B1.
@@ -193,11 +282,15 @@ unverified). Read §1 and the abstract without any novelty claim.
 
 **They do change:**
 
-1. The claim that thinking-off confidence *beats* the probe (math500 0.814)
-   is withdrawn pending the GPU re-score. Because the bug likely understates
-   confidence, it is expected to hold or strengthen, but it is unmeasured.
-2. Every §3 target shifts under the fixed graders, and the probe AUROCs on
-   the corrected labels have not been computed.
+1. **Confidence beats the probe.** The abstract's figures (math500 0.814 vs
+   0.699) are superseded. On corrected Qwen3 inputs, thinking-off
+   confidence beats the probe on math500 (0.919 vs 0.775) and mmlu_pro
+   (0.786 vs 0.627) `needs_thinking`. The paired intervals exclude zero,
+   so the claim now holds more strongly than the original writeup stated.
+2. **Targets and probe AUROCs.** Every §3 target shifts under the fixed
+   graders. The corrected Qwen3 probe AUROCs are in the table above:
+   `needs_thinking` 0.687 / 0.775 / 0.627 / 0.761 and `rescued`
+   0.631 / 0.652 / 0.471 / 0.656 (gsm8k / math500 / mmlu_pro / bbh).
 3. §3.4's Nemotron BBH comparison does not test thinking at all.
 4. The novelty framing is gone.
 

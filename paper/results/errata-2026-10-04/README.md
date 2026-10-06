@@ -9,6 +9,9 @@ These are the files behind the "Errata (2026-10-04)" section of
 - The canonical corrected tables come from re-running
   `scripts/run_full_analysis.sh` (which now regrades labels) with
   `PROMOTE=1`, after the confidence re-score (B1).
+  For Qwen3-8B that has been done (2026-10-06): see
+  `paper/results/metrics/qwen3v3_corrected/`, which supersedes the Qwen3
+  working numbers here. Nemotron numbers here are still working numbers.
 - Scripts here may reference the audit's original scratch paths. Read them as
   a record of what was run, not as runnable tools.
 

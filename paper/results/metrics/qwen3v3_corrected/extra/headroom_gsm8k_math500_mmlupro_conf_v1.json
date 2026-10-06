@@ -1,0 +1,547 @@
+{
+  "slug": "qwen3v3",
+  "tasks": [
+    "gsm8k",
+    "math500",
+    "mmlu_pro"
+  ],
+  "n": 2819,
+  "n_boot": 1000,
+  "seed": 0,
+  "acc_off": 0.8013479957431713,
+  "acc_on": 0.8073785030152536,
+  "helped": 0.06278822277403334,
+  "hurt": 0.056757715501951043,
+  "per_task": {
+    "gsm8k": {
+      "n": 1319,
+      "acc_off": 0.9325246398786959,
+      "acc_on": 0.9234268385140257,
+      "gap_on_minus_off": -0.0090978013646702,
+      "gap_ci": [
+        -0.02391629297458897,
+        0.006071175299959187
+      ],
+      "helped": 0.03184230477634572,
+      "hurt": 0.04094010614101592
+    },
+    "math500": {
+      "n": 500,
+      "acc_off": 0.824,
+      "acc_on": 0.82,
+      "gap_on_minus_off": -0.0040000000000000036,
+      "gap_ci": [
+        -0.038024147153622824,
+        0.026867628179411126
+      ],
+      "helped": 0.066,
+      "hurt": 0.07
+    },
+    "mmlu_pro": {
+      "n": 1000,
+      "acc_off": 0.617,
+      "acc_on": 0.648,
+      "gap_on_minus_off": 0.031000000000000028,
+      "gap_ci": [
+        0.002854966472036162,
+        0.05545339073982068
+      ],
+      "helped": 0.102,
+      "hurt": 0.071
+    }
+  },
+  "features": {
+    "nonfinite_per_feature": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "routers": {
+    "conf_raw": {
+      "nauc_0_50": {
+        "point": 0.056874937246690675,
+        "ci": [
+          -0.017088637843354817,
+          0.130658045969054
+        ]
+      },
+      "mean_routed_acc_0_50": {
+        "point": 0.806116731080751,
+        "ci": [
+          0.7920544829522368,
+          0.8199666694392848
+        ]
+      },
+      "escalation_to_always_think_minus_0.01": {
+        "point": 0.0,
+        "ci": [
+          0.0,
+          0.15970202199361472
+        ]
+      },
+      "escalation_to_always_think_minus_0.005": {
+        "point": 0.021638879035118838,
+        "ci": [
+          0.0,
+          0.8727917701312521
+        ]
+      },
+      "escalation_to_always_think_minus_0": {
+        "point": 0.11812699538843562,
+        "ci": [
+          0.0,
+          0.9801880099326001
+        ]
+      },
+      "acc_at_0.1_escalation": {
+        "point": 0.806314295849592,
+        "ci": [
+          0.7917266761262859,
+          0.8201578573962398
+        ]
+      },
+      "acc_at_0.2_escalation": {
+        "point": 0.8070947144377438,
+        "ci": [
+          0.7935438098616531,
+          0.8219226676126286
+        ]
+      }
+    },
+    "conf_fit": {
+      "nauc_0_50": {
+        "point": -0.009846851745267058,
+        "ci": [
+          -0.09568463232077472,
+          0.0628170173943427
+        ]
+      },
+      "mean_routed_acc_0_50": {
+        "point": 0.8022910214614483,
+        "ci": [
+          0.7884656748831379,
+          0.8161925751888095
+        ]
+      },
+      "escalation_to_always_think_minus_0.01": {
+        "point": 0.0,
+        "ci": [
+          0.0,
+          0.38246718694572535
+        ]
+      },
+      "escalation_to_always_think_minus_0.005": {
+        "point": 0.26605179141539553,
+        "ci": [
+          0.0,
+          0.48812522170982614
+        ]
+      },
+      "escalation_to_always_think_minus_0": {
+        "point": 0.4341965235899255,
+        "ci": [
+          0.0,
+          0.9517648102163887
+        ]
+      },
+      "acc_at_0.1_escalation": {
+        "point": 0.8003192621496984,
+        "ci": [
+          0.7857396239801347,
+          0.8144741042923023
+        ]
+      },
+      "acc_at_0.2_escalation": {
+        "point": 0.7992195814118481,
+        "ci": [
+          0.7846754168144732,
+          0.8137655196878325
+        ]
+      }
+    },
+    "conf_family": {
+      "nauc_0_50": {
+        "point": 0.047034120792512506,
+        "ci": [
+          -0.03704530946804674,
+          0.12288845716984496
+        ]
+      },
+      "mean_routed_acc_0_50": {
+        "point": 0.8055524760339464,
+        "ci": [
+          0.791898512960186,
+          0.8189440546909614
+        ]
+      },
+      "escalation_to_always_think_minus_0.01": {
+        "point": 0.0,
+        "ci": [
+          0.0,
+          0.23950869102518618
+        ]
+      },
+      "escalation_to_always_think_minus_0.005": {
+        "point": 0.2039730400851366,
+        "ci": [
+          0.0,
+          0.32140830081589217
+        ]
+      },
+      "escalation_to_always_think_minus_0": {
+        "point": 0.23767293366442,
+        "ci": [
+          0.0,
+          0.99896239801348
+        ]
+      },
+      "acc_at_0.1_escalation": {
+        "point": 0.800638524299397,
+        "ci": [
+          0.7864490954239092,
+          0.815148102163888
+        ]
+      },
+      "acc_at_0.2_escalation": {
+        "point": 0.8020574671869457,
+        "ci": [
+          0.7871496984746365,
+          0.8155462930117062
+        ]
+      }
+    },
+    "oracle": {
+      "nauc_0_50": {
+        "point": 1.0,
+        "ci": [
+          1.0,
+          1.0
+        ]
+      },
+      "mean_routed_acc_0_50": {
+        "point": 0.860193857598083,
+        "ci": [
+          0.8477891118154932,
+          0.8732696126132395
+        ]
+      },
+      "escalation_to_always_think_minus_0.01": {
+        "point": 0.0,
+        "ci": [
+          0.0,
+          0.008513657325292657
+        ]
+      },
+      "escalation_to_always_think_minus_0.005": {
+        "point": 0.001064207165661582,
+        "ci": [
+          0.0,
+          0.013479957431713374
+        ]
+      },
+      "escalation_to_always_think_minus_0": {
+        "point": 0.006030507272082299,
+        "ci": [
+          0.0,
+          0.01844625753813409
+        ]
+      },
+      "acc_at_0.1_escalation": {
+        "point": 0.8641362185172047,
+        "ci": [
+          0.8513657325292657,
+          0.877616175948918
+        ]
+      },
+      "acc_at_0.2_escalation": {
+        "point": 0.8641362185172047,
+        "ci": [
+          0.8513657325292657,
+          0.877616175948918
+        ]
+      }
+    }
+  },
+  "paired_differences": {
+    "conf_fit - oracle: nauc_0_50": {
+      "point": -1.009846851745267,
+      "ci": [
+        -1.0956846323207747,
+        -0.9371829826056572
+      ],
+      "p_le_zero": 1.0
+    },
+    "conf_fit - oracle: mean_routed_acc_0_50": {
+      "point": -0.05790283613663472,
+      "ci": [
+        -0.06507993004948809,
+        -0.05120806373187767
+      ],
+      "p_le_zero": 1.0
+    },
+    "conf_fit - oracle: escalation_to_always_think_minus_0.01": {
+      "point": 0.0,
+      "ci": [
+        0.0,
+        0.3753281305427456
+      ],
+      "p_le_zero": 0.745
+    },
+    "conf_fit - oracle: escalation_to_always_think_minus_0.005": {
+      "point": 0.26498758424973395,
+      "ci": [
+        0.0,
+        0.4796559063497694
+      ],
+      "p_le_zero": 0.471
+    },
+    "conf_fit - oracle: escalation_to_always_think_minus_0": {
+      "point": 0.4281660163178432,
+      "ci": [
+        0.0,
+        0.9421869457254345
+      ],
+      "p_le_zero": 0.225
+    },
+    "conf_fit - oracle: acc_at_0.1_escalation": {
+      "point": -0.06381695636750628,
+      "ci": [
+        -0.07378503015253635,
+        -0.05462043277758064
+      ],
+      "p_le_zero": 1.0
+    },
+    "conf_fit - oracle: acc_at_0.2_escalation": {
+      "point": -0.06491663710535656,
+      "ci": [
+        -0.0741397658744235,
+        -0.0556935083362895
+      ],
+      "p_le_zero": 1.0
+    },
+    "conf_family - conf_fit: nauc_0_50": {
+      "point": 0.056880972537779566,
+      "ci": [
+        -0.006312985043650735,
+        0.1227346677610917
+      ],
+      "p_le_zero": 0.044
+    },
+    "conf_family - conf_fit: mean_routed_acc_0_50": {
+      "point": 0.003261454572498157,
+      "ci": [
+        -0.0003522763865681788,
+        0.007146565751757245
+      ],
+      "p_le_zero": 0.044
+    },
+    "conf_family - conf_fit: escalation_to_always_think_minus_0.01": {
+      "point": 0.0,
+      "ci": [
+        -0.18527846754168145,
+        0.06672578928698118
+      ],
+      "p_le_zero": 0.91
+    },
+    "conf_family - conf_fit: escalation_to_always_think_minus_0.005": {
+      "point": -0.06207875133025895,
+      "ci": [
+        -0.28947321745299753,
+        0.11926214969847458
+      ],
+      "p_le_zero": 0.883
+    },
+    "conf_family - conf_fit: escalation_to_always_think_minus_0": {
+      "point": -0.1965235899255055,
+      "ci": [
+        -0.6765076268180206,
+        0.18068463994324216
+      ],
+      "p_le_zero": 0.866
+    },
+    "conf_family - conf_fit: acc_at_0.1_escalation": {
+      "point": 0.0003192621496985737,
+      "ci": [
+        -0.004611564384533584,
+        0.006030507272082319
+      ],
+      "p_le_zero": 0.418
+    },
+    "conf_family - conf_fit: acc_at_0.2_escalation": {
+      "point": 0.0028378857750975817,
+      "ci": [
+        -0.003547357218872005,
+        0.008444483859524789
+      ],
+      "p_le_zero": 0.266
+    },
+    "conf_raw - conf_fit: nauc_0_50": {
+      "point": 0.06672178899195773,
+      "ci": [
+        -0.0019122709439580157,
+        0.1417106088358388
+      ],
+      "p_le_zero": 0.031
+    },
+    "conf_raw - conf_fit: mean_routed_acc_0_50": {
+      "point": 0.0038257096193027307,
+      "ci": [
+        -0.000114512063468472,
+        0.008156681697109066
+      ],
+      "p_le_zero": 0.031
+    },
+    "conf_raw - conf_fit: escalation_to_always_think_minus_0.01": {
+      "point": 0.0,
+      "ci": [
+        -0.293393047179851,
+        0.012823696346222017
+      ],
+      "p_le_zero": 0.954
+    },
+    "conf_raw - conf_fit: escalation_to_always_think_minus_0.005": {
+      "point": -0.24441291238027668,
+      "ci": [
+        -0.3788932245477119,
+        0.4082298687477826
+      ],
+      "p_le_zero": 0.893
+    },
+    "conf_raw - conf_fit: escalation_to_always_think_minus_0": {
+      "point": -0.31606952820148987,
+      "ci": [
+        -0.7946168854203618,
+        0.510207520397304
+      ],
+      "p_le_zero": 0.776
+    },
+    "conf_raw - conf_fit: acc_at_0.1_escalation": {
+      "point": 0.005995033699893626,
+      "ci": [
+        0.0007094714437744232,
+        0.011351543100390216
+      ],
+      "p_le_zero": 0.015
+    },
+    "conf_raw - conf_fit: acc_at_0.2_escalation": {
+      "point": 0.007875133025895709,
+      "ci": [
+        0.0021284143313231585,
+        0.013834693153600641
+      ],
+      "p_le_zero": 0.008
+    },
+    "conf_family - oracle: nauc_0_50": {
+      "point": -0.9529658792074875,
+      "ci": [
+        -1.0370453094680467,
+        -0.877111542830155
+      ],
+      "p_le_zero": 1.0
+    },
+    "conf_family - oracle: mean_routed_acc_0_50": {
+      "point": -0.05464138156413656,
+      "ci": [
+        -0.06195823760774988,
+        -0.04820290933626925
+      ],
+      "p_le_zero": 1.0
+    },
+    "conf_family - oracle: escalation_to_always_think_minus_0.01": {
+      "point": 0.0,
+      "ci": [
+        0.0,
+        0.234861653068464
+      ],
+      "p_le_zero": 0.743
+    },
+    "conf_family - oracle: escalation_to_always_think_minus_0.005": {
+      "point": 0.202908832919475,
+      "ci": [
+        0.0,
+        0.312522170982618
+      ],
+      "p_le_zero": 0.467
+    },
+    "conf_family - oracle: escalation_to_always_think_minus_0": {
+      "point": 0.2316424263923377,
+      "ci": [
+        0.0,
+        0.9787247250798154
+      ],
+      "p_le_zero": 0.221
+    },
+    "conf_family - oracle: acc_at_0.1_escalation": {
+      "point": -0.06349769421780771,
+      "ci": [
+        -0.07304008513657323,
+        -0.053919829726853497
+      ],
+      "p_le_zero": 1.0
+    },
+    "conf_family - oracle: acc_at_0.2_escalation": {
+      "point": -0.062078751330258974,
+      "ci": [
+        -0.07165661582121319,
+        -0.05321035828307907
+      ],
+      "p_le_zero": 1.0
+    }
+  },
+  "provenance": [
+    {
+      "task": "gsm8k",
+      "capture_dir": "shared/icr_capture/gsm8k_thinking_qwen3v3",
+      "labels": "shared/labels/qwen3v3/gsm8k_labels.jsonl",
+      "n": 1319,
+      "regraded": true,
+      "grader_version": "gsm8k:c24307232d85",
+      "confidence": {
+        "capture_dir": "shared/icr_capture/gsm8k_thinking_qwen3v3",
+        "requested": "stored",
+        "source": "stored confidence_off",
+        "n_rows": 1319,
+        "confidence_version_counts": {
+          "1": 1319
+        }
+      }
+    },
+    {
+      "task": "math500",
+      "capture_dir": "shared/icr_capture/math500_thinking_qwen3v3",
+      "labels": "shared/labels/qwen3v3/math500_labels.jsonl",
+      "n": 500,
+      "regraded": true,
+      "grader_version": "math500:3b7928eaf5fe",
+      "confidence": {
+        "capture_dir": "shared/icr_capture/math500_thinking_qwen3v3",
+        "requested": "stored",
+        "source": "stored confidence_off",
+        "n_rows": 500,
+        "confidence_version_counts": {
+          "1": 500
+        }
+      }
+    },
+    {
+      "task": "mmlu_pro",
+      "capture_dir": "shared/icr_capture/mmlu_pro_thinking_qwen3v3",
+      "labels": "shared/labels/qwen3v3/mmlu_pro_labels.jsonl",
+      "n": 1000,
+      "regraded": true,
+      "grader_version": "mmlu_pro:5506821df5c8",
+      "confidence": {
+        "capture_dir": "shared/icr_capture/mmlu_pro_thinking_qwen3v3",
+        "requested": "stored",
+        "source": "stored confidence_off",
+        "n_rows": 1000,
+        "confidence_version_counts": {
+          "1": 1000
+        }
+      }
+    }
+  ],
+  "note": "exact tie-averaged routed-accuracy curves (utils.metrics); nAUC over escalation 0-50%: 0 = random, 1 = oracle; escalation_to_always_think_minus_t is 1.0 when never reached; router scores cross-fitted once (5-fold) and held fixed, the bootstrap resamples rows only"
+}

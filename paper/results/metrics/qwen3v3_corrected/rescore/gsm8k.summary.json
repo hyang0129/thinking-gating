@@ -1,0 +1,82 @@
+{
+  "capture_dir": "shared/icr_capture/gsm8k_thinking_qwen3v3",
+  "model": "Qwen/Qwen3-8B",
+  "confidence_version": 2,
+  "check_only": false,
+  "token_delta_flag_threshold": 2,
+  "eos_token_id": 151645,
+  "attn_implementation": "sdpa",
+  "shards": [
+    {
+      "meta": "meta.shard00.jsonl",
+      "sidecar": "confidence_off_v2.shard00.jsonl",
+      "n_rows": 330,
+      "n_scored": 330,
+      "config_file": "config.json",
+      "thinking_toggle": "chat-template kwarg 'enable_thinking'",
+      "prompt_source": {
+        "format_prompt": 330
+      },
+      "flags": {},
+      "token_delta": {
+        "0": 330
+      },
+      "seconds": 14.0
+    },
+    {
+      "meta": "meta.shard01.jsonl",
+      "sidecar": "confidence_off_v2.shard01.jsonl",
+      "n_rows": 330,
+      "n_scored": 330,
+      "config_file": "config.json",
+      "thinking_toggle": "chat-template kwarg 'enable_thinking'",
+      "prompt_source": {
+        "format_prompt": 330
+      },
+      "flags": {},
+      "token_delta": {
+        "0": 330
+      },
+      "seconds": 12.9
+    },
+    {
+      "meta": "meta.shard02.jsonl",
+      "sidecar": "confidence_off_v2.shard02.jsonl",
+      "n_rows": 330,
+      "n_scored": 330,
+      "config_file": "config.json",
+      "thinking_toggle": "chat-template kwarg 'enable_thinking'",
+      "prompt_source": {
+        "format_prompt": 330
+      },
+      "flags": {},
+      "token_delta": {
+        "0": 330
+      },
+      "seconds": 12.7
+    },
+    {
+      "meta": "meta.shard03.jsonl",
+      "sidecar": "confidence_off_v2.shard03.jsonl",
+      "n_rows": 329,
+      "n_scored": 329,
+      "config_file": "config.json",
+      "thinking_toggle": "chat-template kwarg 'enable_thinking'",
+      "prompt_source": {
+        "format_prompt": 329
+      },
+      "flags": {},
+      "token_delta": {
+        "0": 329
+      },
+      "seconds": 12.9
+    }
+  ],
+  "flags_total": {},
+  "finished_at": "2026-10-06T09:10:04-0400",
+  "git_commit": "b368bd7959696c28e9f817cc941b325828e2b311",
+  "git_dirty": false,
+  "torch_version": "2.13.0+cu130",
+  "transformers_version": "4.57.6",
+  "dtype": "torch.bfloat16"
+}
