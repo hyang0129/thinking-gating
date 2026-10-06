@@ -25,6 +25,16 @@ Prompt, per item:
      These match how the thinking-off generations actually wrote their final
      line (mmlu_pro mostly "Answer: B", BBH mostly "Answer: (B)").
 
+For "Answer:" items the model may open a parenthesis first ("Answer: (Yes)";
+the BBH v3 prompt asks for "Answer: (A)"), and on BBH yes/no-style items
+readout v1 found almost all the next-token mass on " (". So (v2) each such
+option is read along both formats and marginalised exactly:
+
+    P(option) = P(" X" | "Answer:") + P(" (" | "Answer:") * P("X" | "Answer: (")
+
+which costs a second forward pass over the same prompt plus " (".
+`mass_direct`, `mass_paren` and `p_bridge` record the split.
+
 The next-token distribution at the last prompt position is restricted to the
 option tokens and renormalised. Each option's probability is the sum over its
 surface forms (leading space or not; for words also lower/capitalised). A form
@@ -91,7 +101,7 @@ from utils.capture_io import load_config, load_meta  # noqa: E402
 
 logger = logging.getLogger("capture_readout")
 
-READOUT_VERSION = 1
+READOUT_VERSION = 2
 
 READOUT_INSTRUCTION = (
     "\n\nDo not explain and do not show any working. "
@@ -161,6 +171,9 @@ def answer_spec(task: str, row: dict) -> dict:
         raise ValueError(f"no readout spec for task {task!r} "
                          "(mmlu_pro and bbh only; gsm8k/math500 need a verify format)")
 
+    # "Answer:" items are also read through "Answer: (": the model may open a
+    # parenthesis first ("(Yes)", "(C)"), and the BBH v3 prompt asks for one.
+    spec["alt_prefix"] = PREFIX_PAREN if spec["prefix"] == PREFIX_COLON else None
     opts = spec["options"]
     if len(opts) < 2 or len(set(opts)) != len(opts):
         return {**spec, "covered": False,
@@ -246,17 +259,64 @@ def build_readout_prompt(raw_prompt: str, render_off, prefix: str) -> str:
     return render_off(raw_prompt + READOUT_INSTRUCTION) + prefix
 
 
+def alt_path(tokenizer: Any, prompt: str, raw_prompt: str, render_off,
+             spec: dict) -> dict | None:
+    """The parenthesised reading of an "Answer:" item, or None if unusable.
+
+    Requires the alt prompt to be exactly the primary prompt's tokens plus ONE
+    bridge token (" ("), so P(bridge) can be read at the decide position, and
+    every option to be one token after it.
+    """
+    alt_prompt = build_readout_prompt(raw_prompt, render_off, spec["alt_prefix"])
+    bridge = spec["alt_prefix"][len(spec["prefix"]):]
+    if prompt + bridge != alt_prompt:
+        return None
+    ctx = tokenizer(prompt, add_special_tokens=False).input_ids
+    bridge_id = single_token_in_context(tokenizer, ctx, prompt, bridge)
+    if bridge_id is None:
+        return None
+    tmap = option_token_map(tokenizer, alt_prompt, spec["options"], spec["alt_prefix"],
+                            context_ids=ctx + [bridge_id])
+    if not tmap["ok"]:
+        return None
+    return {"prompt": alt_prompt, "bridge_id": bridge_id, "tmap": tmap}
+
+
+def option_probs(logprobs: np.ndarray, token_ids: dict[str, list[int]],
+                 options: list[str]) -> np.ndarray:
+    """Unnormalised probability of each option (sum over its surface forms)."""
+    return np.array([float(np.exp(logprobs[token_ids[o]]).sum()) for o in options])
+
+
 def score_options(logprobs: np.ndarray, token_ids: dict[str, list[int]],
-                  options: list[str]) -> dict:
-    """Renormalised option distribution from one next-token log-prob vector."""
-    raw = np.array([float(np.exp(logprobs[token_ids[o]]).sum()) for o in options])
+                  options: list[str], alt: tuple | None = None) -> dict:
+    """Renormalised option distribution from one next-token log-prob vector.
+
+    `alt` = (bridge_logprob, alt_logprobs, alt_token_ids): the same options
+    read after a bridge token (" (" after "Answer:"). Each option's probability
+    is then the exact marginal over the two formats,
+
+        P(" X" | "Answer:") + P(" (" | "Answer:") * P("X" | "Answer: ("),
+
+    two disjoint continuations, so nothing is counted twice.
+    """
+    direct = option_probs(logprobs, token_ids, options)
+    raw, extra = direct, {"mass_direct": float(direct.sum())}
+    if alt is not None:
+        bridge_lp, alt_lp, alt_ids = alt
+        after = option_probs(alt_lp, alt_ids, options)
+        via = float(np.exp(bridge_lp)) * after
+        raw = direct + via
+        extra.update(mass_paren=float(via.sum()), p_bridge=float(np.exp(bridge_lp)),
+                     mass_after_paren=float(after.sum()))
     mass = float(raw.sum())
     probs = raw / mass if mass > 0 else np.full(len(options), 1.0 / len(options))
     k = int(np.argmax(probs))
     ent = float(-(probs * np.log(np.clip(probs, 1e-30, None))).sum())
     return {"probs": [float(p) for p in probs], "argmax": options[k],
             "p_max": float(probs[k]), "entropy": ent,
-            "entropy_norm": ent / math.log(len(options)), "option_mass": mass}
+            "entropy_norm": ent / math.log(len(options)), "option_mass": mass,
+            **extra}
 
 
 # ---------------------------------------------------------------------------
@@ -357,7 +417,7 @@ def run(args: argparse.Namespace) -> int:
             "options": spec.get("options"), "gold": spec.get("gold"),
             "n_options": len(spec.get("options") or []) or None, "flags": [],
         }
-        prompt = tmap = None
+        prompt = tmap = alt = None
         if spec["covered"]:
             name, raw = match_prompt(row, candidates, render_off)
             sources[name] += 1
@@ -382,22 +442,28 @@ def run(args: argparse.Namespace) -> int:
                     rec["covered"] = False
                     rec["exclude_reason"] = f"option not one token: {tmap['failed']}"
                     rec["flags"].append("option_not_single_token")
+                elif spec.get("alt_prefix"):
+                    alt = alt_path(tokenizer, prompt, raw, render_off, spec)
+                    if alt is None:
+                        rec["flags"].append("alt_path_unavailable")
+                    else:
+                        rec["alt_option_forms"] = alt["tmap"]["forms"]
         flags.update(rec["flags"])
-        items.append((rec, prompt, tmap))
+        items.append((rec, prompt, tmap, alt))
 
-    covered = [i for i, (rec, _, _) in enumerate(items) if rec["covered"]]
+    covered = [i for i, (rec, *_) in enumerate(items) if rec["covered"]]
     logger.info("%s: %d rows, %d covered, prompt sources %s, flags %s", task,
                 len(items), len(covered), dict(sources), dict(flags))
     if args.check_only:
-        forms = Counter(json.dumps(r["option_forms"]) for r, _, _ in items
+        forms = Counter(json.dumps(r["option_forms"]) for r, *_ in items
                         if r.get("option_forms") and r["kind"] != "letter")
         forms.update(json.dumps({r["options"][0]: r["option_forms"][r["options"][0]]})
-                     for r, _, _ in items
+                     for r, *_ in items
                      if r.get("option_forms") and r["kind"] == "letter")
         print(json.dumps({"task": task, "n_rows": len(items), "n_covered": len(covered),
                           "prompt_source": {str(k): v for k, v in sources.items()},
                           "flags": dict(flags),
-                          "exclude_reasons": dict(Counter(r["exclude_reason"] for r, _, _
+                          "exclude_reasons": dict(Counter(r["exclude_reason"] for r, *_
                                                           in items if not r["covered"])),
                           "option_forms": dict(forms)},
                          indent=2))
@@ -417,6 +483,8 @@ def run(args: argparse.Namespace) -> int:
         "readout_instruction": READOUT_INSTRUCTION,
         "prefixes": {"letter_mmlu_pro": PREFIX_COLON, "letter_bbh": PREFIX_PAREN,
                      "words": PREFIX_COLON},
+        "alt_prefix": {"for": PREFIX_COLON, "via": PREFIX_PAREN,
+                       "rule": "P(' X'|'Answer:') + P(' ('|'Answer:') * P('X'|'Answer: (')"},
         "hidden_layers": layers, "num_layers": num_layers,
         "batch_size": args.batch_size, "attn_implementation": args.attn_implementation,
         "dtype": str(next(model.parameters()).dtype),
@@ -433,9 +501,19 @@ def run(args: argparse.Namespace) -> int:
         idx = covered[b: b + args.batch_size]
         logprobs, hidden = decide_pass(model, tokenizer, [items[i][1] for i in idx],
                                        layers)
+        with_alt = [i for i in idx if items[i][3] is not None]
+        alt_lp = {}
+        if with_alt:
+            lp2, _ = decide_pass(model, tokenizer,
+                                 [items[i][3]["prompt"] for i in with_alt], layers[-1:])
+            alt_lp = {i: lp2[k] for k, i in enumerate(with_alt)}
         for j, i in enumerate(idx):
-            rec, _, tmap = items[i]
-            s = score_options(logprobs[j], tmap["token_ids"], rec["options"])
+            rec, _, tmap, alt = items[i]
+            alt_args = None
+            if alt is not None:
+                alt_args = (logprobs[j][alt["bridge_id"]], alt_lp[i],
+                            alt["tmap"]["token_ids"])
+            s = score_options(logprobs[j], tmap["token_ids"], rec["options"], alt_args)
             top = int(np.argmax(logprobs[j]))
             rec.update(s)
             rec["s1_correct"] = s["argmax"] == rec["gold"]
@@ -448,7 +526,7 @@ def run(args: argparse.Namespace) -> int:
 
     tmp = out_dir / "readout.jsonl.tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
-        for rec, _, _ in items:
+        for rec, *_ in items:
             rec["git_commit"] = prov.get("git_commit")
             fh.write(json.dumps(rec) + "\n")
     tmp.replace(out_dir / "readout.jsonl")
@@ -472,7 +550,7 @@ def run(args: argparse.Namespace) -> int:
         "min_option_mass": float(np.min([r["option_mass"] for r in done])) if done else None,
         "s1_accuracy_by_family": {k: [float(np.mean(v)), len(v)]
                                   for k, v in sorted(by_family.items())},
-        "exclude_reasons": dict(Counter(r["exclude_reason"] for r, _, _ in items
+        "exclude_reasons": dict(Counter(r["exclude_reason"] for r, *_ in items
                                         if not r["covered"])),
         "prompt_source": {str(k): v for k, v in sources.items()},
         "flags": dict(flags), "seconds": round(time.monotonic() - started, 1),

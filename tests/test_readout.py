@@ -216,6 +216,105 @@ def test_run_end_to_end_on_a_fake_capture(tmp_path, monkeypatch, tok, model):  #
 
 
 # ---------------------------------------------------------------------------
+# Two answer formats: "Answer: Yes" and "Answer: (Yes"
+# ---------------------------------------------------------------------------
+
+def test_score_options_marginalises_over_the_paren_format():
+    direct = np.log(np.full(8, 1e-9))
+    direct[1], direct[2], direct[5] = np.log(0.01), np.log(0.03), np.log(0.90)  # 5 = " ("
+    after = np.log(np.full(8, 1e-9))
+    after[3], after[4] = np.log(0.6), np.log(0.2)
+    s = ro.score_options(direct, {"Yes": [1], "No": [2]}, ["Yes", "No"],
+                         (direct[5], after, {"Yes": [3], "No": [4]}))
+    yes, no = 0.01 + 0.9 * 0.6, 0.03 + 0.9 * 0.2
+    assert s["probs"] == pytest.approx([yes / (yes + no), no / (yes + no)])
+    assert s["argmax"] == "Yes"            # the direct path alone would say "No"
+    assert s["option_mass"] == pytest.approx(yes + no)
+    assert s["mass_direct"] == pytest.approx(0.04)
+    assert s["mass_paren"] == pytest.approx(0.72) and s["p_bridge"] == pytest.approx(0.9)
+    alone = ro.score_options(direct, {"Yes": [1], "No": [2]}, ["Yes", "No"])
+    assert alone["argmax"] == "No" and "mass_paren" not in alone
+
+
+@pytest.fixture(scope="module")
+def word_tok():
+    """Byte-level tokenizer plus whole-word tokens, so " (", " Yes" and "Yes"
+    are single tokens and the two-format path can be exercised end to end."""
+    from tokenizers import Tokenizer, decoders, models, pre_tokenizers
+    from transformers import PreTrainedTokenizerFast
+
+    from test_capture import CHAT_TEMPLATE
+
+    vocab = {"<pad>": 0, "<eos>": 1}
+    for ch in sorted(pre_tokenizers.ByteLevel.alphabet()):
+        vocab[ch] = len(vocab)
+    t = Tokenizer(models.BPE(vocab=vocab, merges=[]))
+    t.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
+    t.decoder = decoders.ByteLevel()
+    fast = PreTrainedTokenizerFast(tokenizer_object=t, pad_token="<pad>",
+                                   eos_token="<eos>", padding_side="left")
+    fast.add_tokens(["<think>", "</think>", " (", " Yes", " No", "Yes", "No"])
+    fast.chat_template = CHAT_TEMPLATE
+    return fast
+
+
+def test_alt_path_end_to_end_reads_both_formats(tmp_path, monkeypatch, word_tok):
+    from transformers import LlamaConfig, LlamaForCausalLM
+
+    torch.manual_seed(0)
+    m = LlamaForCausalLM(LlamaConfig(
+        vocab_size=len(word_tok), hidden_size=32, intermediate_size=64,
+        num_hidden_layers=2, num_attention_heads=4, num_key_value_heads=2,
+        max_position_embeddings=512, pad_token_id=0, eos_token_id=1, bos_token_id=1,
+        initializer_range=0.5)).float().eval()
+    render = _render(word_tok)
+    spec = ro.answer_spec("bbh", {"question": BBH_YES_Q, "answer": "No",
+                                  "sample_id": "bbh-sports_understanding-0"})
+    assert spec["alt_prefix"] == ro.PREFIX_PAREN
+    prompt = ro.build_readout_prompt("Q", render, spec["prefix"])
+    alt = ro.alt_path(word_tok, prompt, "Q", render, spec)
+    assert alt is not None and word_tok.decode([alt["bridge_id"]]) == " ("
+    assert alt["prompt"] == prompt + " ("
+
+    import tasks.bbh as bbh
+    cap_dir = tmp_path / "bbh_thinking_tiny"
+    cap_dir.mkdir()
+    rows = [{"sample_id": f"bbh-sports_understanding-{k}", "question": q, "answer": a,
+             "prompt_len_off": 10,
+             "prompt_hash": cap.sha256(render(bbh.PROMPT_TEMPLATE_V1.format(question=q)))}
+            for k, (q, a) in enumerate([(BBH_YES_Q, "yes"), ("Is it plausible?", "no")])]
+    (cap_dir / "config.json").write_text(json.dumps(
+        {"model_name": "tiny-test", "task": "bbh", "chat_template": True,
+         "max_prompt_len": 1024}))
+    (cap_dir / "meta.shard00.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    monkeypatch.setattr(cap, "load_model", lambda name, attn: (word_tok, m))
+    out = tmp_path / "out"
+    assert ro.main(["--capture-dir", str(cap_dir), "--out-dir", str(out),
+                    "--batch-size", "2", "--layers", "2"]) == 0
+    recs = [json.loads(x) for x in (out / "readout.jsonl").read_text().splitlines()]
+    assert all(r["covered"] and "alt_path_unavailable" not in r["flags"] for r in recs)
+    for r in recs:
+        assert r["option_mass"] == pytest.approx(r["mass_direct"] + r["mass_paren"])
+        assert r["mass_paren"] == pytest.approx(r["p_bridge"] * r["mass_after_paren"])
+        assert sum(r["probs"]) == pytest.approx(1.0)
+    # The same numbers by hand, from two plain forward passes.
+    r = recs[0]
+    name, raw = ro.match_prompt(rows[0], ro.prompt_candidates(bbh), render)
+    p1 = ro.build_readout_prompt(raw, render, ro.PREFIX_COLON)
+    lp1, _ = ro.decide_pass(m, word_tok, [p1], [2])
+    lp2, _ = ro.decide_pass(m, word_tok, [p1 + " ("], [2])
+    ids = {w: word_tok.convert_tokens_to_ids(w) for w in ("Yes", "No")}
+    sp = {w: word_tok(p1 + " " + w, add_special_tokens=False).input_ids[-1]
+          for w in ("Yes", "No")}
+    bridge = word_tok(p1 + " (", add_special_tokens=False).input_ids[-1]
+    raw_p = {w: np.exp(lp1[0][sp[w]]) + np.exp(lp1[0][ids[w]])
+             + np.exp(lp1[0][bridge]) * (np.exp(lp2[0][ids[w]]) + np.exp(lp2[0][sp[w]]))
+             for w in ("Yes", "No")}
+    tot = raw_p["Yes"] + raw_p["No"]
+    assert r["probs"] == pytest.approx([raw_p["Yes"] / tot, raw_p["No"] / tot], rel=1e-3)
+
+
+# ---------------------------------------------------------------------------
 # Real Qwen3-8B tokenizer (local cache only)
 # ---------------------------------------------------------------------------
 
@@ -273,3 +372,11 @@ def test_qwen3_options_are_single_tokens_in_context(qwen_tok, task, row):
         assert all(len(f) >= 2 for f in m["forms"].values())   # both spacings
     all_ids = [i for v in m["token_ids"].values() for i in v]
     assert len(all_ids) == len(set(all_ids))
+    if spec["prefix"] == ro.PREFIX_COLON:
+        # The parenthesised format: " (" is one token after "Answer:", and
+        # every option is one token after it.
+        alt = ro.alt_path(qwen_tok, prompt, raw, render, spec)
+        assert alt is not None and qwen_tok.decode([alt["bridge_id"]]) == " ("
+        assert all(f[0] == o for o, f in alt["tmap"]["forms"].items())
+    else:
+        assert spec["alt_prefix"] is None

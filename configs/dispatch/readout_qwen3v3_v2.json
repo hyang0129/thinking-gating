@@ -1,0 +1,52 @@
+{
+  "_comment": [
+    "Readout v2 (scripts/capture_readout.py READOUT_VERSION 2): 'Answer:'-prefixed items are read",
+    "through both formats, P(' X'|'Answer:') + P(' ('|'Answer:') * P('X'|'Answer: ('). v1",
+    "(readout_qwen3v3.json) put ~0 option mass on the BBH yes/no-style subtasks: the model opens",
+    "'(' first. Writes shared/icr_capture/{task}_readout_qwen3v3_v2/; summary.json last (output_check).",
+    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/readout_qwen3v3_v2.json --root shared/dispatch/readout_qwen3v3_v2"
+  ],
+  "name": "readout_qwen3v3_v2",
+  "kind": "python_script",
+  "script": "scripts/capture_readout.py",
+  "cell_id_hash": true,
+  "constants": {
+    "slug": "qwen3v3",
+    "cap": "shared/icr_capture/{task}_thinking_{slug}",
+    "out": "shared/icr_capture/{task}_readout_{slug}_v2"
+  },
+  "grid": {
+    "task": [
+      "mmlu_pro",
+      "bbh"
+    ]
+  },
+  "cell_id_template": "readout-v2-{slug}-{task}",
+  "args": [
+    "--capture-dir",
+    "{cap}",
+    "--out-dir",
+    "{out}",
+    "--batch-size",
+    "8"
+  ],
+  "output_check": [
+    "{out}/summary.json"
+  ],
+  "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "HF_DATASETS_OFFLINE": "1",
+    "CUDA_MPS_PIPE_DIRECTORY": "/no/such/path"
+  },
+  "timeout_s": 3600,
+  "max_attempts": 2,
+  "priority": 5,
+  "tags": [
+    "readout",
+    "d0",
+    "s1",
+    "qwen3v3",
+    "v2"
+  ]
+}
