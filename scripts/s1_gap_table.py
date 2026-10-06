@@ -392,6 +392,10 @@ def main(argv=None) -> int:
     p.add_argument("--mmlu-categories", default=None,
                    help="optional JSON {sample_id: category} when the readout "
                         "rows carry no MMLU-Pro family")
+    p.add_argument("--bbh-lettered-only", action="store_true",
+                   help="drop BBH word-answer items (yes/no, true/false, "
+                        "valid/invalid) everywhere -- for readout v1, whose "
+                        "option mass on them is ~0")
     p.add_argument("--out-json", required=True)
     p.add_argument("--out-md", required=True)
     args = p.parse_args(argv)
@@ -401,9 +405,16 @@ def main(argv=None) -> int:
     data = {name: load_task(name, Path(rd), Path(lf),
                             cats if name == "mmlu_pro" else None)
             for name, rd, lf in args.task}
+    if args.bbh_lettered_only and "bbh" in data:
+        b = data["bbh"]
+        keep = np.array(b["kind"]) == "letter"
+        dropped = int((~keep).sum())
+        data["bbh"] = {**b, **subset(b, keep, "bbh"), "n_covered": int(keep.sum()),
+                       "excluded": {**b["excluded"],
+                                    "word answer (--bbh-lettered-only)": dropped}}
 
     sets = dict(data)
-    if "bbh" in data:
+    if "bbh" in data and not args.bbh_lettered_only:
         b = data["bbh"]
         kinds = np.array(b["kind"])
         sets["bbh/lettered"] = subset(b, kinds == "letter", "bbh/lettered")
