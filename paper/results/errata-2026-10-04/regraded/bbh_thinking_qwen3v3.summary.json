@@ -1,0 +1,50 @@
+{
+  "n": 540,
+  "base_rate_helped": 0.12777777777777777,
+  "graded_counts": {
+    "no_change_correct": 386,
+    "no_change_wrong": 60,
+    "helped": 69,
+    "hurt": 25
+  },
+  "accuracy_thinking_off": 0.7611111111111111,
+  "accuracy_thinking_on": 0.8425925925925926,
+  "oracle_accuracy": 0.8888888888888888,
+  "truncated_on": 30,
+  "truncated_off": 17,
+  "by_difficulty": {
+    "easy": {
+      "n": 256,
+      "base_rate_helped": 0.1484375,
+      "accuracy_thinking_off": 0.7265625,
+      "accuracy_thinking_on": 0.8046875
+    },
+    "hard": {
+      "n": 72,
+      "base_rate_helped": 0.1388888888888889,
+      "accuracy_thinking_off": 0.6944444444444444,
+      "accuracy_thinking_on": 0.7777777777777778
+    },
+    "medium": {
+      "n": 212,
+      "base_rate_helped": 0.09905660377358491,
+      "accuracy_thinking_off": 0.8254716981132075,
+      "accuracy_thinking_on": 0.910377358490566
+    }
+  },
+  "model": "Qwen/Qwen3-8B",
+  "task": "bbh",
+  "grader_version": "bbh:fdf16277ac0a",
+  "regraded": true,
+  "unclosed_think_on": 30,
+  "regrade_flips": {
+    "off_false_to_true": 46,
+    "off_true_to_false": 0,
+    "on_false_to_true": 16,
+    "on_true_to_false": 5,
+    "rows_changed": 56,
+    "label_changed": 35
+  },
+  "stored_accuracy_thinking_off": 0.6759259259259259,
+  "stored_accuracy_thinking_on": 0.8222222222222222
+}

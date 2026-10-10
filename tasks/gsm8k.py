@@ -25,9 +25,15 @@ PROMPT_TEMPLATE = (
     "Problem: {question}"
 )
 
-# Answers may carry thousands separators, a currency symbol, or a trailing period.
-_NUMBER = re.compile(r"-?\$?\d[\d,]*(?:\.\d+)?")
-_FINAL_MARKER = re.compile(r"(?:answer|result)\s*(?:is)?\s*[:=]?\s*", re.IGNORECASE)
+# Answers may carry thousands separators, a currency symbol, a trailing period,
+# or be a simple fraction ("1/2" is one half, not the integer 1).
+_NUMBER = re.compile(r"-?\$?\d[\d,]*(?:\.\d+)?(?:\s*/\s*\d+(?:\.\d+)?)?")
+# Word-bounded on both sides: "results" or "<answer>" are not markers. "answer"
+# markers outrank "result" ones -- with one shared pattern, the last marker won
+# and "Answer: 7\n\nThis result uses 3 steps." graded as 3.
+_ANSWER_MARKER = re.compile(r"(?<![<\w])answer\b\s*(?:is\b)?\s*[:=]?\s*", re.IGNORECASE)
+_RESULT_MARKER = re.compile(r"(?<![<\w])result\b\s*(?:is\b)?\s*[:=]?\s*", re.IGNORECASE)
+_UNICODE_MINUS = "\u2212"  # "−5": the typographic minus sign
 
 
 def format_prompt(question: str) -> str:
@@ -40,9 +46,15 @@ def normalize_number(text: str) -> str | None:
     if text is None:
         return None
     cleaned = text.strip().rstrip(".").replace(",", "").replace("$", "")
+    cleaned = cleaned.replace(_UNICODE_MINUS, "-")
+    cleaned = cleaned.replace(" ", "")
     try:
-        value = float(cleaned)
-    except ValueError:
+        if cleaned.count("/") == 1:
+            num, den = cleaned.split("/")
+            value = float(num) / float(den)
+        else:
+            value = float(cleaned)
+    except (ValueError, ZeroDivisionError):
         return None
     # Render 24.0 and 24 identically so string comparison is safe.
     return str(int(value)) if value == int(value) else str(value)
@@ -59,22 +71,22 @@ def extract_gold(answer_field: str) -> str | None:
 def extract_prediction(generation: str) -> str | None:
     """Pull the predicted number out of a model generation.
 
-    Prefers a number following an explicit 'Answer:'-style marker; otherwise
-    falls back to the last number in the text, which is where a chain-of-thought
-    reply lands its result.
+    Prefers the first number after the last 'Answer:'-style marker (then after
+    the last 'result' marker); otherwise falls back to the last number in the
+    text, which is where a chain-of-thought reply lands its result.
     """
     if not generation:
         return None
+    text = generation.replace(_UNICODE_MINUS, "-")
 
-    tail = generation
-    marker_hits = list(_FINAL_MARKER.finditer(generation))
-    if marker_hits:
-        tail = generation[marker_hits[-1].end():]
-        after_marker = _NUMBER.search(tail)
-        if after_marker:
-            return normalize_number(after_marker.group(0))
+    for marker in (_ANSWER_MARKER, _RESULT_MARKER):
+        hits = list(marker.finditer(text))
+        if hits:
+            after_marker = _NUMBER.search(text[hits[-1].end():])
+            if after_marker:
+                return normalize_number(after_marker.group(0))
 
-    matches = _NUMBER.findall(generation)
+    matches = _NUMBER.findall(text)
     return normalize_number(matches[-1]) if matches else None
 
 

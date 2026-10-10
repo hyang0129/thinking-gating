@@ -11,7 +11,11 @@ that produced it instead of a number retyped from a log.
 
 Columns, and why each is here:
 
-    AUROC           mean ± 95% CI over seeds, on held-out test splits.
+    AUROC           seed-mean test AUROC with its 95% *bootstrap* CI over
+                    test rows (aggregate.test_auroc_bootstrap). The seed-spread
+                    interval (aggregate.test_auroc.ci) is 1.6-8.8x too narrow
+                    and is only in the CSV, as auroc_seed_lo/hi. A run with no
+                    bootstrap node (pre-v3 files) prints "no boot".
     strat           the confound check — the *worst* within-difficulty AUROC.
                     The helped rate climbs steeply with difficulty, so a probe
                     that only detects hard questions still scores well overall.
@@ -42,11 +46,31 @@ def fmt(value: float, digits: int = 3) -> str:
     return "  -  " if value is None or math.isnan(value) else f"{value:.{digits}f}"
 
 
-def fmt_ci(node: dict) -> str:
+def bootstrap_node(mean: float, boot: dict | None) -> dict:
+    """{mean, ci} with the bootstrap interval, or a nan interval if absent."""
+    ci = (boot or {}).get("ci") or [float("nan")] * 2
+    return {"mean": mean, "ci": list(ci), "bootstrap": bool(boot)}
+
+
+def fmt_boot(node: dict) -> str:
     if not node or math.isnan(node.get("mean", float("nan"))):
         return "  -  "
-    lo, hi = node.get("ci", [float("nan")] * 2)
+    lo, hi = node["ci"]
+    if math.isnan(lo):
+        return f"{node['mean']:.3f} [no boot]"
     return f"{node['mean']:.3f} [{lo:.3f},{hi:.3f}]"
+
+
+def transfer_bootstrap(data: dict) -> dict | None:
+    """The transfer bootstrap node; rebuilt from per_probe for older files."""
+    if data.get("transfer_auroc_bootstrap"):
+        return data["transfer_auroc_bootstrap"]
+    cis = [r["auroc_bootstrap"]["ci"] for r in data.get("per_probe", [])
+           if r.get("auroc_bootstrap") and not math.isnan(r["auroc_bootstrap"]["ci"][0])]
+    if not cis:
+        return None
+    return {"ci": [sum(c[0] for c in cis) / len(cis), sum(c[1] for c in cis) / len(cis)],
+            "n_seeds": len(cis), "rebuilt_from_per_probe": True}
 
 
 def worst_stratum(agg: dict) -> tuple[str, float]:
@@ -62,7 +86,7 @@ def worst_stratum(agg: dict) -> tuple[str, float]:
 def load_probe_rows(metrics_dir: Path) -> list[dict]:
     rows = []
     for path in sorted(metrics_dir.glob("*.json")):
-        if path.name.startswith("transfer__"):
+        if path.name.startswith("transfer__") or path.name.endswith(".predictions.json"):
             continue
         data = json.loads(path.read_text())
         agg = data.get("aggregate")
@@ -75,7 +99,9 @@ def load_probe_rows(metrics_dir: Path) -> list[dict]:
         rows.append({
             "run": path.stem, "task": task, "target": data.get("target", "helped"),
             "n": data.get("n_samples"), "base_rate": data.get("base_rate_helped"),
-            "auroc": agg["test_auroc"], "worst_stratum": stratum,
+            "auroc": bootstrap_node(agg["test_auroc"]["mean"],
+                                    agg.get("test_auroc_bootstrap")),
+            "auroc_seed": agg["test_auroc"], "worst_stratum": stratum,
             "worst_stratum_auroc": stratum_auc,
             "never": agg["baseline_never_think"]["mean"],
             "always": agg["baseline_always_think"]["mean"],
@@ -96,7 +122,9 @@ def load_transfer_rows(metrics_dir: Path) -> list[dict]:
             "target": data.get("target_task", "?"),
             "objective": data.get("target_objective", ""),
             "source_auroc": data.get("source_test_auroc", float("nan")),
-            "transfer_auroc": data.get("transfer_auroc", {}),
+            "transfer_auroc": bootstrap_node(
+                (data.get("transfer_auroc") or {}).get("mean", float("nan")),
+                transfer_bootstrap(data)),
             "drop_pp": data.get("auroc_drop_pp", float("nan")),
             "verdict": data.get("verdict", ""),
         })
@@ -106,14 +134,14 @@ def load_transfer_rows(metrics_dir: Path) -> list[dict]:
 def render_probes(rows: list[dict]) -> str:
     if not rows:
         return "(no probe runs found)\n"
-    head = (f"{'task':<16}{'target':<16}{'n':>6}{'base':>7}  {'AUROC [95% CI]':<22}"
+    head = (f"{'task':<16}{'target':<16}{'n':>6}{'base':>7}  {'AUROC [95% boot CI]':<22}"
             f"{'worst stratum':<22}{'never':>7}{'always':>8}{'oracle':>8}{'routed':>8}{'waste':>7}")
     out = [head, "-" * len(head)]
     for r in sorted(rows, key=lambda r: (r["task"], r["target"])):
         strat = f"{r['worst_stratum']}:{fmt(r['worst_stratum_auroc'])}"
         out.append(
             f"{r['task']:<16}{r['target']:<16}{r['n'] or 0:>6}"
-            f"{fmt(r['base_rate'], 2):>7}  {fmt_ci(r['auroc']):<22}{strat:<22}"
+            f"{fmt(r['base_rate'], 2):>7}  {fmt_boot(r['auroc']):<22}{strat:<22}"
             f"{fmt(r['never']):>7}{fmt(r['always']):>8}{fmt(r['oracle']):>8}"
             f"{fmt(r['routed']):>8}{fmt(r['waste'], 2):>7}")
     return "\n".join(out) + "\n"
@@ -123,13 +151,13 @@ def render_transfers(rows: list[dict]) -> str:
     if not rows:
         return ""
     head = (f"{'source':<18}{'target':<18}{'objective':<16}{'src AUROC':>10}"
-            f"  {'transfer AUROC':<22}{'drop pp':>9}  verdict")
+            f"  {'transfer AUROC [boot]':<22}{'drop pp':>9}  verdict")
     out = ["", "Transfer (no retraining: source scaler and threshold reused)",
            head, "-" * len(head)]
     for r in sorted(rows, key=lambda r: (r["source"], r["target"])):
         out.append(
             f"{r['source']:<18}{r['target']:<18}{r['objective']:<16}"
-            f"{fmt(r['source_auroc']):>10}  {fmt_ci(r['transfer_auroc']):<22}"
+            f"{fmt(r['source_auroc']):>10}  {fmt_boot(r['transfer_auroc']):<22}"
             f"{r['drop_pp']:>9.1f}  {r['verdict']}")
     return "\n".join(out) + "\n"
 
@@ -153,19 +181,23 @@ def main(argv: list[str] | None = None) -> int:
     if args.format == "csv":
         stream = open(args.out, "w", newline="") if args.out else sys.stdout
         writer = csv.writer(stream)
+        # auroc_boot_* is the interval to quote; auroc_seed_* is seed spread,
+        # kept only so the two can be compared.
         writer.writerow(["kind", "task", "target", "n", "base_rate", "auroc",
-                         "auroc_lo", "auroc_hi", "worst_stratum",
+                         "auroc_boot_lo", "auroc_boot_hi",
+                         "auroc_seed_lo", "auroc_seed_hi", "worst_stratum",
                          "worst_stratum_auroc", "never", "always", "oracle",
                          "routed", "waste"])
         for r in probes:
             writer.writerow(["probe", r["task"], r["target"], r["n"], r["base_rate"],
                              r["auroc"]["mean"], r["auroc"]["ci"][0], r["auroc"]["ci"][1],
+                             r["auroc_seed"]["ci"][0], r["auroc_seed"]["ci"][1],
                              r["worst_stratum"], r["worst_stratum_auroc"], r["never"],
                              r["always"], r["oracle"], r["routed"], r["waste"]])
         for r in transfers:
             writer.writerow(["transfer", f"{r['source']}->{r['target']}", r["objective"],
-                             "", "", r["transfer_auroc"].get("mean"),
-                             *(r["transfer_auroc"].get("ci") or ["", ""]),
+                             "", "", r["transfer_auroc"]["mean"],
+                             *r["transfer_auroc"]["ci"], "", "",
                              "", "", "", "", "", "", r["drop_pp"]])
         if args.out:
             stream.close()

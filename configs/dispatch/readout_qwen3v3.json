@@ -1,0 +1,34 @@
+{
+  "_comment": [
+    "Phase 0 step 1 (proposal v3 section 6, issue #1): D0 decision readout (System 1, training-free)",
+    "on the Qwen3-8B v3 capture items, thinking OFF, one forward pass per item, no generation.",
+    "Writes shared/icr_capture/{task}_readout_qwen3v3/ with summary.json last (the output_check).",
+    "The capture dirs are only read. gsm8k/math500 need a verify format and are not here.",
+    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/readout_qwen3v3.json --root shared/dispatch/readout_qwen3v3"
+  ],
+  "name": "readout_qwen3v3",
+  "kind": "python_script",
+  "script": "scripts/capture_readout.py",
+  "cell_id_hash": true,
+  "constants": {
+    "slug": "qwen3v3",
+    "cap": "shared/icr_capture/{task}_thinking_{slug}",
+    "out": "shared/icr_capture/{task}_readout_{slug}"
+  },
+  "grid": {
+    "task": ["mmlu_pro", "bbh"]
+  },
+  "cell_id_template": "readout-{slug}-{task}",
+  "args": ["--capture-dir", "{cap}", "--out-dir", "{out}", "--batch-size", "8"],
+  "output_check": ["{out}/summary.json"],
+  "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "HF_DATASETS_OFFLINE": "1",
+    "CUDA_MPS_PIPE_DIRECTORY": "/no/such/path"
+  },
+  "timeout_s": 3600,
+  "max_attempts": 2,
+  "priority": 5,
+  "tags": ["readout", "d0", "s1", "qwen3v3"]
+}

@@ -31,6 +31,15 @@ Common fields (all optional unless noted):
     priority      int   0-999, lower runs first (default 100)
     tags          list  free-form labels, for filtering in the CLI
     meta          dict  free-form, carried into the result record
+    terminal_markers
+                  list  glob patterns for "this failure is deterministic, do not
+                        retry" marker files, looked for in the directories of
+                        `output_check` paths. Default: TERMINAL_MARKERS_DEFAULT
+                        (the capture script's TRUNCATION_FAILURE.<shard>.json).
+                        [] disables the check. See worker.py.
+
+Every field above except cell_id/kind is optional, and fields a worker does not
+know are ignored, so cells written by newer code stay runnable by older workers.
 
 A **manifest** describes a whole sweep and expands into cells:
 
@@ -48,6 +57,14 @@ A **manifest** describes a whole sweep and expands into cells:
 `exclude` drops combinations. Every string field is `{name}`-substituted from
 the combination, and substitution runs to a fixed point, so constants may
 reference grid variables (as `out` does above).
+
+**Cell identity.** A cell id comes from `cell_id_template` or the grid
+combination, never from `args`. Re-expanding an edited manifest therefore
+produces the same ids with different content. `claim.add_cell` catches that by
+fingerprint and reports a conflict instead of skipping the edit. A new manifest
+may set `"cell_id_hash": true` to append a short fingerprint to every id
+(`<id>__h<10 hex>`); an edit then yields new ids. It is opt-in so the ids of
+every existing manifest, and of cells already on disk, stay exactly as they are.
 """
 
 from __future__ import annotations
@@ -59,7 +76,14 @@ import shlex
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
+from . import claim as _claim
+
 KINDS = ("python_script", "python_code", "call", "shell")
+
+# A capture that refuses to publish a truncated shard writes this marker next
+# to its outputs and exits non-zero (scripts/capture_inference_thinking.py).
+# Greedy decoding makes a retry at the same budget reproduce it exactly.
+TERMINAL_MARKERS_DEFAULT = ("TRUNCATION_FAILURE.*.json",)
 
 _FIELD_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
 _MAX_SUBST_PASSES = 10
@@ -107,7 +131,7 @@ def validate_cell(cell: dict) -> dict:
     if kind == "python_script" and not isinstance(cell.get("args", []), list):
         raise CellError(f"{cid}: 'args' must be a list")
 
-    for field in ("output_check", "tags"):
+    for field in ("output_check", "tags", "terminal_markers"):
         if field in cell and not isinstance(cell[field], list):
             raise CellError(f"{cid}: '{field}' must be a list")
     for field in ("env", "meta"):
@@ -302,7 +326,8 @@ def _reject_cycles(resolved: dict) -> None:
 # Manifest expansion
 # ---------------------------------------------------------------------------
 
-_MANIFEST_ONLY = {"name", "grid", "zip", "exclude", "constants", "cell_id_template"}
+_MANIFEST_ONLY = {"name", "grid", "zip", "exclude", "constants", "cell_id_template",
+                  "cell_id_hash"}
 
 
 def _combinations(manifest: dict) -> list[dict]:
@@ -375,6 +400,8 @@ def expand_manifest(manifest: dict) -> list[dict]:
             substitute(id_template, namespace) if id_template
             else _default_cell_id(name, combo)
         )
+        if manifest.get("cell_id_hash"):
+            cell["cell_id"] += "__h" + _claim.cell_fingerprint(cell)[:10]
         cell.setdefault("meta", {})
         cell["meta"] = {**cell["meta"], "manifest": name, **combo}
         validate_cell(cell)

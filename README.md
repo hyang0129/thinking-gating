@@ -1,130 +1,103 @@
 # thinking-gating
 
-Can a model tell, before it starts writing, whether thinking will help?
+Can a model tell, before it spends the compute, whether thinking will help?
 
-This repo trains a small probe on **prefill activations** — the last-prompt-token
-hidden state, available before a single output token is generated — to predict
-whether extended reasoning will improve the answer. If it works, it is a router:
-spend thinking compute only where it buys something.
+> **Status (2026-10-04).** The prefill-probe line is **closed as a negative
+> result**: [paper/negative_result.md](paper/negative_result.md), with an
+> errata section at the top from the 2026-10-04 cleanup audit. The repo is
+> building a **bolt-on System 1** for reasoning models — an activated-LoRA
+> decision head that gives a hybrid-thinking model Jev-style single-pass typed
+> answers with free fallback to its own thinking mode: GitHub issue #1 and
+> [paper/proposal_bolt_on_system1.md](paper/proposal_bolt_on_system1.md).
+> The capture, grading, baseline, statistics and dispatch tooling carry over
+> (fixed in the cleanup); the probe becomes one baseline among several.
+> Operating rules for agents: [AGENTS.md](AGENTS.md).
 
-> **⚠️ Status (2026-08-31): all probe results before 2026-08-30 are retracted.**
-> The thinking-OFF pass was truncated, so `correct_off` measured response length
-> rather than capability and both objectives inherited the confound. See
-> [The truncation confound](#the-truncation-confound). V3 re-captures are queued
-> on Empire AI and waiting on a GPU allocation. The pipeline and tooling are
-> unaffected; the numbers need re-running.
+## What the old line found
 
-## The three objectives
+A probe on the prefill hidden state (last prompt token) predicted
+`needs_thinking` (wrong without thinking) at AUROC 0.66–0.70 on Qwen3-8B, but a
+question-length or TF-IDF baseline landed inside every interval; `rescued`
+(does thinking fix a query the model gets wrong) was at chance; BBH was a
+subtask detector. An earlier positive result was a truncation confound (below).
+See the writeup and its errata for the numbers and what the audit changed.
 
-`--target` on `run_experiment.py`. They are not interchangeable — the choice is
-the experiment.
+The three objectives (`--target` on `run_experiment.py`):
 
 | target | label | what above-chance means |
 |---|---|---|
-| `needs_thinking` | `~correct_off` | the model will be **wrong without thinking**. This is correctness prediction — well-studied territory (Kadavath 2022, Azaria & Mitchell 2023). Better balanced than `helped`, and independent of the thinking budget. |
-| `helped` | `~correct_off & correct_on` | thinking **flipped** the answer wrong→right. The original framing. Confounded: mostly driven by the `~correct_off` term. |
-| `rescued` | `correct_on`, restricted to rows where `correct_off == False` | **the load-bearing one.** On this subset `needs_thinking` is constant by construction, so difficulty cannot explain any signal. Above chance here means the prefill state encodes the *marginal value of reasoning* — the only claim here that is not already in the literature. |
+| `needs_thinking` | `~correct_off` | the model will be wrong without thinking — correctness prediction, well studied |
+| `helped` | `~correct_off & correct_on` | thinking flipped wrong → right; mostly driven by the first term |
+| `rescued` | `correct_on` on rows with `correct_off == False` | the marginal value of reasoning with difficulty held fixed by construction |
 
 ## Setup
 
 The repo is self-contained: its own venv, task modules, and dispatch tooling.
-Nothing is imported from a sibling checkout.
 
 ```bash
 bash scripts/setup_env.sh      # creates ./.venv and installs requirements.txt
 source .venv/bin/activate
 ```
 
-The same two commands work on Empire AI. See
-[.agent-work/EMPIRE_AI_SETUP.md](.agent-work/EMPIRE_AI_SETUP.md) for cluster
-dispatch, and [agent.md](agent.md) for the operating rules — which machine may
-run what, and the pitfalls that have already cost a round of results.
+The same works on Empire AI; see
+[.agent-work/EMPIRE_AI_SETUP.md](.agent-work/EMPIRE_AI_SETUP.md).
+`transformers >= 4.51, < 5` is pinned (Qwen3 and the `enable_thinking`
+template flag). The System One work needs Qwen3.5 / vLLM / peft and will get a
+separate environment rather than an in-place upgrade.
 
-`transformers >= 4.51` is a hard floor: Qwen3 support and the `enable_thinking`
-chat-template flag both landed there.
-
-## Quick start
-
-### 1. Capture thinking-mode pairs (GPU node)
+## Pipeline
 
 ```bash
-python scripts/capture_inference_thinking.py \
-    --task math500 \
-    --model Qwen/Qwen3-8B \
-    --out-dir shared/icr_capture/math500_thinking_qwen3v3 \
-    --max-samples 500 \
-    --max-response-len 2048 \
-    --chat-template
-```
+# 1. capture paired thinking-off/on runs + prefill states (GPU node only)
+python scripts/capture_inference_thinking.py --task math500 --model Qwen/Qwen3-8B \
+    --chat-template --max-response-len 2048 --max-response-len-thinking 4096 \
+    --capture-logprobs --out-dir shared/icr_capture/math500_thinking_qwen3v3
 
-**Set `--max-response-len` deliberately.** Its default (320) is what produced
-the truncation confound; non-thinking modes still write chain-of-thought, and a
-competition-math solution does not fit. The script logs at ERROR level when
-thinking-OFF truncation exceeds 20% — but it still exits 0, so **check the log,
-it will not fail the run for you.** Budgets that are known to work are in
-`configs/dispatch/capture_qwen3v3.json`.
-
-### 2. Generate labels (CPU)
-
-```bash
-python scripts/generate_labels.py \
+# 2. labels (CPU); --regrade re-applies the current grader to stored responses
+python scripts/generate_labels.py --regrade \
     --capture-dir shared/icr_capture/math500_thinking_qwen3v3 \
-    --out-file shared/math500_labels.jsonl
+    --out-file shared/labels/qwen3v3/math500_labels.jsonl
+
+# 3. probe + baselines + controls + transfer, for every task and objective
+CAPTURE_SLUG=qwen3v3 TASKS="math500" bash scripts/run_full_analysis.sh
 ```
 
-### 3. Train the probe (CPU is fine)
+`--max-response-len` is required: its old default (320) produced the
+truncation confound. Above 20% thinking-OFF truncation the capture
+quarantines the shard (`meta.shardNN.jsonl.quarantined` +
+`TRUNCATION_FAILURE.shardNN.json`) and exits 1. Known-good budgets are in
+`configs/dispatch/capture_qwen3v3.json` and the `*_redo.json` manifests.
 
-```bash
-python scripts/run_experiment.py \
-    --capture-dir shared/icr_capture/math500_thinking_qwen3v3 \
-    --labels shared/math500_labels.jsonl \
-    --target rescued --method mlp --layer 18 --seeds 42 1 2 3 4 \
-    --out-dir output/math500_rescued
-```
-
-Layer 18 is the a-priori middle layer, chosen once and never swept — a
-`--layer-sweep` selected on a ~74-example validation split *lowered* test AUROC.
-`--layer-stride 8` concatenates every 8th layer, which is the one tuning change
-that reliably helped, and only on pooled data.
-
-### 4. Check it before believing it
-
-```bash
-python scripts/baseline_text.py  --capture-dir ... --labels ... --target rescued   # beat TF-IDF or it is not a result
-python scripts/stratify_check.py --capture-dir ... --labels ... --group-from ...   # is it a difficulty/subtask detector?
-python scripts/validate_bench.py                                                   # trained on a partial capture?
-python scripts/eval_transfer.py  --probe output/.../checkpoint.json --capture-dir ...
-```
-
-Or run the whole thing: `bash scripts/run_full_analysis.sh` labels every
-capture, trains a probe per (task × objective), evaluates every ordered
-cross-task pair, and renders one table. Idempotent; CPU only; `FORCE=1` to
-recompute.
+`run_full_analysis.sh` is CPU-only and incremental (a step re-runs when an
+input is newer than its output), regrades labels by default (`REGRADE=0` keeps
+stored grades), writes only to `output/<slug>/`, and copies into
+`paper/results/metrics/<slug>/` only with `PROMOTE=1` (refusing to change an
+existing file unless `FORCE=1`). Individual steps: `run_experiment.py`,
+`baseline_text.py`, `baseline_confidence.py`, `compare_baselines.py`,
+`within_group_auroc.py --group-key ...`, `eval_transfer.py`,
+`results_table.py`; real invocations are in AGENTS.md.
 
 ## How to read a result
 
 - **Quote `aggregate.test_auroc_bootstrap.ci`, never `test_auroc.ci`.** The
-  latter is a normal approximation over 5 seeds that re-split a *fixed* sample —
-  it measures split-to-split spread, not population uncertainty, and runs
-  1.6–8.8× too narrow. One finding ("12/14 MMLU-Pro categories above chance")
-  became 5/14 under the correct interval.
-- **A probe is only interesting strictly between max(never-think, always-think)
-  and oracle.** On these tasks always-think already lands within a couple of
-  points of oracle, which is why `min_routed_for_always_think_accuracy` — the
-  smallest fraction of queries that must be routed to thinking to match
-  always-think accuracy — matters more than the accuracy framing. 1 − that is
-  wasted thinking compute.
-- **Beat the text baselines.** An 8B forward pass has to outperform TF-IDF on
-  the raw question, on identical splits, seeds, and target.
-- **Watch for task identity.** Pooled `needs_thinking` has base rates 0.144 /
-  0.738 / 0.615 across tasks, so recognising *which task a question came from*
-  predicts the label. That is vocabulary matching, not difficulty estimation.
+  latter is seed-to-seed spread on a fixed sample and runs 1.6–8.8× too
+  narrow; one finding ("12/14 MMLU-Pro categories above chance") became 5/14
+  under the correct interval.
+- **Beat the text and confidence baselines** on identical rows.
+  `compare_baselines.py` selects each baseline family's best on validation and
+  reports a paired-bootstrap probe − baseline difference.
+- **Watch for category identity.** On multi-category data use the pooled
+  within-group AUROC (`within_group_auroc.py --group-key`); BBH looked like
+  0.82 and was 0.49 within subtask.
+- **A router is only interesting between max(never, always) and oracle.**
+  `run_experiment.py` reports the exact routed-accuracy curve, its nAUC, and
+  random and oracle routers at the matched escalation rate.
 
 ## The truncation confound
 
-Captures before 2026-08-30 ran the thinking-OFF pass at `--max-response-len 320`.
-Qwen3 writes chain-of-thought even with thinking off, so long answers were cut
-off mid-solution and graded wrong for running long rather than for being unable.
+Captures before 2026-08-30 ran the thinking-OFF pass at 320 tokens. Qwen3
+writes chain-of-thought even with thinking off, so long answers were cut off
+and graded wrong for running long.
 
 | task | off-pass truncated | `correct_off` when truncated | when not |
 |---|---|---|---|
@@ -132,110 +105,100 @@ off mid-solution and graded wrong for running long rather than for being unable.
 | MMLU-Pro | 49.3% | 0.061 | 0.700 |
 | GSM8K | 11.6% | 0.196 | 0.943 |
 
-The decisive test — train the identical probe to predict `truncated_off` instead
-of the label — gives **0.922 / 0.872 / 0.811**, higher than the same probe
-predicting `needs_thinking` (0.879 / 0.782 / 0.702) on every task, and the
-reported AUROC ranks the three tasks in exactly the order of their truncation
-rates. The probe was substantially a response-length predictor.
-
-Three model families shared the cap, so the cross-family replication reproduced
-the artifact rather than confirming the result: a confound in the design is
-invariant to the model. There is no salvage from the existing data — dropping
-truncated rows leaves MATH-500 with 124 rows of which 7 are wrong.
-
-Full writeup: [paper/results/metrics/truncation/README.md](paper/results/metrics/truncation/README.md).
+The identical probe trained to predict `truncated_off` scored 0.922 / 0.872 /
+0.811 — higher than the same probe on `needs_thinking` (0.879 / 0.782 /
+0.702). Three model families shared the cap, so the cross-family replication
+reproduced the artifact. Full writeup:
+[paper/results/metrics/truncation/README.md](paper/results/metrics/truncation/README.md).
 
 ## Repository layout
 
 ```
 thinking-gating/
+├── AGENTS.md / CLAUDE.md               # agent rules (CLAUDE.md imports AGENTS.md)
 ├── scripts/
 │   ├── setup_env.sh                    # creates ./.venv, installs requirements
 │   ├── capture_inference_thinking.py   # paired thinking-off/on + prefill extraction
-│   ├── generate_labels.py              # paired runs → labels (--drop-truncated)
-│   ├── run_experiment.py               # probe training (MLP / logreg), 5 seeds
+│   ├── generate_labels.py              # captures → labels (--regrade, --drop-truncated)
+│   ├── run_experiment.py               # prefill probe (logreg / MLP), 5 seeds
+│   ├── baseline_text.py                # length / TF-IDF baselines
+│   ├── baseline_confidence.py          # thinking-off log-prob / entropy / length baselines
+│   ├── compare_baselines.py            # probe vs val-selected baselines, paired bootstrap
+│   ├── within_group_auroc.py           # pooled within-group AUROC (category control)
+│   ├── stratify_check.py               # per-group AUROC (archival; decomposition/ reproduces with it)
 │   ├── eval_transfer.py                # cross-task transfer, no retraining
-│   ├── baseline_text.py                # TF-IDF / text-feature baselines
-│   ├── stratify_check.py               # the control that caught the BBH artifact
-│   ├── validate_bench.py               # flags results trained on partial captures
 │   ├── results_table.py                # metrics dir → one table
-│   ├── run_full_analysis.sh            # captures in, results table out
-│   ├── gpu_dispatch.py                 # multi-node GPU job dispatch (Empire AI)
+│   ├── run_full_analysis.sh            # captures in, results out
+│   ├── gpu_dispatch.py                 # GPU job dispatch through Jupyter kernels (Empire AI)
 │   ├── launch_jupyter.py               # guarded Jupyter/SLURM launcher
+│   ├── watch_and_dispatch.py           # puts workers on queued roots as allocations land
 │   └── dispatch/                       # cell + worker queue (all fan-out work)
-├── tasks/                              # gsm8k, lsat, math500, mmlu_pro, bbh
-├── utils/                              # capture_io.py (shard-aware), jupyter_exec.py
-├── tests/                              # test_dispatch.py, test_pipeline.py
+├── tasks/                              # gsm8k, lsat, math500, mmlu_pro, bbh (loaders + graders)
+├── utils/                              # capture_io.py (shard-aware), metrics.py, jupyter_exec.py
+├── tests/                              # dispatch, pipeline, graders, metrics, capture, confidence
 ├── configs/
-│   ├── datasets/  methods/             # dataset + probe configs
 │   ├── dispatch/                       # one manifest per sweep or capture batch
 │   └── nodes.example.json              # template for gitignored configs/nodes.json
 ├── shared/                             # captures + labels (gitignored)
-├── output/                             # working metrics
-└── paper/results/                      # promoted metrics — provenance record
+├── output/                             # working metrics (gitignored)
+└── paper/                              # writeups; paper/results/ is the provenance record
 ```
 
-Tests are stdlib-only and need no GPU: `python3 tests/test_dispatch.py`,
-`python3 tests/test_pipeline.py`.
+## Tests
+
+```bash
+OMP_NUM_THREADS=4 .venv/bin/python -m pytest tests -q   # needs numpy, scikit-learn, torch, transformers
+python3 tests/test_dispatch.py                          # stdlib only, no GPU
+```
+
+No test needs a GPU. The capture and confidence tests run a tiny random
+Llama on CPU; the MATH-500 grader cases are also checked against
+`math_verify` when it is installed (skipped otherwise).
 
 ## Tasks
 
-Task modules are local to this repo and follow one contract (`tasks/__init__.py`):
-`load_<task>(split)`, `format_prompt(question)`, `is_correct(generation, answer)`,
-`difficulty(row)`.
+Contract (`tasks/__init__.py`): `load_<task>(split)`, `format_prompt(question)`,
+`is_correct(generation, answer[, question=])`.
 
 | Task | Source dataset | Rows | Role |
 |------|----------------|------|------|
 | `gsm8k` | `openai/gsm8k` (main) | 1319 test | Grade-school math |
-| `math500` | `HuggingFaceH4/MATH-500` | 500 test | Competition math — primary for `rescued` |
+| `math500` | `HuggingFaceH4/MATH-500` | 500 test | Competition math |
 | `mmlu_pro` | `TIGER-Lab/MMLU-Pro` | 1000 sampled | Multi-domain MC |
-| `bbh` | `lukaemon/bbh` | multi-subtask | Reasoning suite |
-| `lsat` | `hails/agieval-lsat-ar` | 230 test | Analytical reasoning / transfer |
+| `bbh` | `lukaemon/bbh` | 27 subtasks × 20 | Reasoning suite |
+| `lsat` | `hails/agieval-lsat-ar` | 230 test | Analytical reasoning |
 
-Only MATH-500 ships a difficulty field (its 1–5 level, mapped onto the shared
-three buckets). The others derive one heuristically — reasoning-step count for
-GSM8K, constraint-sentence count for LSAT, prompt length for MMLU-Pro and BBH —
-used **only** for stratified evaluation, never for training.
+Only MATH-500 ships a difficulty field (its 1–5 level, mapped onto three
+buckets); the others derive one heuristically, used only for stratified
+evaluation.
 
 ## Running sweeps
 
-Anything that fans out — multi-seed, multi-method, per-dataset batches, whole
-capture campaigns — goes through the cell queue in
-[scripts/dispatch/](scripts/dispatch/). Workers on any number of nodes claim
-cells from a shared directory via atomic `rename(2)`.
-
-**The worker is generic and never changes.** A cell describes its own work, so a
-new sweep is a new manifest: a `python_script` to run, a `python_code` snippet,
-a `call` to any importable function, or a `shell` command.
+Anything that fans out goes through the cell queue in
+[scripts/dispatch/](scripts/dispatch/): a manifest expands into cells, and a
+generic worker on each node claims them by atomic `rename(2)`.
 
 ```bash
-python scripts/dispatch/queue.py expand configs/dispatch/capture_qwen3v3.json --dry-run
-python scripts/dispatch/queue.py expand configs/dispatch/capture_qwen3v3.json
-python scripts/gpu_dispatch.py run .venv/bin/python scripts/dispatch/worker.py \
-    --root shared/dispatch/capture_qwen3v3          # one per node
-python scripts/dispatch/queue.py status --root shared/dispatch/capture_qwen3v3
+python scripts/dispatch/queue.py expand configs/dispatch/example_probe_sweep.json --dry-run
+python scripts/dispatch/queue.py expand configs/dispatch/example_probe_sweep.json \
+    --root shared/dispatch/my_sweep
+python scripts/gpu_dispatch.py run \
+    ".venv/bin/python scripts/dispatch/worker.py --root shared/dispatch/my_sweep"   # one per node
+python scripts/dispatch/queue.py status --root shared/dispatch/my_sweep
 ```
 
-Expanding is idempotent — finished cells are skipped, so re-expanding after
-adding a task never repeats work. Cells retry (`max_attempts`), time out, and
-survive node death (stale claims are re-queued).
-
-## Models exercised
-
-Qwen3-8B (anchor), Qwen3-14B, Nemotron-Nano-8B, Granite-3.3, gpt-oss-20b. The
-thinking toggle is detected from the chat template rather than a name whitelist,
-covering `enable_thinking`, system-prompt toggles, and graded reasoning levels.
+Expanding is idempotent; re-expanding an edited manifest is refused unless it
+sets `"cell_id_hash": true` (new work should); retired cells are not
+recreated (`--allow-resurrect` overrides). The old v3 capture manifests
+(`capture_qwen3v3.json`, `capture_nemotronv3.json`) are archival — do not
+re-expand them. A failure that leaves a capture `TRUNCATION_FAILURE` marker is
+terminal and not retried.
 
 ## Where the numbers live
 
 `paper/results/` is the provenance record: metrics JSON copied verbatim from
-cluster runs, one file per run. **A number in the paper traces to a file there,
-never to a log scroll.** Read the group READMEs before quoting anything — the
-caveats are the load-bearing part:
+runs, one file per run, with a README per group. A number in a writeup traces
+to a file there, never to a log scroll. Read the group READMEs before quoting
+anything — the caveats are the load-bearing part.
 
-- [`truncation/`](paper/results/metrics/truncation/) — what invalidated the pre-08-30 results
-- [`baselines/`](paper/results/metrics/baselines/) — what prefill buys over reading the question
-- [`decomposition/`](paper/results/metrics/decomposition/) — the three objectives, and which interval to quote
-- [`tuning/`](paper/results/metrics/tuning/) — sample size is the binding constraint, not capacity
-
-Current state and next steps: [.agent-work/HANDOFF.md](.agent-work/HANDOFF.md).
+Handoff and cluster state: [.agent-work/HANDOFF.md](.agent-work/HANDOFF.md).

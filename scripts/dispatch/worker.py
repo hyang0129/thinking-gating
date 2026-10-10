@@ -31,6 +31,21 @@ Behavior worth knowing:
   * **Shutdown.** On SIGTERM/SIGINT the current cell's process group is killed
     and its cell is released back to pending immediately, rather than sitting
     in claimed/ until the stale-claim GC notices.
+  * **Deterministic failures are not retried.** If a failed attempt left a
+    terminal marker (`terminal_markers`, default `TRUNCATION_FAILURE.*.json`)
+    in an `output_check` directory, the cell is failed for good whatever its
+    `max_attempts`. A retry at the same settings would reproduce the failure
+    and burn the GPU time again. The same applies to a cell re-queued by an
+    older worker whose previous attempt left such a marker; it is failed
+    without running.
+  * **Lost claims.** If this worker's claim is reclaimed while it runs (its
+    heartbeat looked stale to someone's GC) and the cell turns up elsewhere,
+    the worker kills its copy, leaves the cell to its new owner, and exits
+    with code 3. It never writes to a cell it no longer holds. The cell may
+    have run twice, which is why cells must be idempotent (see claim.py).
+  * **Provenance.** Each attempt records the repo commit (`git_commit`,
+    `git_dirty`) in its result and log header. A `git pull` between cells
+    changes the code the next cell runs, and this is how to tell.
 
 Stdlib only — the worker must start on any interpreter, even if the project's
 own dependencies are broken.
@@ -70,10 +85,43 @@ _THREAD_DEFAULTS = {
 
 _GRACE_SECONDS = 10  # SIGTERM → SIGKILL window for a timed-out or cancelled cell
 _ERROR_TAIL_LINES = 60
+# A marker counts as written by an attempt if its mtime is no earlier than the
+# attempt's start minus this. Covers clock skew between the worker host and
+# the filesystem server; markers from an earlier capture are days older.
+_MARKER_CLOCK_SLACK_S = 120
+EXIT_CLAIM_LOST = 3
 
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _parse_iso(value: object) -> Optional[float]:
+    try:
+        return datetime.fromisoformat(str(value)).timestamp()
+    except (TypeError, ValueError):
+        return None
+
+
+def git_state(project_root: Path) -> dict:
+    """Best-effort `{"git_commit": sha|None, "git_dirty": bool|None}`.
+
+    Never raises and never blocks for long: a worker must run in a tree that
+    is not a git checkout, or on a host without git.
+    """
+    def _git(*args: str) -> Optional[str]:
+        try:
+            p = subprocess.run(["git", "-C", str(project_root), *args],
+                               capture_output=True, text=True, timeout=15)
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return p.stdout.strip() if p.returncode == 0 else None
+
+    commit = _git("rev-parse", "HEAD")
+    if commit is None:
+        return {"git_commit": None, "git_dirty": None}
+    status = _git("status", "--porcelain", "--untracked-files=no")
+    return {"git_commit": commit, "git_dirty": None if status is None else bool(status)}
 
 
 def _log(msg: str) -> None:
@@ -108,8 +156,13 @@ class Worker:
         self._stop = threading.Event()
         self._current_cell: Optional[Path] = None
         self._current_proc: Optional[subprocess.Popen] = None
+        # Set only while a cell subprocess runs; the heartbeat thread watches
+        # it to notice a claim that was reclaimed out from under us.
+        self._running_claim: Optional[Path] = None
+        self._claim_lock = threading.Lock()
         self._cancelled = False
-        self.counts = {"done": 0, "skipped": 0, "failed": 0, "retried": 0}
+        self._claim_lost = False
+        self.counts = {"done": 0, "skipped": 0, "failed": 0, "retried": 0, "lost": 0}
 
     # -- lifecycle ---------------------------------------------------------
 
@@ -128,6 +181,39 @@ class Worker:
                 claim.touch_heartbeat(self.root, self.worker_id)
             except OSError as exc:
                 _log(f"heartbeat failed (continuing): {exc}")
+            self._check_claim_while_running()
+
+    def _claim_moved_elsewhere(self, claim_path: Path) -> bool:
+        """True only on positive evidence: our claim file is gone AND the cell
+        is now somewhere else (pending, another worker, done, failed).
+
+        Requiring both keeps a transient filesystem glitch from killing a
+        healthy multi-hour cell.
+        """
+        if claim_path.exists():
+            return False
+        try:
+            found = claim.find_cell(self.root, claim.cell_id_from_path(claim_path))
+        except OSError:
+            return False
+        return found is not None and found[1] != claim_path
+
+    def _check_claim_while_running(self) -> None:
+        # Under the lock, so the main thread cannot clear _running_claim and
+        # start its own finishing move (which also makes the claim file
+        # vanish) halfway through this check.
+        with self._claim_lock:
+            claim_path = self._running_claim
+            if claim_path is None or self._claim_lost:
+                return
+            if not self._claim_moved_elsewhere(claim_path):
+                return
+            self._claim_lost = True
+            self._stop.set()
+        _log(f"LOST CLAIM on {claim_path.name}: it was reclaimed (this "
+             "worker's heartbeat looked stale) and now belongs elsewhere. "
+             "Killing this copy; the new owner's run stands.")
+        self._kill_current("claim lost to another worker")
 
     def _kill_current(self, why: str) -> None:
         proc = self._current_proc
@@ -163,12 +249,27 @@ class Worker:
         })
         return env
 
-    def _run_cell(self, cell: dict, attempt: int) -> dict:
+    def _log_file_for(self, cell_id: str, attempt: int) -> Path:
+        """`<id>.attempt<N>.log`, or `.attempt<N>.r<K>.log` if that exists.
+
+        Attempt numbers repeat after a release or a GC reclaim, and opening
+        the existing log with "w" would wipe the earlier run's output, or
+        truncate a log that a still-running original worker is writing to.
+        """
+        log_file = claim.log_path(self.root, cell_id, attempt)
+        k = 1
+        while log_file.exists():
+            log_file = log_file.with_name(f"{cell_id}.attempt{attempt}.r{k}.log")
+            k += 1
+        return log_file
+
+    def _run_cell(self, cell: dict, attempt: int,
+                  cell_path: Optional[Path] = None) -> dict:
         """Execute one cell in a subprocess. Returns the result record."""
         cell_id = cell["cell_id"]
         cwd = cells_mod.resolve_cwd(cell, self.project_root)
-        log_file = claim.log_path(self.root, cell_id, attempt)
-        log_file.parent.mkdir(parents=True, exist_ok=True)
+        (self.root / "logs").mkdir(parents=True, exist_ok=True)
+        log_file = self._log_file_for(cell_id, attempt)
         result_file = claim.result_path(self.root, cell_id) if cell["kind"] == "call" else None
 
         argv = cells_mod.build_command(
@@ -187,6 +288,9 @@ class Worker:
             "cwd": str(cwd),
             "log": str(log_file.relative_to(self.root)),
             "started_at": _now_iso(),
+            # The code the cell subprocess loads is whatever is on disk now,
+            # not what this worker started with.
+            **git_state(self.project_root),
         }
 
         cwd.mkdir(parents=True, exist_ok=True)
@@ -194,10 +298,21 @@ class Worker:
         timeout = cell.get("timeout_s")
         timed_out = False
 
+        # Last cheap check before spending GPU time: is the claim still ours?
+        if cell_path is not None and self._claim_moved_elsewhere(cell_path):
+            self._claim_lost = True
+            record.update(status="lost", exit_code=None, duration_s=0.0,
+                          ended_at=_now_iso(),
+                          error="claim was reclaimed before the cell started")
+            return record
+
+        dirty = record["git_dirty"]
         with open(log_file, "w", encoding="utf-8") as handle:
             handle.write(f"# cell     {cell_id}\n")
             handle.write(f"# attempt  {attempt}\n")
             handle.write(f"# worker   {self.worker_id} on {record['host']}\n")
+            handle.write(f"# commit   {record['git_commit'] or 'unknown'}"
+                         f"{' (dirty)' if dirty else ''}\n")
             handle.write(f"# command  {record['command']}\n")
             handle.write(f"# cwd      {cwd}\n")
             handle.write(f"# started  {record['started_at']}\n\n")
@@ -209,6 +324,7 @@ class Worker:
                 argv, cwd=str(cwd), env=self._environment(cell),
                 stdout=handle, stderr=subprocess.STDOUT, start_new_session=True,
             )
+            self._running_claim = cell_path
             try:
                 exit_code = self._current_proc.wait(
                     timeout=float(timeout) if timeout else None
@@ -218,6 +334,8 @@ class Worker:
                 self._kill_current(f"timeout after {timeout}s")
                 exit_code = self._current_proc.poll()
             finally:
+                with self._claim_lock:
+                    self._running_claim = None
                 proc, self._current_proc = self._current_proc, None
                 if proc.poll() is None:
                     exit_code = proc.wait()
@@ -231,7 +349,10 @@ class Worker:
         expected = cells_mod.output_paths(cell, self.project_root)
         missing = [str(p) for p in expected if not p.exists()]
 
-        if timed_out:
+        if self._claim_lost:
+            record.update(status="lost",
+                          error="claim was reclaimed by another worker mid-run")
+        elif timed_out:
             record.update(status="timeout",
                           error=f"exceeded timeout_s={timeout}\n\n{_tail(log_file)}")
         elif self._cancelled:
@@ -263,6 +384,9 @@ class Worker:
         claim.init_dispatch_dirs(self.root)
         _log(f"worker {self.worker_id} starting — root={self.root}")
         _log(f"python={self.python}  project_root={self.project_root}")
+        state = git_state(self.project_root)
+        _log(f"commit={state['git_commit'] or 'unknown'}"
+             f"{' (dirty)' if state['git_dirty'] else ''}")
 
         if self.dry_run:
             return self._dry_run()
@@ -310,6 +434,9 @@ class Worker:
             f"{self.counts['done']} done, {self.counts['skipped']} skipped, "
             f"{self.counts['retried']} re-queued, {self.counts['failed']} failed"
         )
+        if self._claim_lost:
+            _log("exiting after a lost claim (exit 3); the queue is intact")
+            return EXIT_CLAIM_LOST
         return 1 if self.counts["failed"] else 0
 
     def _dry_run(self) -> int:
@@ -343,17 +470,92 @@ class Worker:
         _log("[dry-run] nothing claimed, nothing run")
         return 0
 
+    # -- terminal (do-not-retry) failures ------------------------------------
+
+    def _terminal_markers(self, cell: dict, since: Optional[float]) -> list[Path]:
+        """Marker files that say this cell's failure is deterministic.
+
+        Looked for in the directories of the cell's `output_check` paths. A
+        marker named `<PREFIX>.<tag>.json` applies only to cells whose output
+        file names contain `.<tag>.`, so shard01's marker does not condemn
+        shard00. Only markers modified at or after `since` count, so a marker
+        left by an older capture at a different budget is ignored.
+        """
+        patterns = cell.get("terminal_markers")
+        if patterns is None:
+            patterns = list(cells_mod.TERMINAL_MARKERS_DEFAULT)
+        expected = cells_mod.output_paths(cell, self.project_root)
+        if not patterns or not expected:
+            return []
+        names = [p.name for p in expected]
+        found: list[Path] = []
+        for directory in dict.fromkeys(p.parent for p in expected):
+            if not directory.is_dir():
+                continue
+            for pattern in patterns:
+                for marker in sorted(directory.glob(pattern)):
+                    parts = marker.name.split(".")
+                    tag = ".".join(parts[1:-1])
+                    if tag and not any(f".{tag}." in n for n in names):
+                        continue
+                    try:
+                        mtime = marker.stat().st_mtime
+                    except OSError:
+                        continue
+                    if since is not None and mtime < since - _MARKER_CLOCK_SLACK_S:
+                        continue
+                    found.append(marker)
+        return found
+
+    @staticmethod
+    def _terminal_message(markers: list[Path]) -> str:
+        lines = ["TERMINAL FAILURE, not re-queued: the attempt left a marker saying "
+                 "the failure is deterministic, so a retry at the same settings "
+                 "would reproduce it."]
+        for marker in markers:
+            lines.append(f"  marker: {marker}")
+            try:
+                body = marker.read_text(encoding="utf-8", errors="replace").strip()
+                lines.append("    " + body[:800].replace("\n", "\n    "))
+            except OSError:
+                pass
+        lines.append("Fix the cause (e.g. raise --max-response-len) in a new manifest, "
+                     "move the output dir aside, then `queue.py retry --cell <id>` "
+                     "if this cell is still the right one.")
+        return "\n".join(lines)
+
+    # -- per-cell flow ---------------------------------------------------------
+
+    def _finish(self, move, cell_path: Path, record: dict) -> bool:
+        """Run one claim transition. False if the claim turned out to be lost."""
+        try:
+            move(self.root, cell_path, record)
+            return True
+        except claim.ClaimLost as exc:
+            self._on_lost(cell_path, str(exc))
+            return False
+
+    def _on_lost(self, cell_path: Path, why: str) -> None:
+        self._claim_lost = True
+        self._stop.set()
+        self.counts["lost"] += 1
+        _log(f"{cell_path.name}: claim lost, leaving the cell to its new owner "
+             f"and stopping this worker ({why})")
+
     def _process(self, cell_path: Path) -> None:
         try:
             cell = claim.load_cell(cell_path)
             cells_mod.validate_cell(cell)
+        except FileNotFoundError as exc:
+            self._on_lost(cell_path, str(exc))
+            return
         except Exception as exc:  # malformed cell — fail it, keep the worker up
             _log(f"invalid cell {cell_path.name}: {exc}")
-            claim.fail_cell(self.root, cell_path, {
+            if self._finish(claim.fail_cell, cell_path, {
                 "status": "failed", "worker_id": self.worker_id,
                 "error": f"invalid cell: {exc}", "ended_at": _now_iso(),
-            })
-            self.counts["failed"] += 1
+            }):
+                self.counts["failed"] += 1
             return
 
         cell_id = cell["cell_id"]
@@ -363,43 +565,81 @@ class Worker:
         expected = cells_mod.output_paths(cell, self.project_root)
         if self.skip_existing and expected and all(p.exists() for p in expected):
             _log(f"{cell_id}: outputs already present — skipping")
-            claim.complete_cell(self.root, cell_path, {
+            if self._finish(claim.complete_cell, cell_path, {
                 "status": "skipped", "worker_id": self.worker_id,
                 "attempt": attempt, "ended_at": _now_iso(),
                 "note": "output_check satisfied before run",
                 "outputs": [str(p) for p in expected],
-            })
-            self.counts["skipped"] += 1
+            }):
+                self.counts["skipped"] += 1
             return
 
-        record = self._run_cell(cell, attempt)
+        # A cell re-queued after a failure (possibly by an older worker that
+        # did not know about markers) whose previous attempt left a terminal
+        # marker: fail it now rather than spend another run reproducing it.
+        previous = cell.get("result") or {}
+        if previous.get("status") in ("failed", "timeout"):
+            prev_start = _parse_iso(previous.get("started_at"))
+            markers = self._terminal_markers(cell, prev_start) if prev_start else []
+            if markers:
+                error = self._terminal_message(markers)
+                _log(f"{cell_id}: previous attempt left a terminal marker — "
+                     f"failing without running ({markers[0].name})")
+                if self._finish(claim.fail_cell, cell_path, {
+                    "status": "failed", "terminal": True,
+                    "worker_id": self.worker_id, "attempt": attempt,
+                    "ended_at": _now_iso(), "error": error,
+                    "terminal_markers": [str(m) for m in markers],
+                    "previous_result": previous,
+                }):
+                    self.counts["failed"] += 1
+                return
+
+        attempt_wall_start = time.time()
+        record = self._run_cell(cell, attempt, cell_path)
+
+        if record["status"] == "lost":
+            self._on_lost(cell_path, record.get("error", ""))
+            return
 
         if record["status"] in ("ok", "skipped"):
-            claim.complete_cell(self.root, cell_path, record)
-            self.counts["done" if record["status"] == "ok" else "skipped"] += 1
-            _log(f"{cell_id}: {record['status']} in {record.get('duration_s', 0)}s")
+            if self._finish(claim.complete_cell, cell_path, record):
+                self.counts["done" if record["status"] == "ok" else "skipped"] += 1
+                _log(f"{cell_id}: {record['status']} in {record.get('duration_s', 0)}s")
             return
 
         if record["status"] == "cancelled":
-            claim.release_cell(self.root, cell_path, record)
-            _log(f"{cell_id}: released back to pending (worker shutting down)")
+            if self._finish(claim.release_cell, cell_path, record):
+                _log(f"{cell_id}: released back to pending (worker shutting down)")
             return
 
         max_attempts = int(cell.get("max_attempts", 1))
-        if attempt < max_attempts:
-            claim.retry_cell(self.root, cell_path, record)
-            self.counts["retried"] += 1
-            _log(f"{cell_id}: {record['status']} — re-queued "
-                 f"(attempt {attempt}/{max_attempts})")
+        markers = self._terminal_markers(cell, attempt_wall_start)
+        if markers:
+            record.update(terminal=True,
+                          terminal_markers=[str(m) for m in markers],
+                          error=self._terminal_message(markers) + "\n\n"
+                                + (record.get("error") or ""))
+            if self._finish(claim.fail_cell, cell_path, record):
+                self.counts["failed"] += 1
+                _log(f"{cell_id}: {record['status']} with terminal marker "
+                     f"{markers[0].name}: failed for good, not re-queued "
+                     f"(attempt {attempt}/{max_attempts})")
+        elif attempt < max_attempts:
+            if self._finish(claim.retry_cell, cell_path, record):
+                self.counts["retried"] += 1
+                _log(f"{cell_id}: {record['status']} — re-queued "
+                     f"(attempt {attempt}/{max_attempts})")
         else:
-            claim.fail_cell(self.root, cell_path, record)
-            self.counts["failed"] += 1
-            _log(f"{cell_id}: {record['status']} after {attempt} attempt(s) — "
-                 f"see {record.get('log')}")
+            if self._finish(claim.fail_cell, cell_path, record):
+                self.counts["failed"] += 1
+                _log(f"{cell_id}: {record['status']} after {attempt} attempt(s) — "
+                     f"see {record.get('log')}")
 
     def _release_current(self) -> None:
         """Put a half-run cell back on the queue when shutting down."""
-        if self._current_cell is None or not self._current_cell.exists():
+        if (self._claim_lost or self._current_cell is None
+                or not self._current_cell.exists()):
             return
         try:
             claim.release_cell(self.root, self._current_cell, {

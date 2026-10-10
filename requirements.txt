@@ -3,6 +3,11 @@
 #
 # Install into this repo's own virtualenv (see scripts/setup_env.sh):
 #     python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
+#
+# The System One work (Qwen3.5 / Kev / vLLM / peft) needs a newer transformers
+# than the <5 pin below and gets its own environment (requirements-s1.txt, not
+# created yet). Do not upgrade this one in place: the cluster redo captures run
+# in it.
 
 # --- Core ML -----------------------------------------------------------------
 # transformers >= 4.51 is a hard floor: Qwen3 support and the `enable_thinking`
@@ -15,21 +20,18 @@ torch>=2.4
 transformers>=4.51,<5
 accelerate>=0.30          # required by device_map="auto" in the capture script
 numpy>=1.26,<2.0
-scikit-learn>=1.4         # AUROC + splits in run_experiment.py
+scikit-learn>=1.4         # probes, TF-IDF baselines, AUROC (also brings scipy)
 
 # --- Data --------------------------------------------------------------------
-datasets>=2.19,<5         # tasks/gsm8k.py, tasks/lsat.py loaders (both parquet-only)
-pandas>=2.1
+datasets>=2.19,<5         # tasks/*.py loaders (parquet-only); pulls in pandas itself
 
 # --- Dispatch tooling (scripts/gpu_dispatch.py -> utils/jupyter_exec.py) ------
 requests>=2.31
 websocket-client>=1.7
 
-# --- Utilities ---------------------------------------------------------------
-tqdm>=4.66
-pyyaml>=6.0
-
 # --- Development -------------------------------------------------------------
+# tests/test_graders.py also checks MATH-500 grading against `math_verify` when
+# it is installed; it is optional and skipped otherwise.
 pytest>=7.4
 black>=23.12
 ruff>=0.1.9

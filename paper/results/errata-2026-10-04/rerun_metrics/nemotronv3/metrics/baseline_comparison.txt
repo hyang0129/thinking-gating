@@ -1,0 +1,8 @@
+task      target               n   base  prefill probe           best text (val-sel.)                  best confidence (val-sel.)            probe - best, paired                        
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+bbh       helped             540  0.067  0.541 [0.329, 0.750]    -                                     -                                     -                                           
+bbh       needs_thinking     540  0.669  0.744 [0.639, 0.839]    tfidf_word 0.794 [0.700, 0.875]       confidence_lr 0.666 [0.564, 0.765]    -0.050 [-0.132, +0.031] vs tfidf_word       
+bbh       rescued            361  0.100  0.776 [0.568, 0.950]    tfidf_char 0.802 [0.638, 0.934]       n_tokens_off 0.521 [0.280, 0.751]     -0.025 [-0.173, +0.121] vs tfidf_char       
+lsat      helped             230  0.296  0.589 [0.395, 0.776]    -                                     -                                     -                                           
+lsat      needs_thinking     230  0.757  0.553 [0.344, 0.753]    length_words 0.574 [0.380, 0.758]     n_tokens_off 0.608 [0.433, 0.773]     -0.055 [-0.293, +0.191] vs n_tokens_off     
+lsat      rescued            174  0.391  0.620 [0.420, 0.809]    tfidf_word 0.640 [0.441, 0.816]       min_logprob 0.550 [0.347, 0.748]      -0.020 [-0.254, +0.217] vs tfidf_word       

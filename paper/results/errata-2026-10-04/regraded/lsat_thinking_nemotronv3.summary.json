@@ -1,0 +1,50 @@
+{
+  "n": 230,
+  "base_rate_helped": 0.2565217391304348,
+  "graded_counts": {
+    "no_change_correct": 41,
+    "helped": 59,
+    "no_change_wrong": 115,
+    "hurt": 15
+  },
+  "accuracy_thinking_off": 0.24347826086956523,
+  "accuracy_thinking_on": 0.43478260869565216,
+  "oracle_accuracy": 0.5,
+  "truncated_on": 46,
+  "truncated_off": 13,
+  "by_difficulty": {
+    "easy": {
+      "n": 6,
+      "base_rate_helped": 0.5,
+      "accuracy_thinking_off": 0.16666666666666666,
+      "accuracy_thinking_on": 0.6666666666666666
+    },
+    "hard": {
+      "n": 30,
+      "base_rate_helped": 0.3333333333333333,
+      "accuracy_thinking_off": 0.06666666666666667,
+      "accuracy_thinking_on": 0.36666666666666664
+    },
+    "medium": {
+      "n": 194,
+      "base_rate_helped": 0.23711340206185566,
+      "accuracy_thinking_off": 0.27319587628865977,
+      "accuracy_thinking_on": 0.4381443298969072
+    }
+  },
+  "model": "nvidia/Llama-3.1-Nemotron-Nano-8B-v1",
+  "task": "lsat",
+  "grader_version": "lsat:31f22b502ac0",
+  "regraded": true,
+  "unclosed_think_on": 46,
+  "regrade_flips": {
+    "off_false_to_true": 0,
+    "off_true_to_false": 0,
+    "on_false_to_true": 0,
+    "on_true_to_false": 15,
+    "rows_changed": 15,
+    "label_changed": 9
+  },
+  "stored_accuracy_thinking_off": 0.24347826086956523,
+  "stored_accuracy_thinking_on": 0.5
+}

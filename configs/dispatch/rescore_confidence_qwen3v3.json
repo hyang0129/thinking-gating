@@ -1,0 +1,35 @@
+{
+  "_comment": [
+    "B1 re-score (2026-10-04): recompute thinking-off confidence for the Qwen3-8B v3 captures",
+    "from their stored responses, one unpadded row at a time (scripts/rescore_confidence.py).",
+    "No generation; writes confidence_off_v2.shardNN.jsonl beside each meta shard and",
+    "confidence_off_v2.summary.json last (the output_check). Meta shards are not touched.",
+    "LSAT is absent: its Qwen3 v3 capture was quarantined and the redo has not run.",
+    "Nemotron is absent: its thinking-on pass mostly did not think (B7b).",
+    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/rescore_confidence_qwen3v3.json"
+  ],
+  "name": "rescore_confidence_qwen3v3",
+  "kind": "python_script",
+  "script": "scripts/rescore_confidence.py",
+  "cell_id_hash": true,
+  "constants": {
+    "slug": "qwen3v3",
+    "cap": "shared/icr_capture/{task}_thinking_{slug}"
+  },
+  "grid": {
+    "task": ["gsm8k", "math500", "mmlu_pro", "bbh"]
+  },
+  "cell_id_template": "rescore-{slug}-{task}",
+  "args": ["--capture-dir", "{cap}"],
+  "output_check": ["{cap}/confidence_off_v2.summary.json"],
+  "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "HF_DATASETS_OFFLINE": "1",
+    "CUDA_MPS_PIPE_DIRECTORY": "/no/such/path"
+  },
+  "timeout_s": 10800,
+  "max_attempts": 2,
+  "priority": 5,
+  "tags": ["rescore", "b1", "qwen3v3"]
+}
