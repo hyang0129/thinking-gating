@@ -18,8 +18,9 @@
 >   and AutoTrust GEV. **C3 (a learned think-flag vs the model's own
 >   confidence) is open and is now the headline**; C1/C2 are the platform.
 >
-> **Next task: write the Phase 0 decision-head plan.** Post it as a new GitHub
-> issue and fold it into the proposal.
+> **Next task: write the Phase 0 decision-head plan.** Done 2026-10-10: issue #3,
+> proposal v4. Owner decisions Q1–Q7 are listed at the end of #3; step 0a
+> (CPU C3 pre-check on the D0 readout) and steps 1–2 need no approval.
 > - **Base:** Qwen3.5-4B for development, Qwen3.5-9B to confirm, Qwen3-8B as
 >   fallback.
 > - **Serving:** a custom HF loop with aLoRA (PEFT ≥ 0.18). The plan must

@@ -17,7 +17,9 @@ interpreter. If a script needs something new, add it here and list it in
 **One line:** the repo is building a **bolt-on System 1** for reasoning models: an
 activated-LoRA decision head gives a hybrid-thinking model Jev-style single-pass
 typed answers, with free fallback to the untouched model's thinking mode (exact
-KV-cache reuse). Plan: `paper/proposal_bolt_on_system1.md` (v3) and GitHub issue #1
+KV-cache reuse). **Headline is C3** (learned think-flag vs own confidence);
+C1's mechanism is prior art (Solomon, GEV). Phase 0 plan: GitHub issue #3.
+Plan: `paper/proposal_bolt_on_system1.md` (v4) and GitHub issue #1
 (`gh issue view 1 -R hyang0129/thinking-gating --comments`); v2
 (`paper/proposal_system_one_gating.md`) is superseded but its gates still apply.
 The old prefill-probe line is **closed

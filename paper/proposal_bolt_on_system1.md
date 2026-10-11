@@ -1,7 +1,9 @@
 # Proposal: Bolt-on System 1 — activated-adapter decision heads for reasoning models
 
-**Status:** research plan v3, 2026-10-04. Replaces v2 ("value of computation").
-Tracked in issue #1. ✓ = checked against the primary source; everything else
+**Status:** research plan v4, 2026-10-10. v4 makes C3 the headline after the
+2026-10-10 scoop check, and replaces §7 Phase 0 with the decision-head plan in
+issue #3. v3 (2026-10-04) replaced v2 ("value of computation"). Tracked in
+issue #1. ✓ = checked against the primary source; everything else
 is from scout reports and must be re-verified before citing.
 
 ## 1. Pitch
@@ -28,18 +30,34 @@ on an appended typed question.
 
 ## 2. Contributions
 
-1. **Method: a bolt-on System 1 for any reasoning model.**
+**Order changed in v4.** C1's mechanism has shipped: DoccyHealth Solomon (HF,
+2026-09-21 ✓) and AutoTrust GEV-26B-Decide (HF, Oct 2026 ✓) both bolt a LoRA
+decision head onto a reasoner and fall back to the unmodified base model's
+thinking. **C3 is the headline**; C1 and C2 are the platform, and cite both as
+prior art for the mechanism. Every system found gates on its own confidence.
+
+**Headline — C3. Learned think-flag vs the model's own confidence.** Item 3
+below; pre-registered endpoint in issue #3 §8.
+
+**Platform:**
+
+1. **Method (C1): a bolt-on System 1 for any reasoning model.** What remains
+   ours: exact, measured cache reuse on a hybrid-recurrent model (Qwen3.5
+   Gated DeltaNet, snapshot and restore of the recurrent state), and an aLoRA
+   vs full-LoRA quality ablation for decision heads.
    - One set of base weights serves both modes.
    - Escalation is free of re-prefill, because the cache is reused exactly
-     (aLoRA guarantees it).
+     (aLoRA leaves prompt states at base values; on Qwen3.5 the GDN state
+     must also be snapshotted and restored).
    - The System 2 fallback **is** the original reasoner, with no reasoning
      degradation from decision tuning.
-2. **Evaluation: the first open, reasoning-heavy, wall-clock comparison of
-   decision models with CoT fallback.**
+2. **Evaluation (C2): an open, reasoning-heavy, wall-clock comparison of
+   decision models with CoT fallback.** Partly done by GEV (GPQA-D, knowledge
+   mix) and InnerJev / JEVal (2610.03935).
    - Systems compared: Jev (closed comparator), Kev, Jeeves gated, a
      conventional cascade, always-think, and ours.
    - Workloads: math, logic and agent mixes.
-3. **Analysis: when to escalate.**
+3. **Headline (C3): when to escalate.**
    - Our own model's confidence vs a learned think-flag, across the design
      ladder (§4), with the old prefill-probe result as the control condition.
    - A null ("confidence suffices, and here is why") is still a finding; 1 and 2
@@ -49,6 +67,10 @@ on an appended typed question.
 
 | Work | What it is | Our difference |
 |---|---|---|
+| **DoccyHealth Solomon** (HF, 2026-09-21 ✓) | LoRA on Qwen3.8-27B, off on the document and on from the question; escalates when reliability < threshold to `<think>` generated with the adapter disabled from a deep-copied cached prefix | **Takes C1's mechanism.** Gates on confidence; model card and code only, no paper, no Pareto |
+| **AutoTrust GEV-26B-Decide** (HF, Oct 2026 ✓) | LoRA + 24-slot head on Gemma-4-26B-A4B; below 0.8 escalates to the unmodified base model's thinking, p = ½p1 + ½p2 | Fallback taken; gates on confidence; no KV reuse documented. Its gate is our baseline |
+| Qualcomm "Efficient Reasoning on the Edge" (2603.16867) | Masked LoRA off on the prompt; a prefill MLP decides whether to think | Not compared against confidence |
+| InnerJev / JEVal (2610.03935) | Accuracy-latency Pareto of open decision models + Jev | Distils reasoning instead of escalating |
 | Jev (TypeSafe, 2026-09-15 ✓) | Closed System One model; no CoT | We add CoT fallback; open |
 | Kev (✓ HF) | Open Jev-style: Qwen3.5-Base + LoRA + pointer head | No fallback; Base weights cannot think |
 | **Jeeves-9B** (PostHog ✓) | Open Jev-style that can think before deciding; `nothink_threshold` 0.9 → 0.806 @ 2.0 s vs 0.825 @ 3.3 s full think, on 325 dev items from MMLU/SciQ/PAWS ✓ | Its reasoning runs through the decision-tuned LoRA (per README); ours runs on the untouched reasoner with exact cache reuse. Its evaluation is not reasoning-heavy. |
@@ -58,10 +80,9 @@ on an appended typed question.
 | Self-Route (2505.20664 ✓), our negative result | Frozen prefill-state routers | Design D1 in our ladder, i.e. the control |
 | JEV-as-a-Judge, COREA, REFLEX | Confidence-gated cascades to a *different* model | Same weights; free escalation |
 
-**Novelty check before building:** search for "activated LoRA" + "decision"
-or "classification head" + "reasoning fallback", and for any Jeeves/GLiDE
-technical report. If someone has done exactly C1, the evaluation (C2) and
-analysis (C3) become the paper.
+**Novelty check (done 2026-10-10, `.agent-work/research-2026-10-10-decision-head.md`):**
+C1's mechanism is taken (Solomon, GEV); C2 is partial; C3 is open. Keep
+watching arXiv weekly.
 
 ## 4. Design ladder
 
@@ -80,11 +101,15 @@ how the decision is computed.
 - `think`: P(the thinking answer differs from the fast answer and is correct).
 - `ask`: missing information. Phase 2, agents only.
 
-**Base model:** a hybrid-thinking model with a thinking toggle. Start at about
-4B and confirm at about 8B. Use the same family as Kev and Jeeves (Qwen3.5) if
-it has a thinking toggle; otherwise use Qwen3, which our capture code already
-supports. **Check:** PEFT and vLLM support for aLoRA on the chosen
-architecture. Qwen3.5's Gated-DeltaNet layers may complicate cache reuse.
+**Base model (decided v4):** Qwen3.5-4B to develop, Qwen3.5-9B to confirm
+(size-matched to Jeeves), Qwen3-8B as fallback (attention-only, exact
+`crop()`, size-matched to Kev-8B). PEFT ≥ 0.18 has aLoRA; vLLM refuses aLoRA
+adapters, so serving is a custom HF loop. Qwen3.5's GDN recurrent state is
+updated in place, so the loop snapshots and restores it (issue #3 §2).
+
+**Typed-question format (v4 default):** LLM-as-Jev bracketed IDs, `[1] … [K]`
+with `Best answer: [` prefilled and renormalised over legal suffixes, shared by
+D0–D3. The think flag is a second typed question on a separate flag aLoRA.
 
 ## 5. Training
 
@@ -119,7 +144,7 @@ architecture. Qwen3.5's Gated-DeltaNet layers may complicate cache reuse.
 
 **C1b — escalation is free.**
 - *Measure:* wall-clock of escalated items vs (prefill + thinking) and vs
-  re-prefill. One H100; vLLM, or HF if vLLM lacks aLoRA support.
+  re-prefill. One GPU, custom HF loop (vLLM refuses aLoRA), fast GDN kernels.
 - *Pass:* overhead ≈ decide-suffix only.
 
 **C2 — Pareto.**
@@ -131,20 +156,30 @@ architecture. Qwen3.5's Gated-DeltaNet layers may complicate cache reuse.
 - *Pass:* ours dominates Jeeves-gated somewhere material.
 
 **C3 — flag vs confidence.**
-- *Measure:* paired-bootstrap ΔnAUC (routed accuracy over 0–50% escalation),
-  flag vs the same design's own confidence, for D1–D3.
-- Report within family × depth and leave-one-family-out.
+- *Measure (primary, pre-registered in issue #3 §8):* paired-bootstrap ΔnAUC
+  (routed accuracy over 0–50% escalation) of the D2 flag vs the best
+  own-confidence router (p_max, margin, entropy; selected on validation), on
+  identical eval rows, stratified by family.
+- *Pass:* lower CI bound > 0 **and** the flag beats per-family τ (pooled
+  within-family ΔnAUC lower bound > 0). *Null:* CI covers 0 with half-width
+  ≤ 0.05. *Underpowered:* half-width > 0.05.
+- Secondary: leave-one-family-out, fixed-budget accuracy at 10/20/30%, the S2
+  label-noise ceiling (4 thinking samples per eval item), GEV-style gate, the
+  same comparison at D1 and D3.
 - Pre-registered gates G2/G3 from v2 still apply.
 
 **Benchmarks.**
 
 | Phase | Families |
 |---|---|
-| Phase 0 | True/False math verify (GSM8K-Verify, MATH500-verify, with controlled perturbations); BBH binary subtasks (graders fixed); ProntoQA/boolean nesting with depth control |
+| Phase 0 | MMLU-Pro (3k eval), all BBH subtasks as bracket IDs, GSM8K / MATH500 verify (controlled perturbations + own wrong answers), LSAT, decision-v7 test (Kev comparability) |
+| Phase 1 | ProntoQA/boolean nesting with depth control (the 2×2) |
 | Phase 2 | When2Call, BFCL `miss_*`, τ²-bench, for answer / think / ask |
 
-**The gap that matters is System 1 (decision readout) vs System 2, and it is
-unmeasured.**
+**The gap that matters is System 1 (decision readout) vs System 2.** Measured
+on Qwen3-8B D0 (issue #1): think − S1 = +17.8 pp on MMLU-Pro, +30.9 pp on BBH
+lettered; S1 ECE 0.39–0.45; confidence routing needs 74–86% escalation to get
+within 1 pp of think, the oracle 17–30%. The original framing follows.
 
 Our existing captures compare thinking-off *generation* with thinking-on
 generation: 0.801 vs 0.807 on regraded Qwen3-8B gsm8k + math500 + mmlu_pro.
@@ -154,7 +189,7 @@ should sit well below both on derived answers (Jev 68.4% vs GPT-6 95.9% on
 JudgeBench reasoning ✓). The larger that gap, the more the routing decision
 is the contribution.
 
-**Phase 0 step 1 is to measure it.** Run a training-free D0 readout on the
+**Phase 0 step 1 was to measure it (done, D0, 2026-10).** Run a training-free D0 readout on the
 items that already have thinking labels:
 - mmlu_pro, BBH and LSAT natively, since they are already typed choices;
 - gsm8k and math500 via a verify format ("is the answer X?").
@@ -178,56 +213,65 @@ Our existing captures already label the no-think vs think pair.
 
 ## 7. Plan
 
-**Phase 0 (weeks 1–3): minimal working system, the scoop hedge.**
-- Build D2 on a ~4B hybrid model, answer head only, gated on its own
-  confidence.
-- Two benchmarks: math-verify and BBH-binary.
-- Compare against Jeeves gated / no-think / think and against always-think on
-  the same items.
-- Measure wall-clock and cache reuse.
-- **Exit:** C1 and C1b hold, and fast-path accuracy is ≥ Jeeves no-think on
-  easy items.
-- **If D2's fast path is much worse than Jeeves no-think:** try D3, and check
-  whether aLoRA capacity is the bottleneck (2609.17109).
-- **Deliverable:** a short preprint and open weights. The claim is C1 + C1b +
-  a first Pareto.
+**Phase 0 (weeks 1–4): decision head + the C3 test.** Full plan, tests and
+cost table: issue #3. In brief:
+- **0a, CPU now:** C3 pre-check on the existing Qwen3-8B D0 readout: a
+  cross-fitted frozen flag probe (D1) and a TF-IDF flag vs D0 p_max and
+  per-family τ.
+- **Platform:** custom HF loop with aLoRA, snapshot and restore of the GDN
+  state, equality tests T1–T6 (CPU on tiny configs, then once on real
+  checkpoints).
+- **Data:** Kev decision-v7 plus our task mix (MMLU-Pro, BBH as bracket IDs,
+  GSM8K/MATH verify, LSAT); eval pool ≥ 4k rows.
+- **Labels:** S2 = base thinking, adapter off, < 2% truncation;
+  cross-fitted S1 (5 folds); flag target `1[gain = +1]`, hurt kept.
+- **Baselines:** best own-confidence router, GEV-style gate, per-family τ,
+  TF-IDF, D0/D1, Kev-4B/8B, Jeeves-9B gated/no-think/think, D3 full LoRA.
+- **Exit:** E1 cache reuse exact and escalation token-identical to vanilla
+  thinking; E2 D2 ≥ Kev-4B and within 2 pp of D3; E3 the pre-registered C3
+  endpoint reported (pass, null, or underpowered).
+- **Deliverable:** C3 result on a working platform, open weights.
 
-**Phase 1 (weeks 4–7): the flag and the ladder.**
-- D0–D3, cross-fitted flag labels.
+**Phase 1 (weeks 5–8): the ladder and the 2×2.**
+- Flag at every rung D0–D3; three tiers (S1 → no-think → think); proper-score
+  calibration (OpenJev-RLCD).
 - The 2×2: computational vs irreducible uncertainty × shallow vs deep.
 - G2/G3.
 
-**Phase 2 (weeks 8–10):** agents (answer / think / ask) and the full C2
+**Phase 2 (weeks 9–11):** agents (answer / think / ask) and the full C2
 evaluation.
 
-**Phase 3 (weeks 11–14):** write. Target ICML 2027 or ARR; **verify the
+**Phase 3 (weeks 12–14):** write. Target ICML 2027 or ARR; **verify the
 deadlines.**
 
 ## 8. Risks
 
-- **Scoop.** Jeeves and GLiDE shipped in three weeks. Phase 0 exists to stake
-  C1 fast. Watch arXiv weekly.
+- **Scoop.** Jeeves, GLiDE, Solomon and GEV shipped within a month; C1's
+  mechanism is taken. C3 is the hedge. Watch arXiv weekly.
 - **aLoRA capacity.** Adapting only the suffix may underfit compared with full
   LoRA. D3 bounds this; quantify the gap.
 - **Unfair Jeeves comparison.** Different size or base would confound it.
   Match size and family where possible, and report Jeeves at its native
   settings.
-- **Flag never beats confidence.** Likely, given our prior result. C1 and C2
-  carry the paper; C3 reports the null with the ladder as evidence.
-- **Serving support.** If vLLM lacks aLoRA plus a thinking-mode switch, report
-  HF wall-clock and isolate cache reuse analytically and empirically.
+- **Flag never beats confidence.** Likely, given our prior result. With C1's
+  mechanism taken, a null C3 is the paper: "confidence suffices", with the
+  ladder, the per-family τ baseline and the S2 label-noise ceiling as evidence.
+  The endpoint is sized (eval ≥ 4k rows) so a null is a tight null.
+- **Serving support.** vLLM refuses aLoRA, so wall-clock comes from a custom HF
+  loop with the fast GDN kernels; numbers from the torch fallback are refused.
 
 ## 9. Repo carry-over
 
-These are already fixed on `cleanup/system-one-carryover`:
+Merged in PR #2:
 - the paired off/on capture, which gives S2 labels;
 - graders, with `--regrade`;
 - `utils/metrics.py` (paired bootstrap, nAUC, CEL);
 - baselines;
 - the dispatch queue.
 
-The re-score of the old confidence values and the corrected headroom proxy
-are in progress (issue #1).
+The confidence re-score and corrected headroom proxy are done
+(`paper/results/metrics/qwen3v3_corrected/`), as is the D0 readout
+(`scripts/capture_readout.py`, `scripts/s1_gap_table.py`).
 
 **New code needed:**
 - the aLoRA decision-head trainer;
@@ -236,5 +280,5 @@ are in progress (issue #1).
 - a Jeeves/Kev evaluation harness;
 - task generators;
 - the wall-clock harness;
-- a separate environment (`requirements-s1.txt`: peft with aLoRA, possibly
-  vLLM).
+- a separate environment (`requirements-s1.txt`: transformers 5.x, peft
+  ≥ 0.18, flash-linear-attention, causal-conv1d, vLLM for label capture only).
