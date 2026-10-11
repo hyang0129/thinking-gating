@@ -1,7 +1,8 @@
 # Thinking-Mode Gating Experiment — Agent Handoff
 
-> **Update (2026-10-10). Work moved to homen** (`/work/hong/thinking-gating`;
-> GPU: RTX 5070 Ti, 12 GB). Start here, in this order:
+> **Update (2026-10-10). Work moved to homen** (`/work/hong/thinking-gating`).
+> **homen is a CPU workstation for this project, like the Mac was: all GPU work
+> goes to Empire AI.** Start here, in this order:
 > 1. `AGENTS.md` (rules: cluster approvals, self-containment).
 > 2. `paper/proposal_bolt_on_system1.md` (v3 plan).
 > 3. `.agent-work/research-2026-10-10-decision-head.md` (scoop status,
@@ -32,14 +33,14 @@
 >   - the think-flag labels: cross-fitted S1 correctness vs thinking correctness;
 >   - baselines: Kev-8B (Qwen3-8B-Base), Jeeves, GEV-style confidence gate,
 >     full-LoRA D3;
->   - a 12 GB-VRAM local-dev plan vs Empire AI runs.
+>   - which steps run on Empire AI vs CPU-only on homen.
 >
 > **Environment.**
 > - The repo `.venv` (Python 3.12, transformers < 5) runs the legacy pipeline.
 > - Qwen3.5 needs transformers v5 plus `flash-linear-attention` and
 >   `causal-conv1d`: create a separate `requirements-s1.txt` env.
-> - The homen NVIDIA driver needs a reboot (kernel module 595.84 vs userspace
->   595.99, so NVML is broken) before local GPU work.
+> - homen's NVIDIA driver is mid-upgrade (NVML broken until a reboot). This is
+>   irrelevant here, because no GPU work runs on homen.
 >
 > **Empire AI.**
 > - `ssh empire-ai` works from homen.
