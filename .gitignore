@@ -61,8 +61,9 @@ logs/
 .tmp/
 scratch/
 
-# Claude Code agent worktrees and local settings
-.claude/
+# Claude Code agent worktrees and local settings (.claude/settings.json is tracked)
+.claude/worktrees/
+.claude/settings.local.json
 
 # pytest cache (written into the repo root)
 .pytest_cache/

@@ -142,6 +142,7 @@ looks harmless.
 |---------|-------------|-----------------------|
 | **Local machine** (this Mac) | No `squeue`; `torch.cuda.is_available()` is False | Write code, generate labels, train probes on CPU (slow), analyze results. **No GPU work** — do not try to load Qwen3-8B or run capture here. |
 | **Empire AI login node** (`alpha1`) | `squeue --me` works; hostname `alpha1*` | Orchestration only: `git`, `gh`, `gpu_dispatch.py`, `launch_jupyter.py`, file inspection, `scripts/setup_env.sh`. **Never train or infer here** — no capture runs, no model loads, no pytest against a real model. |
+| **Claude Code cloud session** (claude.ai/code) | `CLAUDE_CODE_REMOTE=true` | Fresh clone, CPU-only; `scripts/remote_setup.sh` (SessionStart hook) builds `.venv` with CPU torch. Write code, run `pytest`, open PRs. **No `shared/` data** (gitignored) and **no cluster access** (no `ssh empire-ai`) — anything needing captures or GPUs goes back to the user. `gh` may be missing; use the GitHub tools instead. |
 | **GPU node** (`alphagpuNN`) | Never your shell's context — you only ever reach it through its Jupyter kernel | All real compute. Get there via `gpu_dispatch.py run` (batch) or `utils/jupyter_exec.py` through a tunnel (quick checks). |
 
 GPU nodes are not reachable from a laptop or dev container at all, and even
