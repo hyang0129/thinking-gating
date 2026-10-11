@@ -1,5 +1,53 @@
 # Thinking-Mode Gating Experiment — Agent Handoff
 
+> **Update (2026-10-10). Work moved to homen** (`/work/hong/thinking-gating`;
+> GPU: RTX 5070 Ti, 12 GB). Start here, in this order:
+> 1. `AGENTS.md` (rules: cluster approvals, self-containment).
+> 2. `paper/proposal_bolt_on_system1.md` (v3 plan).
+> 3. `.agent-work/research-2026-10-10-decision-head.md` (scoop status,
+>    base model and aLoRA facts, Kev recipe, Phase 0 measurements).
+> 4. GitHub issue #1, with comments.
+>
+> **State at handoff.**
+> - PR #2 is merged (cleanup, fixes, confidence re-score, D0 readout tooling).
+> - Corrected Qwen3 results are in `paper/results/metrics/qwen3v3_corrected/`.
+> - The training-free S1 readout gap is measured (+18 pp MMLU-Pro, +31 pp BBH
+>   lettered).
+> - **Scoop check:** C1's mechanism is already shipped by DoccyHealth Solomon
+>   and AutoTrust GEV. **C3 (a learned think-flag vs the model's own
+>   confidence) is open and is now the headline**; C1/C2 are the platform.
+>
+> **Next task: write the Phase 0 decision-head plan.** Post it as a new GitHub
+> issue and fold it into the proposal.
+> - **Base:** Qwen3.5-4B for development, Qwen3.5-9B to confirm, Qwen3-8B as
+>   fallback.
+> - **Serving:** a custom HF loop with aLoRA (PEFT ≥ 0.18). The plan must
+>   cover:
+>   - snapshotting and restoring the GDN state, with equality tests;
+>   - an adapter-activation test;
+>   - the typed-question format (Kev pointer-head or LLM-as-Jev bracketed IDs;
+>     not letters);
+>   - training data (Kev decision-v7 plus our task mix);
+>   - calibration;
+>   - the think-flag labels: cross-fitted S1 correctness vs thinking correctness;
+>   - baselines: Kev-8B (Qwen3-8B-Base), Jeeves, GEV-style confidence gate,
+>     full-LoRA D3;
+>   - a 12 GB-VRAM local-dev plan vs Empire AI runs.
+>
+> **Environment.**
+> - The repo `.venv` (Python 3.12, transformers < 5) runs the legacy pipeline.
+> - Qwen3.5 needs transformers v5 plus `flash-linear-attention` and
+>   `causal-conv1d`: create a separate `requirements-s1.txt` env.
+> - The homen NVIDIA driver needs a reboot (kernel module 595.84 vs userspace
+>   595.99, so NVML is broken) before local GPU work.
+>
+> **Empire AI.**
+> - `ssh empire-ai` works from homen.
+> - The cluster checkout is on `main`.
+> - QOS `burst` is preemptible; use `launch_jupyter.py --time 04:00:00` for
+>   short jobs.
+> - Queue waits have run to 34 h.
+
 > **Update (2026-10-04).** The repo is pivoting to System One decision models:
 > GitHub issue #1 and `paper/proposal_system_one_gating.md`; current agent
 > state is in `AGENTS.md`. The 2026-10-04 cleanup audit fixed capture, grader,
