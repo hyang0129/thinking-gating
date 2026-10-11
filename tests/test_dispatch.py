@@ -1154,7 +1154,9 @@ def test_gpu_dispatch_kill_signals_the_whole_process_group():
         pidfile = Path(tmp) / "child.pid"
         inner = (f"cd {tmp} && DISPATCH_NODE=x {sys.executable} -c "
                  f"\"import os, time; open('{pidfile}', 'w').write(str(os.getpid())); "
-                 f"time.sleep(60)\"")
+                 f"time.sleep(60)\"; exit $?")
+        # The trailing `; exit $?` keeps bash as the parent: bash >= 5.1 execs the
+        # last command of a plain `a && b`, which would leave no wrapper to test.
         wrapper = subprocess.Popen(["bash", "-c", inner], start_new_session=True)
         try:
             assert _wait_for(lambda: pidfile.exists() and pidfile.read_text()), "no child"
