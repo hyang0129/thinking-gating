@@ -1,0 +1,33 @@
+{
+  "_comment": [
+    "Phase 0 step 3 (issue #3, gate E1): serving-loop checks T1-T3, T5, T6 on real checkpoints.",
+    "Runs in .venv-s1: launch the worker as .venv-s1/bin/python scripts/dispatch/worker.py (cells use the worker's interpreter).",
+    "Before dispatch, on the login node: bash scripts/setup_env.sh --s1 --gpu; hf download Qwen/Qwen3.5-4B (Qwen3-8B is already cached).",
+    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/s1_cache_check.json --root shared/dispatch/s1_cache_check"
+  ],
+  "name": "s1_cache_check",
+  "kind": "python_script",
+  "script": "scripts/s1_cache_check.py",
+  "cell_id_hash": true,
+  "constants": {
+    "out": "output/s1/cache_check_{slug}.json"
+  },
+  "zip": {
+    "model": ["Qwen/Qwen3.5-4B", "Qwen/Qwen3-8B"],
+    "slug": ["qwen3.5-4b", "qwen3-8b"]
+  },
+  "cell_id_template": "s1-cache-check-{slug}",
+  "args": ["--model", "{model}", "--n-items", "50", "--max-new-tokens", "256",
+           "--out", "{out}"],
+  "output_check": ["{out}"],
+  "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "HF_DATASETS_OFFLINE": "1",
+    "CUDA_MPS_PIPE_DIRECTORY": "/no/such/path"
+  },
+  "timeout_s": 3600,
+  "max_attempts": 1,
+  "priority": 5,
+  "tags": ["s1", "phase0", "step3", "e1"]
+}
