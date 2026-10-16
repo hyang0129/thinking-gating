@@ -37,6 +37,7 @@ MANIFEST
 
 # Virtual environments (this repo owns its own .venv — see scripts/setup_env.sh)
 .venv/
+.venv-s1/
 venv/
 ENV/
 env/

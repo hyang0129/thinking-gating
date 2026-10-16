@@ -52,9 +52,17 @@ Not built yet (proposal §6 and the issue list the pieces): synthetic
 generators with length controls, decision-model readout (LLM2Jev / Kev), the
 Jev client, typed-question LoRA flag training, the wall-clock harness. That
 work needs Qwen3.5 / Kev / vLLM / peft and a newer `transformers` than the
-`<5` pin here, so it gets a **separate environment** (`requirements-s1.txt`
-and its own venv — not created yet). Do not upgrade `.venv` in place: the
+`<5` pin here, so it gets a **separate environment**: `.venv-s1`, built by
+`bash scripts/setup_env.sh --s1` from `requirements-s1.txt` (add `--gpu` for
+`causal-conv1d` + vLLM on a GPU node). Do not upgrade `.venv` in place: the
 cluster redo captures run in it.
+
+Built for Phase 0 (issue #3), CPU-tested in `.venv-s1`:
+- `utils/s1_cache.py`: prompt-cache snapshot/restore (GDN conv + recurrent
+  state, attention crop), the vanilla-thinking prompt split, greedy escalation
+  with the adapter off. `utils/typed_question.py`: bracketed-ID suffix and
+  exact multi-token candidate scoring. Tests T1–T5: `tests/test_s1_cache.py`.
+- `scripts/c3_precheck.py`: step 0a, cross-fitted routers on the D0 readout.
 
 ### Cluster state (checked 2026-10-04)
 
