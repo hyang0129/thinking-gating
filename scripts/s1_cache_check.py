@@ -68,6 +68,70 @@ def greedy(model, cache, last, n):
     return out
 
 
+def q_for(tok):
+    return typed_question.build(tok, INVOCATION, "Pick one.",
+                                [f"option {k}" for k in range(10)])
+
+
+def manual_greedy(model, cache, logits, n, eos):
+    out = []
+    for _ in range(n):
+        t = int(logits.argmax())
+        out.append(t)
+        if t in eos:
+            break
+        logits = step(model, cache, [t])[-1]
+    return out
+
+
+@torch.no_grad()
+def diagnose_t6(args, tok, pm, items, eos, prompt, q) -> int:
+    """Per item, greedy continuations under four paths (adapter off throughout):
+
+      A  vanilla generate() on prefix + escalate, one prefill chunk
+      B  ours, no decide pass: prefill(prefix), then escalate as a second chunk
+      C  ours, as served: prefill, decide pass + restore, escalate
+      D  manual loop, one prefill chunk of prefix + escalate (same split as A)
+
+    B == C everywhere -> the restore is exact under load. A == D with B != A
+    -> the T6 misses are the prefill split, not the cache. A != D -> generate()
+    and the manual loop differ by themselves.
+    """
+    def first_diff(a, b):
+        return next((i for i, (x, y) in enumerate(zip(a, b)) if x != y),
+                    None if len(a) == len(b) else min(len(a), len(b)))
+
+    rows = []
+    n = args.max_new_tokens
+    for it in items:
+        prefix, esc = prompt(it)
+        with s1_cache.adapter_off(pm):
+            full = torch.tensor([prefix + esc], device=pm.device)
+            A = pm.generate(full, max_new_tokens=n, do_sample=False,
+                            eos_token_id=sorted(eos))[0, full.shape[1]:].tolist()
+        cache, last = s1_cache.prefill(pm, prefix)
+        B = s1_cache.escalate(pm, cache, esc, last.float(), n, eos)
+        cache, last = s1_cache.prefill(pm, prefix)
+        typed_question.score(pm, cache, q)
+        C = s1_cache.escalate(pm, cache, esc, last.float(), n, eos)
+        cache, last = s1_cache.prefill(pm, prefix + esc)
+        with s1_cache.adapter_off(pm):
+            D = manual_greedy(pm, cache, last.float(), n, eos)
+        rows.append({"sample_id": it.get("key"),
+                     **{f"{x}{y}": first_diff(u, v) for (x, u), (y, v) in
+                        [(("A", A), ("B", B)), (("B", B), ("C", C)),
+                         (("A", A), ("D", D)), (("B", B), ("D", D))]}})
+    same = {k: sum(r[k] is None for r in rows) for k in ("AB", "BC", "AD", "BD")}
+    res = {"model": args.model, "n": len(rows), "n_identical": same, "rows": rows,
+           "git_commit": subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True,
+                                        text=True, cwd=_PROJECT_ROOT).stdout.strip()}
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(res, indent=1) + "\n")
+    print(json.dumps({"n": len(rows), "n_identical": same}, indent=1))
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -77,6 +141,9 @@ def main(argv=None) -> int:
     p.add_argument("--max-new-tokens", type=int, default=256)
     p.add_argument("--t1-steps", type=int, default=256)
     p.add_argument("--atol", type=float, default=1e-2)
+    p.add_argument("--diagnose-t6", action="store_true",
+                   help="only T6, with controls that separate a restore bug from "
+                        "prefill-chunking numerics (see diagnose_t6)")
     p.add_argument("--device", default="cuda",
                    help="cpu only for the smoke run on a tiny random checkpoint")
     args = p.parse_args(argv)
@@ -103,6 +170,9 @@ def main(argv=None) -> int:
         return s1_cache.prompt_split(tok, [{"role": "user",
                                             "content": format_prompt(it["question"])}])
 
+    if args.diagnose_t6:
+        return diagnose_t6(args, tok, pm, items, eos, prompt, q_for(tok))
+
     res = {"model": args.model, "transformers": transformers.__version__,
            "git_commit": subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True,
                                         text=True, cwd=_PROJECT_ROOT).stdout.strip(),
@@ -112,8 +182,7 @@ def main(argv=None) -> int:
     with torch.no_grad():
         # T1 / T2 / T3 on the first item
         prefix, esc = prompt(items[0])
-        q = typed_question.build(tok, INVOCATION, "Pick one.",
-                                 [f"option {k}" for k in range(10)])
+        q = q_for(tok)
         cont = esc + tok("Let me think", add_special_tokens=False)["input_ids"]
         cache, last = s1_cache.prefill(pm, prefix)
         snap = s1_cache.snapshot(cache)
