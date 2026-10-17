@@ -86,9 +86,14 @@ def main(argv=None) -> int:
     import transformers
     from tasks.mmlu_pro import format_prompt, load_mmlu_pro
     tok = transformers.AutoTokenizer.from_pretrained(args.model)
-    base = transformers.AutoModelForCausalLM.from_pretrained(
+    base, info = transformers.AutoModelForCausalLM.from_pretrained(
         args.model, dtype=torch.bfloat16 if args.device == "cuda" else torch.float32,
-        device_map=args.device).eval()
+        device_map=args.device, output_loading_info=True)
+    base.eval()
+    # A Qwen3.5 repo stores the text model as model.language_model.*; a missed
+    # remap would leave random weights, and every check below would still pass.
+    if info["missing_keys"]:
+        raise SystemExit(f"missing weights, e.g. {sorted(info['missing_keys'])[:5]}")
     inv_ids = tok(INVOCATION, add_special_tokens=False)["input_ids"]
     pm = random_alora(base, inv_ids)
     items = load_mmlu_pro("test", max_rows=args.n_items)
