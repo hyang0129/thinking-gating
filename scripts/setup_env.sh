@@ -7,6 +7,9 @@
 # Usage (identical on macOS and on Empire AI):
 #     bash scripts/setup_env.sh              # create/refresh .venv
 #     bash scripts/setup_env.sh --recreate   # delete .venv first
+#     bash scripts/setup_env.sh --s1         # .venv-s1 from requirements-s1.txt
+#     bash scripts/setup_env.sh --s1 --gpu   # ... plus requirements-s1-gpu.txt
+#     bash scripts/setup_env.sh --vllm       # .venv-vllm from requirements-vllm.txt
 #
 # Then:
 #     source .venv/bin/activate
@@ -14,10 +17,32 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VENV_DIR="${VENV_DIR:-$REPO_ROOT/.venv}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
+RECREATE=0; S1=0; GPU=0; VLLM=0
+for arg in "$@"; do
+    case "$arg" in
+        --recreate) RECREATE=1 ;;
+        --s1) S1=1 ;;
+        --gpu) GPU=1 ;;
+        --vllm) VLLM=1 ;;
+        *) echo "unknown argument: $arg" >&2; exit 2 ;;
+    esac
+done
+if (( GPU && !S1 )); then echo "--gpu needs --s1" >&2; exit 2; fi
+if (( VLLM && S1 )); then echo "--vllm and --s1 are separate venvs" >&2; exit 2; fi
+if (( VLLM )); then
+    VENV_DIR="${VENV_DIR:-$REPO_ROOT/.venv-vllm}"
+    REQS=("$REPO_ROOT/requirements-vllm.txt")
+elif (( S1 )); then
+    VENV_DIR="${VENV_DIR:-$REPO_ROOT/.venv-s1}"
+    REQS=("$REPO_ROOT/requirements-s1.txt")
+    (( GPU )) && REQS+=("$REPO_ROOT/requirements-s1-gpu.txt")
+else
+    VENV_DIR="${VENV_DIR:-$REPO_ROOT/.venv}"
+    REQS=("$REPO_ROOT/requirements.txt")
+fi
 
-if [[ "${1:-}" == "--recreate" && -d "$VENV_DIR" ]]; then
+if (( RECREATE )) && [[ -d "$VENV_DIR" ]]; then
     echo "Removing existing venv: $VENV_DIR"
     rm -rf "$VENV_DIR"
 fi
@@ -28,7 +53,9 @@ if [[ ! -d "$VENV_DIR" ]]; then
 fi
 
 "$VENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel
-"$VENV_DIR/bin/python" -m pip install -r "$REPO_ROOT/requirements.txt"
+for req in "${REQS[@]}"; do
+    "$VENV_DIR/bin/python" -m pip install -r "$req"
+done
 
 echo
 echo "Environment ready."

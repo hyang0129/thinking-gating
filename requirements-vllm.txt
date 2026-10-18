@@ -1,0 +1,12 @@
+# vLLM label-capture env, `.venv-vllm` (scripts/setup_env.sh --vllm), GPU nodes only.
+# Separate from .venv-s1 because vLLM pins its own torch/transformers (0.32 wants
+# torch 2.13, transformers 5.19) and .venv-s1's serving loop was validated on
+# torch 2.14 / transformers 5.20. Used for thinking-on S2 labels with no adapter
+# (issue #3, Q2); never for cache-reuse or timing claims.
+vllm>=0.11
+numpy
+datasets>=2.19
+scikit-learn>=1.4
+requests>=2.31
+websocket-client>=1.7
+pytest>=7.4

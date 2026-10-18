@@ -1,0 +1,24 @@
+# Dependencies for the System One work (issue #3): Qwen3.5, aLoRA, the custom
+# HF serving loop. Lives in its own venv, `.venv-s1`, built by
+#     bash scripts/setup_env.sh --s1          # CPU: homen, the login node
+#     bash scripts/setup_env.sh --s1 --gpu    # adds requirements-s1-gpu.txt
+# The legacy `.venv` (transformers < 5) is left alone: the redo captures run in it.
+
+torch>=2.4
+# Qwen3.5 (Gated DeltaNet hybrid) loads as Qwen3_5ForConditionalGeneration in 5.x.
+transformers>=5.0,<6
+# aLoRA (alora_invocation_tokens) landed in 0.18.
+peft>=0.18
+accelerate>=1.0
+# GDN kernels; pure Triton/Python, so it installs on CPU. Without a GPU the
+# torch fallback runs: fine for unit tests, never for wall-clock numbers.
+flash-linear-attention>=0.4
+numpy>=1.26
+scikit-learn>=1.4
+datasets>=2.19
+
+# Dispatch tooling (utils/jupyter_exec.py) also runs from this venv.
+requests>=2.31
+websocket-client>=1.7
+
+pytest>=7.4
