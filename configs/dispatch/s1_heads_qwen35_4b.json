@@ -1,0 +1,53 @@
+{
+ "_comment": [
+  "Phase 0 step 5 (issue #3): D2 answer aLoRA on Qwen3.5-4B. Folds 0-4 train on decision-v7 + 4/5 of our train pool (cross-fitted S1 labels); fold -1 is the final head.",
+  "Needs shared/s1/records from scripts/build_s1_records.py (after the no-think capture). Runs in .venv-s1.",
+  "Queue: python scripts/dispatch/queue.py expand configs/dispatch/s1_heads_qwen35_4b.json --root shared/dispatch/s1_heads_qwen35_4b"
+ ],
+ "name": "s1_heads_qwen35_4b",
+ "kind": "python_script",
+ "script": "scripts/train_s1_head.py",
+ "cell_id_hash": true,
+ "constants": {
+  "out": "shared/s1/heads/qwen3.5-4b/answer_fold{fold}"
+ },
+ "grid": {
+  "fold": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   -1
+  ]
+ },
+ "cell_id_template": "s1-head-qwen3.5-4b-fold{fold}",
+ "args": [
+  "--model",
+  "Qwen/Qwen3.5-4B",
+  "--records",
+  "shared/s1/records/train.jsonl",
+  "shared/s1/records/dv7_train.jsonl",
+  "--fold",
+  "{fold}",
+  "--out-dir",
+  "{out}"
+ ],
+ "output_check": [
+  "{out}/train_meta.json"
+ ],
+ "env": {
+  "HF_HUB_OFFLINE": "1",
+  "TRANSFORMERS_OFFLINE": "1",
+  "HF_DATASETS_OFFLINE": "1",
+  "CUDA_MPS_PIPE_DIRECTORY": "/no/such/path"
+ },
+ "timeout_s": 14400,
+ "max_attempts": 2,
+ "priority": 5,
+ "tags": [
+  "s1",
+  "phase0",
+  "step5"
+ ]
+}
