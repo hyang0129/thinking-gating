@@ -10,9 +10,15 @@ on a real checkpoint, GPU node only.
   T2  no leak: PEFT logits on the prompt equal the base model's.
   T3  adapter activates: decide logits move by > 1e-3 with random LoRA B.
   T5  load path: save, PeftModel.from_pretrained, offsets still set, T3 holds.
-  T6  escalation: on --n-items MMLU-Pro prompts, after a decide pass, greedy
-      decoding from the restored prefix cache with the adapter off is
-      token-identical to vanilla generate() on the enable_thinking=True prompt.
+  T6  escalation: on --n-items MMLU-Pro prompts, greedy decoding from the
+      restored prefix cache after a decide pass is token-identical to the
+      untouched model (adapter off, no decide pass) on the same prefill
+      schedule: prompt, then the escalate tail. Also recorded, not gated:
+      identity with vanilla generate(), which prefills prompt + tail as one
+      chunk. On Qwen3.5 bf16 the chunked GDN kernel rounds differently at a
+      different split, so that rate is ~40% there (--diagnose-t6, 2026-10-18:
+      decide pass 50/50 identical, generate() vs one-chunk manual loop 50/50,
+      one- vs two-chunk 19/50); Qwen3 has an empty tail, so it is 50/50.
 
 The aLoRA is random (no training happened yet), which is what these checks
 need: an adapter that visibly changes the decide logits.
@@ -230,7 +236,9 @@ def main(argv=None) -> int:
         for it in items:
             prefix, esc = prompt(it)
             cache, last = s1_cache.prefill(pm, prefix)
-            snap = s1_cache.snapshot(cache)
+            ref = s1_cache.escalate(pm, cache, esc, last.float(),
+                                    args.max_new_tokens, eos)
+            cache, last = s1_cache.prefill(pm, prefix)
             typed_question.score(pm, cache, q)      # a decide pass, restores itself
             ours = s1_cache.escalate(pm, cache, esc, last.float(),
                                      args.max_new_tokens, eos)
@@ -240,11 +248,15 @@ def main(argv=None) -> int:
                                   do_sample=False, eos_token_id=sorted(eos))
             van = van[0, full.shape[1]:].tolist()
             first = next((i for i, (a, b) in enumerate(zip(ours, van)) if a != b), None)
-            rows.append({"sample_id": it.get("key"), "identical": ours == van,
-                         "first_diff": first, "n_ours": len(ours), "n_vanilla": len(van)})
+            rows.append({"sample_id": it.get("key"), "identical": ours == ref,
+                         "identical_to_generate": ours == van,
+                         "first_diff_vs_generate": first, "n_ours": len(ours),
+                         "n_vanilla": len(van)})
         n_id = sum(r["identical"] for r in rows)
-        res["T6"] = {"n": len(rows), "n_identical": n_id, "rows": rows,
-                     "seconds": round(time.time() - t0, 1), "pass": n_id == len(rows)}
+        res["T6"] = {"n": len(rows), "n_identical": n_id,
+                     "n_identical_to_generate": sum(r["identical_to_generate"] for r in rows),
+                     "rows": rows, "seconds": round(time.time() - t0, 1),
+                     "pass": n_id == len(rows)}
 
     res["E1_pass"] = all(res[k]["pass"] for k in ("T1", "T2", "T3", "T5", "T6"))
     out = Path(args.out)
