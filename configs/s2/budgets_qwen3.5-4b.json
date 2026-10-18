@@ -1,0 +1,13 @@
+{
+  "_comment": "S2 max_tokens per task for Qwen3.5-4B thinking-on, from sweep v2 (shared/s2/sweep_qwen3.5-4b_v2, commit 8f738c7; 100 items/task, 1 sample, Qwen3.5 card sampling: temp 1.0, top_p 0.95, top_k 20, presence_penalty 1.5). Smallest budget with < 2% truncation, one step up for margin (1 item = 1% at n = 100). MATH500 was 4% at 40,960, so it takes the card's 81,920 for hard math.",
+  "sampling": {"temperature": 1.0, "top_p": 0.95, "top_k": 20, "min_p": 0.0, "presence_penalty": 1.5},
+  "max_tokens": {"mmlu_pro": 24576, "bbh": 12288, "gsm8k": 12288, "lsat": 32768, "math500": 81920},
+  "sweep_truncation": {
+    "mmlu_pro": {"16384": 0.02, "24576": 0.0},
+    "bbh": {"8192": 0.01, "12288": 0.01, "40960": 0.0},
+    "gsm8k": {"8192": 0.04, "12288": 0.0},
+    "lsat": {"24576": 0.01, "32768": 0.0},
+    "math500": {"32768": 0.09, "40960": 0.04}
+  },
+  "sweep_accuracy_1_sample": {"mmlu_pro": 0.83, "bbh": 0.92, "gsm8k": 0.90, "math500": 0.95, "lsat": 0.92}
+}
