@@ -36,7 +36,7 @@ from capture_inference_thinking import (  # noqa: E402
     _TASK_REGISTRY, _correct_str, _prompt_default, assess_reasoning,
     git_provenance, strip_thinking)
 
-SWEEP_BUDGETS = (2048, 4096, 6144, 8192, 12288, 16384, 24576, 32768)
+SWEEP_BUDGETS = (2048, 4096, 6144, 8192, 12288, 16384, 24576, 32768, 40960, 81920)
 
 
 def load_items(task: str, n: int | None, seed: int) -> list[dict]:
@@ -71,9 +71,15 @@ def main(argv=None) -> int:
     p.add_argument("--n-items", type=int, default=None)
     p.add_argument("--n-samples", type=int, default=1)
     p.add_argument("--max-tokens", type=int, required=True)
-    p.add_argument("--temperature", type=float, default=0.6)
+    # Defaults: the Qwen3.5 model card's "thinking mode for general tasks".
+    # Qwen3's 0.6 / no penalty (the card's "precise coding" setting) looped on
+    # Qwen3.5-4B: 12% of GSM8K samples repeated the answer line to 32k tokens
+    # (sweep v1, 2026-10-18). Pass --temperature 0.6 --presence-penalty 0 for Qwen3.
+    p.add_argument("--temperature", type=float, default=1.0)
     p.add_argument("--top-p", type=float, default=0.95)
     p.add_argument("--top-k", type=int, default=20)
+    p.add_argument("--min-p", type=float, default=0.0)
+    p.add_argument("--presence-penalty", type=float, default=1.5)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--max-model-len", type=int, default=None)
     p.add_argument("--gpu-memory-utilization", type=float, default=0.85)
@@ -98,7 +104,8 @@ def main(argv=None) -> int:
               gpu_memory_utilization=args.gpu_memory_utilization)
     sp = SamplingParams(n=args.n_samples, max_tokens=args.max_tokens,
                         temperature=args.temperature, top_p=args.top_p,
-                        top_k=args.top_k, seed=args.seed)
+                        top_k=args.top_k, min_p=args.min_p,
+                        presence_penalty=args.presence_penalty, seed=args.seed)
     t0 = time.time()
     outs = llm.generate([{"prompt_token_ids": tok(x, add_special_tokens=False)["input_ids"]}
                          for x in prompts], sp)

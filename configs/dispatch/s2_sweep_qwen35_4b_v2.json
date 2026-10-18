@@ -1,0 +1,24 @@
+{
+  "_comment": [
+    "Phase 0 step 4a (issue #3): S2 budget sweep, Qwen3.5-4B thinking-on, 100 items per task, 1 sample, 40k ceiling, Qwen3.5 card sampling (temp 1.0, presence_penalty 1.5); v1 (temp 0.6, no penalty) looped.",
+    "summary.json reports truncation at every smaller budget; pick the smallest with < 2% truncation per task.",
+    "Runs in .venv-vllm: launch the worker as .venv-vllm/bin/python scripts/dispatch/worker.py.",
+    "Queue: python scripts/dispatch/queue.py expand configs/dispatch/s2_sweep_qwen35_4b_v2.json --root shared/dispatch/s2_sweep_qwen35_4b_v2"
+  ],
+  "name": "s2_sweep_qwen35_4b_v2",
+  "kind": "python_script",
+  "script": "scripts/s2_capture.py",
+  "cell_id_hash": true,
+  "constants": {"out": "shared/s2/sweep_qwen3.5-4b_v2/{task}"},
+  "grid": {"task": ["mmlu_pro", "bbh", "gsm8k", "math500", "lsat"]},
+  "cell_id_template": "s2-sweep-v2-qwen3.5-4b-{task}",
+  "args": ["--model", "Qwen/Qwen3.5-4B", "--task", "{task}", "--n-items", "100",
+           "--max-tokens", "40960", "--out-dir", "{out}"],
+  "output_check": ["{out}/summary.json"],
+  "env": {"HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1", "HF_DATASETS_OFFLINE": "1",
+          "CUDA_MPS_PIPE_DIRECTORY": "/no/such/path"},
+  "timeout_s": 5400,
+  "max_attempts": 2,
+  "priority": 5,
+  "tags": ["s2", "phase0", "step4", "sweep"]
+}
