@@ -1,0 +1,83 @@
+{
+ "_comment": [
+  "Phase 0 (issue #3): NO-think answers, Qwen3.5-4B, eval + train pools (utils/s1_pools.py v1), 1 sample, 16k cap, card sampling for non-thinking reasoning tasks (= s2_capture defaults).",
+  "The always-no-think reference, and hard negatives (the model's own wrong answers) for GSM8K/MATH verify items.",
+  "Runs in .venv-vllm. Queue: python scripts/dispatch/queue.py expand configs/dispatch/nothink_qwen35_4b.json --root shared/dispatch/nothink_qwen35_4b"
+ ],
+ "name": "nothink_qwen35_4b",
+ "kind": "python_script",
+ "script": "scripts/s2_capture.py",
+ "cell_id_hash": true,
+ "constants": {
+  "out": "shared/s2/nothink_{pool}_qwen3.5-4b/{task}/shard{shard}"
+ },
+ "zip": {
+  "task": [
+   "mmlu_pro",
+   "bbh",
+   "gsm8k",
+   "math500",
+   "lsat",
+   "mmlu_pro",
+   "bbh",
+   "gsm8k",
+   "math500"
+  ],
+  "pool": [
+   "eval",
+   "eval",
+   "eval",
+   "eval",
+   "eval",
+   "train",
+   "train",
+   "train",
+   "train"
+  ]
+ },
+ "grid": {
+  "shard": [
+   0,
+   1,
+   2,
+   3
+  ]
+ },
+ "cell_id_template": "nothink-{pool}-qwen3.5-4b-{task}-s{shard}",
+ "args": [
+  "--model",
+  "Qwen/Qwen3.5-4B",
+  "--task",
+  "{task}",
+  "--pool",
+  "{pool}",
+  "--no-think",
+  "--n-samples",
+  "1",
+  "--max-tokens",
+  "16384",
+  "--shard-index",
+  "{shard}",
+  "--shard-count",
+  "4",
+  "--out-dir",
+  "{out}"
+ ],
+ "output_check": [
+  "{out}/summary.json"
+ ],
+ "env": {
+  "HF_HUB_OFFLINE": "1",
+  "TRANSFORMERS_OFFLINE": "1",
+  "HF_DATASETS_OFFLINE": "1",
+  "CUDA_MPS_PIPE_DIRECTORY": "/no/such/path"
+ },
+ "timeout_s": 5400,
+ "max_attempts": 2,
+ "priority": 4,
+ "tags": [
+  "nothink",
+  "phase0",
+  "s1"
+ ]
+}

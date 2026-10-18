@@ -86,6 +86,10 @@ def main(argv=None) -> int:
     p.add_argument("--min-p", type=float, default=0.0)
     p.add_argument("--presence-penalty", type=float, default=1.5)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--no-think", action="store_true",
+                   help="enable_thinking=False: the always-no-think reference and the "
+                        "source of hard-negative answers for verify items. The defaults "
+                        "are also the card's non-thinking setting for reasoning tasks")
     p.add_argument("--max-model-len", type=int, default=None)
     p.add_argument("--gpu-memory-utilization", type=float, default=0.85)
     p.add_argument("--out-dir", required=True)
@@ -111,7 +115,7 @@ def main(argv=None) -> int:
     tok = AutoTokenizer.from_pretrained(args.model)
     prompts = [tok.apply_chat_template(
         [{"role": "user", "content": _prompt_default(task_mod, it)}], tokenize=False,
-        add_generation_prompt=True, enable_thinking=True) for it in items]
+        add_generation_prompt=True, enable_thinking=not args.no_think) for it in items]
     plen = [len(tok(x, add_special_tokens=False)["input_ids"]) for x in prompts]
 
     llm = LLM(model=args.model, seed=args.seed, enable_prefix_caching=False,
