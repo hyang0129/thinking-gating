@@ -327,3 +327,35 @@ def load_math500(split: str = "test") -> list[dict]:
             "subject": row["subject"],
         })
     return rows
+
+
+TRAIN_DATASET_ID = "EleutherAI/hendrycks_math"
+TRAIN_CONFIGS = ("algebra", "counting_and_probability", "geometry",
+                 "intermediate_algebra", "number_theory", "prealgebra", "precalculus")
+
+
+def load_math_train() -> list[dict]:
+    """Hendrycks MATH train (7.5k), for S1 training pools (issue #3, §4).
+
+    Disjoint from MATH-500, which is a subset of MATH *test*. The gold answer
+    is the last \\boxed{} of the worked solution; rows without one are dropped.
+    """
+    from datasets import load_dataset
+
+    rows = []
+    for name in TRAIN_CONFIGS:
+        for idx, row in enumerate(load_dataset(TRAIN_DATASET_ID, name, split="train")):
+            gold = extract_boxed(row["solution"])
+            if gold is None:
+                continue
+            m = re.search(r"\d", str(row["level"]))
+            level = int(m.group()) if m else None
+            rows.append({
+                "key": f"math-train-{name}-{idx}",
+                "question": row["problem"],
+                "answer": gold,
+                "difficulty": difficulty({"level": level}),
+                "level": level,
+                "subject": row["type"],
+            })
+    return rows

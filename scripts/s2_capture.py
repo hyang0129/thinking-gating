@@ -68,7 +68,12 @@ def main(argv=None) -> int:
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--model", required=True)
     p.add_argument("--task", required=True, choices=sorted(_TASK_REGISTRY))
-    p.add_argument("--n-items", type=int, default=None)
+    p.add_argument("--n-items", type=int, default=None,
+                   help="family-stratified sample of the task's test split (sweeps)")
+    p.add_argument("--pool", choices=("eval", "train"), default=None,
+                   help="use the Phase 0 pool (utils/s1_pools.py) instead")
+    p.add_argument("--shard-index", type=int, default=0)
+    p.add_argument("--shard-count", type=int, default=1)
     p.add_argument("--n-samples", type=int, default=1)
     p.add_argument("--max-tokens", type=int, required=True)
     # Defaults: the Qwen3.5 model card's "thinking mode for general tasks".
@@ -92,7 +97,17 @@ def main(argv=None) -> int:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     task_mod = importlib.import_module(f"tasks.{args.task}")
-    items = load_items(args.task, args.n_items, args.seed)
+    if args.pool:
+        if args.n_items is not None:
+            raise SystemExit("--pool and --n-items are exclusive")
+        from utils.s1_pools import POOL_VERSION, load_pool
+        items = load_pool(args.pool, args.task)
+        args.pool_version = POOL_VERSION
+    else:
+        items = load_items(args.task, args.n_items, args.seed)
+    items = items[args.shard_index::args.shard_count]
+    if not items:
+        raise SystemExit("empty shard")
     tok = AutoTokenizer.from_pretrained(args.model)
     prompts = [tok.apply_chat_template(
         [{"role": "user", "content": _prompt_default(task_mod, it)}], tokenize=False,
@@ -127,6 +142,7 @@ def main(argv=None) -> int:
                 "answer": strip_thinking(text)[-500:]})
             lengths.append((n_tok, trunc))
         rows.append({"sample_id": it.get("key") or it.get("sample_id"), "task": args.task,
+                     "pool": args.pool,
                      "family": it.get("family") or it.get("subtask") or it.get("category") or it.get("subject"),
                      "prompt_tokens": len(o.prompt_token_ids),
                      "mean_correct": sum(s["correct"] for s in samples) / len(samples),
