@@ -4,4 +4,3 @@ causal-conv1d>=1.5        # fast conv path for Qwen3.5's GDN layers
                           # 2026-10-17: no prebuilt wheel for torch 2.14 + cu13 and the
                           # login node has CUDA 12.6, so it fails to build there; the
                           # torch conv fallback is correct (fine for E1), not for timing.
-vllm>=0.11                # S2 label capture only (issue #3, Q2); never for cache-reuse or timing claims
