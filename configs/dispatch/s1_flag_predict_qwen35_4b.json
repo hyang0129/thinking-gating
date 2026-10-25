@@ -1,0 +1,49 @@
+{
+ "_comment": [
+  "Phase 0 step 7 (issue #3): flag predictions on the eval flag records, after s1_flag_qwen35_4b. Runs in .venv-s1.",
+  "Queue: python scripts/dispatch/queue.py expand configs/dispatch/s1_flag_predict_qwen35_4b.json --root shared/dispatch/s1_flag_qwen35_4b"
+ ],
+ "name": "s1_flag_predict_qwen35_4b",
+ "kind": "python_script",
+ "script": "scripts/s1_predict.py",
+ "cell_id_hash": true,
+ "constants": {
+  "out": "shared/s1/pred/qwen3.5-4b/flag_eval"
+ },
+ "grid": {
+  "run": [
+   "eval"
+  ]
+ },
+ "cell_id_template": "s1-flag-pred-qwen3.5-4b-eval",
+ "args": [
+  "--model",
+  "Qwen/Qwen3.5-4B",
+  "--adapter",
+  "shared/s1/heads/qwen3.5-4b/flag/adapter",
+  "--records",
+  "shared/s1/flag/flag_eval.jsonl",
+  "--fold",
+  "-1",
+  "--out-dir",
+  "{out}"
+ ],
+ "output_check": [
+  "{out}/summary.json"
+ ],
+ "env": {
+  "HF_HUB_OFFLINE": "1",
+  "TRANSFORMERS_OFFLINE": "1",
+  "HF_DATASETS_OFFLINE": "1",
+  "CUDA_MPS_PIPE_DIRECTORY": "/no/such/path"
+ },
+ "timeout_s": 14400,
+ "max_attempts": 2,
+ "priority": 5,
+ "tags": [
+  "s1",
+  "phase0",
+  "step7",
+  "flag"
+ ]
+}
