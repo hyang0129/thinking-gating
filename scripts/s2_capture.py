@@ -92,7 +92,7 @@ def main(argv=None) -> int:
                         "are also the card's non-thinking setting for reasoning tasks")
     p.add_argument("--max-model-len", type=int, default=None)
     p.add_argument("--gpu-memory-utilization", type=float, default=0.85)
-    p.add_argument("--chunk", type=int, default=64,
+    p.add_argument("--chunk", type=int, default=16,
                    help="items per generate() call; finished chunks survive preemption")
     p.add_argument("--out-dir", required=True)
     args = p.parse_args(argv)
