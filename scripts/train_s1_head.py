@@ -37,6 +37,9 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
+import os  # noqa: E402
+
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 import torch  # noqa: E402
 
 from utils import s1_cache, typed_question  # noqa: E402
@@ -133,8 +136,11 @@ def main(argv=None) -> int:
     p.add_argument("--epochs", type=float, default=1.0)
     p.add_argument("--batch-tokens", type=int, default=16384,
                    help="padded tokens per optimizer step (micro-batches accumulated)")
-    p.add_argument("--micro-tokens", type=int, default=8192,
-                   help="padded tokens per micro-batch; records are length-bucketed")
+    p.add_argument("--micro-tokens", type=int, default=4096,
+                   help="padded tokens per micro-batch; records are length-bucketed. "
+                        "4096 keeps the 248k-vocab fp32 logits and activations without "
+                        "checkpointing well under 96 GB on Qwen3.5-4B (the old 4 x 2048 "
+                        "rows with checkpointing OOM'd on 2026-10-26)")
     p.add_argument("--grad-ckpt", action="store_true",
                    help="gradient checkpointing (off: token-budget micro-batches fit)")
     p.add_argument("--save-every", type=int, default=50,
