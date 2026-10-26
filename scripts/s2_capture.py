@@ -92,6 +92,8 @@ def main(argv=None) -> int:
                         "are also the card's non-thinking setting for reasoning tasks")
     p.add_argument("--max-model-len", type=int, default=None)
     p.add_argument("--gpu-memory-utilization", type=float, default=0.85)
+    p.add_argument("--chunk", type=int, default=64,
+                   help="items per generate() call; finished chunks survive preemption")
     p.add_argument("--out-dir", required=True)
     args = p.parse_args(argv)
 
@@ -113,6 +115,7 @@ def main(argv=None) -> int:
     if not items:
         raise SystemExit("empty shard")
     tok = AutoTokenizer.from_pretrained(args.model)
+    key = lambda it: it.get("key") or it.get("sample_id")  # noqa: E731
     prompts = [tok.apply_chat_template(
         [{"role": "user", "content": _prompt_default(task_mod, it)}], tokenize=False,
         add_generation_prompt=True, enable_thinking=not args.no_think) for it in items]
@@ -125,36 +128,58 @@ def main(argv=None) -> int:
                         temperature=args.temperature, top_p=args.top_p,
                         top_k=args.top_k, min_p=args.min_p,
                         presence_penalty=args.presence_penalty, seed=args.seed)
-    t0 = time.time()
-    outs = llm.generate([{"prompt_token_ids": tok(x, add_special_tokens=False)["input_ids"]}
-                         for x in prompts], sp)
-    secs = time.time() - t0
-
-    rows, lengths = [], []
-    for it, prompt, o in zip(items, prompts, outs):
+    def make_row(it, prompt, o):
         samples = []
         for c in o.outputs:
             text = c.text
             r = assess_reasoning(text, prompt)
-            n_tok = len(c.token_ids)
             trunc = c.finish_reason == "length"
             samples.append({
                 "correct": bool(not trunc and not r["unclosed"]
                                 and _correct_str(task_mod, strip_thinking(text), it)),
-                "n_tokens": n_tok, "truncated": trunc,
+                "n_tokens": len(c.token_ids), "truncated": trunc,
                 "has_reasoning": r["has_reasoning"], "unclosed": r["unclosed"],
                 "answer": strip_thinking(text)[-500:]})
-            lengths.append((n_tok, trunc))
-        rows.append({"sample_id": it.get("key") or it.get("sample_id"), "task": args.task,
-                     "pool": args.pool,
-                     "family": it.get("family") or it.get("subtask") or it.get("category") or it.get("subject"),
-                     "prompt_tokens": len(o.prompt_token_ids),
-                     "mean_correct": sum(s["correct"] for s in samples) / len(samples),
-                     "samples": samples})
+        return {"sample_id": key(it), "task": args.task, "pool": args.pool,
+                "family": it.get("family") or it.get("subtask") or it.get("category") or it.get("subject"),
+                "prompt_tokens": len(o.prompt_token_ids),
+                "mean_correct": sum(s["correct"] for s in samples) / len(samples),
+                "samples": samples}
 
-    with open(out_dir / "s2.jsonl", "w") as f:
+    # Resumable: rows are appended per chunk to s2.jsonl.partial, and a restart
+    # (QOS burst preempts about hourly) skips the items already there. A torn
+    # last line from a kill is dropped and the file rewritten clean first.
+    part = out_dir / "s2.jsonl.partial"
+    done = {}
+    if part.exists():
+        for line in open(part):
+            try:
+                r = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            done[r["sample_id"]] = r
+        part.write_text("".join(json.dumps(r) + "\n" for r in done.values()))
+    todo = [i for i, it in enumerate(items) if key(it) not in done]
+    t0 = time.time()
+    with open(part, "a") as f:
+        for c0 in range(0, len(todo), args.chunk):
+            idx = todo[c0:c0 + args.chunk]
+            outs = llm.generate([{"prompt_token_ids": tok(prompts[i], add_special_tokens=False)["input_ids"]}
+                                 for i in idx], sp)
+            for i, o in zip(idx, outs):
+                row = make_row(items[i], prompts[i], o)
+                f.write(json.dumps(row) + "\n")
+                done[row["sample_id"]] = row
+            f.flush()
+    secs = time.time() - t0
+
+    rows = [done[key(it)] for it in items]
+    lengths = [(s["n_tokens"], s["truncated"]) for r in rows for s in r["samples"]]
+    with open(out_dir / "s2.jsonl.tmp", "w") as f:
         for r in rows:
             f.write(json.dumps(r) + "\n")
+    (out_dir / "s2.jsonl.tmp").rename(out_dir / "s2.jsonl")
+    part.unlink()
     allS = [s for r in rows for s in r["samples"]]
     # A truncated sample needed > max_tokens, so it is truncated at every budget.
     sweep = {b: sum(t or n > b for n, t in lengths) / len(lengths)
