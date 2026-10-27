@@ -77,8 +77,23 @@ def main(argv=None) -> int:
     out.mkdir(parents=True, exist_ok=True)
     hidden, n_trim = [], 0
     t0 = time.time()
-    with open(out / "predictions.jsonl", "w") as f, torch.no_grad():
+    # Resumable when no hidden states are kept (QOS burst preempts about
+    # hourly): rows go to predictions.jsonl.partial as they finish, a restart
+    # skips them, and predictions.jsonl is written in record order at the end.
+    part = out / "predictions.jsonl.partial"
+    done = {}
+    if part.exists() and not args.hidden_layers:
+        for line in open(part):
+            try:
+                x = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            done[x["id"]] = x
+        part.write_text("".join(json.dumps(x) + "\n" for x in done.values()))
+    with open(part, "a" if done else "w") as f, torch.no_grad():
         for r in recs:
+            if r["id"] in done:
+                continue
             q = typed_question.build(tok, INVOCATION, r["question"], r["options"])
             prefix, _ = s1_cache.prompt_split(tok, [{"role": "user", "content": r["context"]}])
             if len(prefix) > args.max_len:
@@ -100,11 +115,18 @@ def main(argv=None) -> int:
                                 "argmax": am, "p_max": res["p_max"],
                                 "correct": am == r["gold"], "legal_mass": res["legal_mass"],
                                 "candidate_is_gold": r.get("candidate_is_gold")}) + "\n")
+            f.flush()
     if hidden:
         np.savez_compressed(out / "hidden.npz", hidden=np.stack(hidden),
                             layers=np.array(args.hidden_layers),
                             id=np.array([r["id"] for r in recs]))
-    preds = [json.loads(l) for l in open(out / "predictions.jsonl")]
+    rows = {}
+    for line in open(part):
+        x = json.loads(line)
+        rows[x["id"]] = x
+    preds = [rows[r["id"]] for r in recs]
+    (out / "predictions.jsonl").write_text("".join(json.dumps(x) + "\n" for x in preds))
+    part.unlink()
     by_task: dict[str, list] = {}
     for x in preds:
         by_task.setdefault(x["task"], []).append(x["correct"])
