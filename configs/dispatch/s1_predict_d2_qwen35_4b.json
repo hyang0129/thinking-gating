@@ -1,0 +1,81 @@
+{
+ "_comment": [
+  "Phase 0 steps 5-7 (issue #3): D2 predictions on Qwen3.5-4B. Out-of-fold on the train pool (the flag's S1 labels), final head on eval and on decision-v7 test (E2).",
+  "Runs in .venv-s1 after s1_heads_qwen35_4b. Queue: python scripts/dispatch/queue.py expand configs/dispatch/s1_predict_d2_qwen35_4b.json --root shared/dispatch/s1_predict_qwen35_4b"
+ ],
+ "name": "s1_predict_d2_qwen35_4b",
+ "kind": "python_script",
+ "script": "scripts/s1_predict.py",
+ "cell_id_hash": true,
+ "zip": {
+  "which": [
+   "oof-fold0",
+   "oof-fold1",
+   "oof-fold2",
+   "oof-fold3",
+   "oof-fold4",
+   "final-eval",
+   "final-dv7test"
+  ],
+  "adapter": [
+   "shared/s1/heads/qwen3.5-4b/answer_fold0/adapter",
+   "shared/s1/heads/qwen3.5-4b/answer_fold1/adapter",
+   "shared/s1/heads/qwen3.5-4b/answer_fold2/adapter",
+   "shared/s1/heads/qwen3.5-4b/answer_fold3/adapter",
+   "shared/s1/heads/qwen3.5-4b/answer_fold4/adapter",
+   "shared/s1/heads/qwen3.5-4b/answer_fold-1/adapter",
+   "shared/s1/heads/qwen3.5-4b/answer_fold-1/adapter"
+  ],
+  "recs": [
+   "shared/s1/records/train.jsonl",
+   "shared/s1/records/train.jsonl",
+   "shared/s1/records/train.jsonl",
+   "shared/s1/records/train.jsonl",
+   "shared/s1/records/train.jsonl",
+   "shared/s1/records/eval.jsonl",
+   "shared/s1/records/dv7_test.jsonl"
+  ],
+  "fold": [
+   "0",
+   "1",
+   "2",
+   "3",
+   "4",
+   "-1",
+   "-1"
+  ]
+ },
+ "constants": {
+  "out": "shared/s1/pred/qwen3.5-4b/d2_{which}"
+ },
+ "cell_id_template": "s1-pred-d2-qwen3.5-4b-{which}",
+ "args": [
+  "--model",
+  "Qwen/Qwen3.5-4B",
+  "--adapter",
+  "{adapter}",
+  "--records",
+  "{recs}",
+  "--fold",
+  "{fold}",
+  "--out-dir",
+  "{out}"
+ ],
+ "output_check": [
+  "{out}/summary.json"
+ ],
+ "env": {
+  "HF_HUB_OFFLINE": "1",
+  "TRANSFORMERS_OFFLINE": "1",
+  "HF_DATASETS_OFFLINE": "1",
+  "CUDA_MPS_PIPE_DIRECTORY": "/no/such/path"
+ },
+ "timeout_s": 14400,
+ "max_attempts": 2,
+ "priority": 5,
+ "tags": [
+  "s1",
+  "phase0",
+  "d2"
+ ]
+}

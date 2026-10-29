@@ -5,8 +5,8 @@
 #     python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
 #
 # The System One work (Qwen3.5 / Kev / vLLM / peft) needs a newer transformers
-# than the <5 pin below and gets its own environment (requirements-s1.txt, not
-# created yet). Do not upgrade this one in place: the cluster redo captures run
+# than the <5 pin below and gets its own environment (requirements-s1.txt,
+# .venv-s1). Do not upgrade this one in place: the cluster redo captures run
 # in it.
 
 # --- Core ML -----------------------------------------------------------------
@@ -14,8 +14,8 @@
 # chat-template flag that the whole paired-capture design rests on both landed
 # there. Older pins (4.40) cannot load Qwen/Qwen3-8B at all.
 torch>=2.4
-# Upper bound is deliberate: transformers 5.x renames `torch_dtype` (used in
-# scripts/capture_inference_thinking.py) and reworks generation internals, so
+# Upper bound is deliberate: transformers 5.x reworks generation internals; the
+# capture script loads under 5.x (.venv-s1) but has only been validated on 4.x, so
 # stay on the 4.x line until that migration is done on purpose.
 transformers>=4.51,<5
 accelerate>=0.30          # required by device_map="auto" in the capture script

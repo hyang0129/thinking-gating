@@ -1,0 +1,48 @@
+{
+ "_comment": [
+  "Phase 0 step 7 (issue #3): the D2 think-flag, a separate aLoRA on Qwen3.5-4B trained on flag_train.jsonl (y = 1[out-of-fold S1 wrong & S2 right]),",
+  "then its eval predictions (probs[0] = P(Yes) = flag score). Needs scripts/build_flag_records.py output. Runs in .venv-s1.",
+  "Queue train: python scripts/dispatch/queue.py expand configs/dispatch/s1_flag_qwen35_4b.json --root shared/dispatch/s1_flag_qwen35_4b"
+ ],
+ "name": "s1_flag_qwen35_4b",
+ "kind": "python_script",
+ "script": "scripts/train_s1_head.py",
+ "cell_id_hash": true,
+ "constants": {
+  "out": "shared/s1/heads/qwen3.5-4b/flag"
+ },
+ "grid": {
+  "run": [
+   "final"
+  ]
+ },
+ "cell_id_template": "s1-flag-train-qwen3.5-4b",
+ "args": [
+  "--model",
+  "Qwen/Qwen3.5-4B",
+  "--records",
+  "shared/s1/flag/flag_train.jsonl",
+  "--fold",
+  "-1",
+  "--out-dir",
+  "{out}"
+ ],
+ "output_check": [
+  "{out}/train_meta.json"
+ ],
+ "env": {
+  "HF_HUB_OFFLINE": "1",
+  "TRANSFORMERS_OFFLINE": "1",
+  "HF_DATASETS_OFFLINE": "1",
+  "CUDA_MPS_PIPE_DIRECTORY": "/no/such/path"
+ },
+ "timeout_s": 14400,
+ "max_attempts": 2,
+ "priority": 5,
+ "tags": [
+  "s1",
+  "phase0",
+  "step7",
+  "flag"
+ ]
+}

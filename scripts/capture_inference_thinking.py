@@ -431,15 +431,18 @@ def load_model(model_name: str, attn_implementation: str = "sdpa"):
              if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
              else torch.float16)
     logger.info("loading model: %s (%s, %s)", model_name, attn_implementation, dtype)
-    # `torch_dtype` rather than the newer `dtype` alias: it is honored across
-    # the whole transformers 4.x range this repo pins, where `dtype` only
-    # exists from 4.56 on.
+    # `dtype` exists from transformers 4.56 on and `torch_dtype` is deprecated
+    # in 5.x; the legacy .venv pins >= 4.51, so pick the name by version.
+    import transformers
+    dtype_kw = ("dtype" if tuple(int(x) for x in transformers.__version__.split(".")[:2])
+                >= (4, 56) else "torch_dtype")
+
     def _load(attn: str):
         return AutoModelForCausalLM.from_pretrained(
             model_name,
             attn_implementation=attn,
-            torch_dtype=dtype,
             device_map="auto",
+            **{dtype_kw: dtype},
         )
 
     try:

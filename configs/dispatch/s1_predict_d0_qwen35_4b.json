@@ -1,0 +1,75 @@
+{
+ "_comment": [
+  "Phase 0 (issue #3): D0 (untouched Qwen3.5-4B reading the bracketed format) and D1 features (base decide-position states, layers 8-32) on eval and train.",
+  "Needs only shared/s1/records. Runs in .venv-s1. Queue: python scripts/dispatch/queue.py expand configs/dispatch/s1_predict_d0_qwen35_4b.json --root shared/dispatch/s1_predict_qwen35_4b"
+ ],
+ "name": "s1_predict_d0_qwen35_4b",
+ "kind": "python_script",
+ "script": "scripts/s1_predict.py",
+ "cell_id_hash": true,
+ "zip": {
+  "pool": [
+   "eval",
+   "train",
+   "train",
+   "train",
+   "train",
+   "train"
+  ],
+  "fold": [
+   "-1",
+   "0",
+   "1",
+   "2",
+   "3",
+   "4"
+  ],
+  "tag": [
+   "eval",
+   "train_f0",
+   "train_f1",
+   "train_f2",
+   "train_f3",
+   "train_f4"
+  ]
+ },
+ "constants": {
+  "out": "shared/s1/pred/qwen3.5-4b/d0_{tag}"
+ },
+ "cell_id_template": "s1-pred-d0-qwen3.5-4b-{tag}",
+ "args": [
+  "--model",
+  "Qwen/Qwen3.5-4B",
+  "--records",
+  "shared/s1/records/{pool}.jsonl",
+  "--fold",
+  "{fold}",
+  "--hidden-layers",
+  "8",
+  "16",
+  "24",
+  "28",
+  "30",
+  "32",
+  "--out-dir",
+  "{out}"
+ ],
+ "output_check": [
+  "{out}/summary.json"
+ ],
+ "env": {
+  "HF_HUB_OFFLINE": "1",
+  "TRANSFORMERS_OFFLINE": "1",
+  "HF_DATASETS_OFFLINE": "1",
+  "CUDA_MPS_PIPE_DIRECTORY": "/no/such/path"
+ },
+ "timeout_s": 14400,
+ "max_attempts": 2,
+ "priority": 6,
+ "tags": [
+  "s1",
+  "phase0",
+  "d0",
+  "d1"
+ ]
+}
